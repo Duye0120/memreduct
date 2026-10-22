@@ -17,6 +17,7 @@ public sealed partial class MainWindow : Window
     private readonly TrayIcon? _tray;
     private bool _ready, _cleaning, _exitRequested, _sampleFailed;
     private bool _statsStacked;
+    private double _cornerScale;
     private DateTimeOffset _lastAttempt;
     private readonly Windows.UI.ViewManagement.UISettings _uiSettings = new();
     internal bool CanStayInTray => _tray?.IsVisible == true;
@@ -68,6 +69,9 @@ public sealed partial class MainWindow : Window
         Closed += (_, _) => { _timer?.Stop(); _tray?.Dispose(); ((App)Application.Current).Finish(); };
         Shell.Loaded += async (_, _) =>
         {
+            UpdateCornerRadii();
+            Shell.XamlRoot.Changed -= XamlRoot_Changed;
+            Shell.XamlRoot.Changed += XamlRoot_Changed;
             if (App.Arguments.Contains("--clean") && !checking) await CleanAsync(false);
         };
     }
@@ -96,8 +100,30 @@ public sealed partial class MainWindow : Window
         catch (Exception error) { ReportIssue("设置未能保存", error.Message); return false; }
     }
 
-    private void ApplyTheme() => Shell.RequestedTheme = _settings.Theme switch
-    { "Light" => ElementTheme.Light, "Dark" => ElementTheme.Dark, _ => ElementTheme.Default };
+    private void ApplyTheme()
+    {
+        Shell.RequestedTheme = _settings.Theme switch
+        { "Light" => ElementTheme.Light, "Dark" => ElementTheme.Dark, _ => ElementTheme.Default };
+        AppWindow.TitleBar.PreferredTheme = _settings.Theme switch
+        { "Light" => TitleBarTheme.Light, "Dark" => TitleBarTheme.Dark, _ => TitleBarTheme.UseDefaultAppMode };
+    }
+
+    private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args) => UpdateCornerRadii();
+
+    private void UpdateCornerRadii()
+    {
+        var scale = Shell.XamlRoot.RasterizationScale;
+        if (_cornerScale == scale) return;
+        // The requested radii are screen pixels, while WinUI measures CornerRadius in DIPs.
+        var cardRadius = new CornerRadius(12 / scale);
+        var controlRadius = new CornerRadius(10 / scale);
+        foreach (var card in new[] { MetricsCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
+            card.CornerRadius = cardRadius;
+        foreach (var control in new Control[] { OverviewTab, SettingsTab, CleanButton, ElevateButton, ThemeChoice,
+            ThresholdNumber, IntervalNumber, SourceLink, ExitButton })
+            control.CornerRadius = controlRadius;
+        _cornerScale = scale;
+    }
 
     private void RefreshOptions()
     {
@@ -251,6 +277,7 @@ public sealed partial class MainWindow : Window
                 var dialog = new ContentDialog
                 {
                     XamlRoot = Shell.XamlRoot, RequestedTheme = Shell.ActualTheme, Title = "清理内存",
+                    CornerRadius = new CornerRadius(12 / Shell.XamlRoot.RasterizationScale),
                     Content = "将释放选中区域的可回收内存。应用可能短暂重新读取缓存数据。",
                     PrimaryButtonText = "清理", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Close
                 };

@@ -24,6 +24,25 @@ public sealed partial class MainWindow
             AppWindow.Move(new Windows.Graphics.PointInt32(-30000, -30000));
             AppWindow.Show(false);
             await Task.Delay(250);
+            var savedTheme = _settings.Theme;
+            foreach (var (theme, captionTheme) in new[]
+            {
+                ("Light", Microsoft.UI.Windowing.TitleBarTheme.Light),
+                ("Dark", Microsoft.UI.Windowing.TitleBarTheme.Dark),
+                ("System", Microsoft.UI.Windowing.TitleBarTheme.UseDefaultAppMode)
+            })
+            {
+                _settings.Theme = theme; ApplyTheme();
+                Require(AppWindow.TitleBar.PreferredTheme == captionTheme, "Caption buttons follow the app theme");
+            }
+            _settings.Theme = savedTheme; ApplyTheme();
+            var displayScale = Shell.XamlRoot.RasterizationScale;
+            var buttonRadiusPixels = CleanButton.CornerRadius.TopLeft * displayScale;
+            Require(Math.Abs(buttonRadiusPixels - 10) < 0.01,
+                $"Button radius must be 10 screen pixels; actual={buttonRadiusPixels}, scale={displayScale}");
+            foreach (var card in new[] { MetricsCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
+                Require(Math.Abs(card.CornerRadius.TopLeft * displayScale - 12) < 0.01, "Cards must have 12 screen-pixel radii");
+            checks.Add($"Light/dark/system caption themes and physical 12px card / 10px button radii passed at scale {displayScale}.");
             Require(Marshal.SizeOf<MemoryEngine.MemoryStatus>() == 64, "MEMORYSTATUSEX ABI");
             Require(Marshal.SizeOf<MemoryEngine.PerformanceInfo>() == 104, "PERFORMANCE_INFORMATION ABI");
             Require(Marshal.SizeOf<MemoryEngine.FileCacheInfo>() == 64, "SYSTEM_FILECACHE_INFORMATION ABI");
@@ -113,7 +132,8 @@ public sealed partial class MainWindow
             SelectPage(false); Layout(600, 520, 1);
             await WritePreview(directory, "memory-dark.png");
             File.WriteAllText(Path.Combine(directory, "self-check.json"), JsonSerializer.Serialize(new
-            { passed = true, checks, layouts, physicalTotal = memory.PhysicalTotal, cacheAvailable = memory.CacheCurrent.HasValue },
+            { passed = true, checks, layouts, displayScale, cardRadiusPixels = MetricsCard.CornerRadius.TopLeft * displayScale,
+                buttonRadiusPixels, physicalTotal = memory.PhysicalTotal, cacheAvailable = memory.CacheCurrent.HasValue },
                 new JsonSerializerOptions { WriteIndented = true }));
         }
         catch (Exception error)

@@ -10,9 +10,9 @@
             <TitleBar.IconSource><ImageIconSource ImageSource="Assets/AppIcon.ico" /></TitleBar.IconSource>
         </TitleBar>
         <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="24,0">
-            <ToggleButton x:Name="OverviewTab" Content="内存" IsChecked="True" MinWidth="88" CornerRadius="8"
+            <ToggleButton x:Name="OverviewTab" Content="内存" IsChecked="True" MinWidth="88" CornerRadius="{StaticResource AppControlCornerRadius}"
                           Click="OverviewTab_Click" AutomationProperties.Name="内存概览" />
-            <ToggleButton x:Name="SettingsTab" Content="设置" MinWidth="88" CornerRadius="8" Click="SettingsTab_Click" />
+            <ToggleButton x:Name="SettingsTab" Content="设置" MinWidth="88" CornerRadius="{StaticResource AppControlCornerRadius}" Click="SettingsTab_Click" />
         </StackPanel>
         <ScrollViewer x:Name="BodyScroll" Grid.Row="2" HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto" Padding="24,0,24,24">
@@ -20,7 +20,7 @@
                 <InfoBar x:Name="IssueBanner" IsOpen="False" Visibility="Collapsed" IsClosable="True" Severity="Warning" />
                 <InfoBar x:Name="AdminBanner" Title="自动清理已暂停" Message="自动清理需要管理员权限。"
                          IsOpen="False" Visibility="Collapsed" IsClosable="False" Severity="Informational">
-                    <InfoBar.ActionButton><Button Content="以管理员运行" Click="Elevate_Click" /></InfoBar.ActionButton>
+                    <InfoBar.ActionButton><Button x:Name="ElevateButton" Content="以管理员运行" CornerRadius="{StaticResource AppControlCornerRadius}" Click="Elevate_Click" /></InfoBar.ActionButton>
                 </InfoBar>
                 <StackPanel x:Name="OverviewPage" Spacing="16">
                     <Grid>
@@ -31,7 +31,7 @@
                             <TextBlock Text="实时" Style="{StaticResource Muted}" />
                         </StackPanel>
                     </Grid>
-                    <Border Style="{StaticResource Card}" Padding="0">
+                    <Border x:Name="MetricsCard" Style="{StaticResource Card}" Padding="0">
                         <Grid x:Name="MetricsGrid">
                             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
                             <StackPanel x:Name="PhysicalCell" Padding="20" Spacing="6">
@@ -59,7 +59,7 @@
                             </StackPanel>
                         </Grid>
                     </Border>
-                    <Border Style="{StaticResource Card}">
+                    <Border x:Name="CleanCard" Style="{StaticResource Card}">
                         <Grid ColumnSpacing="16">
                             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                             <StackPanel Spacing="6" VerticalAlignment="Center">
@@ -67,7 +67,7 @@
                                 <TextBlock x:Name="CleanDescription" Text="按设置中选择的区域清理。" Style="{StaticResource Muted}" />
                             </StackPanel>
                             <Button x:Name="CleanButton" Grid.Column="1" Content="清理内存" MinWidth="128" MinHeight="40"
-                                    Style="{StaticResource AccentButtonStyle}" Click="CleanButton_Click" VerticalAlignment="Center" />
+                                    CornerRadius="{StaticResource AppControlCornerRadius}" Style="{StaticResource AccentButtonStyle}" Click="CleanButton_Click" VerticalAlignment="Center" />
                         </Grid>
                     </Border>
                     <StackPanel Spacing="6" Margin="2,0">
@@ -77,14 +77,14 @@
                 </StackPanel>
                 <StackPanel x:Name="SettingsPage" Visibility="Collapsed" Spacing="12">
                     <TextBlock Style="{StaticResource Body}" Text="设置" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,4" />
-                    <Border Style="{StaticResource Card}">
+                    <Border x:Name="AppearanceCard" Style="{StaticResource Card}">
                         <StackPanel Spacing="16">
                             <TextBlock Style="{StaticResource Body}" Text="外观与窗口" FontSize="14" FontWeight="SemiBold" />
                             <Grid ColumnSpacing="16">
                                 <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                 <TextBlock Style="{StaticResource Body}" Text="主题" VerticalAlignment="Center" />
                                 <ComboBox x:Name="ThemeChoice" Grid.Column="1" MinWidth="144" SelectionChanged="ThemeChoice_SelectionChanged"
-                                          AutomationProperties.Name="主题">
+                                          CornerRadius="{StaticResource AppControlCornerRadius}" AutomationProperties.Name="主题">
                                     <ComboBoxItem Content="跟随系统" Tag="System" /><ComboBoxItem Content="浅色" Tag="Light" />
                                     <ComboBoxItem Content="深色" Tag="Dark" />
                                 </ComboBox>
@@ -111,7 +111,7 @@
                             </Grid>
                         </StackPanel>
                     </Border>
-                    <Border Style="{StaticResource Card}">
+                    <Border x:Name="CleanupSettingsCard" Style="{StaticResource Card}">
                         <StackPanel Spacing="14">
                             <TextBlock Style="{StaticResource Body}" Text="内存清理" FontSize="14" FontWeight="SemiBold" />
                             <TextBlock Text="至少选择一项；自动清理使用相同的区域。" Style="{StaticResource Muted}" />
@@ -126,7 +126,7 @@
                             </Grid>
                         </StackPanel>
                     </Border>
-                    <Border Style="{StaticResource Card}">
+                    <Border x:Name="AutoSettingsCard" Style="{StaticResource Card}">
                         <StackPanel Spacing="16">
                             <TextBlock Style="{StaticResource Body}" Text="自动清理" FontSize="14" FontWeight="SemiBold" />
                             <Grid ColumnSpacing="16">
@@ -136,7 +136,7 @@
                                               Toggled="Preference_Toggled" AutomationProperties.Name="内存达到阈值时清理" />
                             </Grid>
                             <NumberBox x:Name="ThresholdNumber" Header="用量阈值（%）" Minimum="50" Maximum="99" SmallChange="1"
-                                       SpinButtonPlacementMode="Compact" ValueChanged="AutoNumber_ValueChanged" LostFocus="AutoNumber_LostFocus" />
+                                       CornerRadius="{StaticResource AppControlCornerRadius}" SpinButtonPlacementMode="Compact" ValueChanged="AutoNumber_ValueChanged" LostFocus="AutoNumber_LostFocus" />
                             <Grid ColumnSpacing="16">
                                 <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                 <TextBlock Style="{StaticResource Body}" Text="按时间间隔清理" VerticalAlignment="Center" />
@@ -144,18 +144,18 @@
                                               Toggled="Preference_Toggled" AutomationProperties.Name="按时间间隔清理" />
                             </Grid>
                             <NumberBox x:Name="IntervalNumber" Header="间隔（分钟）" Minimum="1" Maximum="1440" SmallChange="1"
-                                       SpinButtonPlacementMode="Compact" ValueChanged="AutoNumber_ValueChanged" LostFocus="AutoNumber_LostFocus" />
+                                       CornerRadius="{StaticResource AppControlCornerRadius}" SpinButtonPlacementMode="Compact" ValueChanged="AutoNumber_ValueChanged" LostFocus="AutoNumber_LostFocus" />
                             <TextBlock Text="连续两次自动清理至少间隔 30 秒。" Style="{StaticResource Muted}" />
                         </StackPanel>
                     </Border>
-                    <Border Style="{StaticResource Card}">
+                    <Border x:Name="AboutCard" Style="{StaticResource Card}">
                         <StackPanel Spacing="14">
                             <TextBlock Style="{StaticResource Body}" Text="关于" FontSize="14" FontWeight="SemiBold" />
                             <TextBlock Style="{StaticResource Body}" Text="Mem Reduct Fluent · WinUI 3" />
                             <TextBlock Text="基于 Henry++ 的 Mem Reduct，遵循 GPL 许可。" Style="{StaticResource Muted}" />
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <HyperlinkButton Content="项目源码" NavigateUri="https://github.com/Duye0120/memreduct/tree/ui/winui3-rewrite" />
-                                <Button Content="退出程序" Click="Exit_Click" />
+                                <HyperlinkButton x:Name="SourceLink" Content="项目源码" CornerRadius="{StaticResource AppControlCornerRadius}" NavigateUri="https://github.com/Duye0120/memreduct/tree/ui/winui3-rewrite" />
+                                <Button x:Name="ExitButton" Content="退出程序" CornerRadius="{StaticResource AppControlCornerRadius}" Click="Exit_Click" />
                             </StackPanel>
                         </StackPanel>
                     </Border>

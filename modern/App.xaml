@@ -51,11 +51,13 @@
                     <SolidColorBrush x:Key="AccentBrush" Color="{ThemeResource SystemColorHighlightColor}" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
+            <CornerRadius x:Key="AppControlCornerRadius">10</CornerRadius>
+            <CornerRadius x:Key="CardCornerRadius">12</CornerRadius>
             <Style x:Key="Card" TargetType="Border">
                 <Setter Property="Background" Value="{ThemeResource SurfaceBrush}" />
                 <Setter Property="BorderBrush" Value="{ThemeResource OutlineBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="16" />
+                <Setter Property="CornerRadius" Value="{StaticResource CardCornerRadius}" />
                 <Setter Property="Padding" Value="20" />
             </Style>
             <Style x:Key="Body" TargetType="TextBlock">
