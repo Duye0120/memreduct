@@ -302,7 +302,13 @@
   <data name="MemoryCritical" xml:space="preserve"><value>Memory usage critical</value></data>
   <data name="CleanupCanceled" xml:space="preserve"><value>Cleanup canceled</value></data>
   <data name="CleanupHasErrors" xml:space="preserve"><value>Cleanup errors · open from the menu for details</value></data>
-  <data name="TrayClickHint" xml:space="preserve"><value>Left-click: clean · right-click: menu</value></data>
+  <data name="TrayClickConfirmHint" xml:space="preserve"><value>Left-click: confirm cleanup · right-click: menu</value></data>
+  <data name="TrayClickDirectHint" xml:space="preserve"><value>Left-click: clean directly · right-click: menu</value></data>
+  <data name="TrayFirstCleanTitle" xml:space="preserve"><value>Left-click the tray to clean</value></data>
+  <data name="TrayFirstCleanMessage" xml:space="preserve"><value>Left-click the tray number to clean the selected memory areas; right-click to open the menu. Apps may briefly reload cached data afterward. Choose whether future manual cleanups need confirmation. You can change this in the tray menu or Settings.</value></data>
+  <data name="TrayConfirmChoice" xml:space="preserve"><value>Keep asking before manual cleanup</value></data>
+  <data name="TrayInstalledAuthorization" xml:space="preserve"><value>This preference does not change Windows administrator consent. Authorization lasts for this app session. Enable startup in Settings and authorize it to run as administrator automatically at future sign-ins.</value></data>
+  <data name="TrayPortableAuthorization" xml:space="preserve"><value>This preference does not change Windows administrator consent. Authorization lasts for this app session. Reopening the portable app may require consent again; the installed app supports administrator startup.</value></data>
   <data name="TrayBehaviorNote.Text" xml:space="preserve"><value>Tray: left-click to clean, right-click for menu. Orange at 70%, red at 90%. Purple spinner while cleaning, green on success, orange/red on errors.</value></data>
   <data name="NotifyCleanupLabel.Text" xml:space="preserve"><value>Notify after successful cleanup</value></data>
   <data name="NotifyCleanupSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Notify after successful cleanup</value></data>

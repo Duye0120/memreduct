@@ -57,7 +57,8 @@ public sealed partial class MainWindow : Window
             try
             {
                 _tray = new TrayIcon(handle, ShowWindow, ExitWindow, CleanFromTray,
-                    () => GameModeSwitch.IsOn = !GameModeSwitch.IsOn, () => _settings.GameMode);
+                    () => GameModeSwitch.IsOn = !GameModeSwitch.IsOn, () => _settings.GameMode,
+                    () => ConfirmSwitch.IsOn = !ConfirmSwitch.IsOn, () => _settings.ConfirmCleanup);
                 if (!_tray.IsVisible) ReportIssue(UiText.Get("TrayUnavailable"), UiText.Get("ExitOnClose"));
             }
             catch (Exception error) { ReportIssue(UiText.Get("TrayUnavailable"), error.Message + " " + UiText.Get("ExitOnClose")); }
@@ -412,7 +413,6 @@ public sealed partial class MainWindow : Window
         if (!_ready) return;
         _settings.AlwaysOnTop = PinSwitch.IsOn;
         _settings.CloseToTray = TraySwitch.IsOn;
-        _settings.ConfirmCleanup = ConfirmSwitch.IsOn;
         _settings.NotifyAfterCleanup = NotifyCleanupSwitch.IsOn;
         if (_settings.AutoThreshold != ThresholdSwitch.IsOn) _thresholdRetryAfter = default;
         _settings.AutoThreshold = ThresholdSwitch.IsOn;
@@ -482,6 +482,57 @@ public sealed partial class MainWindow : Window
     }
 
     private async void CleanButton_Click(object sender, RoutedEventArgs args) => await CleanAsync(true);
+    private void ConfirmSwitch_Toggled(object sender, RoutedEventArgs args)
+    {
+        if (_ready) SaveCleanupConfirmation(ConfirmSwitch.IsOn);
+    }
+
+    private bool SaveCleanupConfirmation(bool confirm, bool hintShown = false)
+    {
+        var previous = (_settings.ConfirmCleanup, _settings.TrayCleanupHintShown);
+        _settings.ConfirmCleanup = confirm;
+        _settings.TrayCleanupHintShown |= hintShown;
+        var saved = SaveSettings();
+        if (!saved) (_settings.ConfirmCleanup, _settings.TrayCleanupHintShown) = previous;
+        var ready = _ready;
+        _ready = false;
+        ConfirmSwitch.IsOn = _settings.ConfirmCleanup;
+        _ready = ready;
+        return saved;
+    }
+
+    private ContentDialog CreateCleanupDialog(bool firstTrayClick, out CheckBox? confirmationChoice)
+    {
+        confirmationChoice = null;
+        object content = UiText.Get("CleanConfirm");
+        if (firstTrayClick)
+        {
+            confirmationChoice = new CheckBox
+            {
+                IsChecked = _settings.ConfirmCleanup,
+                Content = new TextBlock { Text = UiText.Get("TrayConfirmChoice"), TextWrapping = TextWrapping.Wrap }
+            };
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(confirmationChoice, UiText.Get("TrayConfirmChoice"));
+            var panel = new StackPanel { Spacing = 12, MaxWidth = 400 };
+            panel.Children.Add(new TextBlock { Text = UiText.Get("TrayFirstCleanMessage"), TextWrapping = TextWrapping.Wrap });
+            panel.Children.Add(confirmationChoice);
+            panel.Children.Add(new TextBlock
+            {
+                Text = UiText.Get(Installation.IsInstalled ? "TrayInstalledAuthorization" : "TrayPortableAuthorization"),
+                TextWrapping = TextWrapping.Wrap, Style = (Style)Application.Current.Resources["Muted"]
+            });
+            content = panel;
+        }
+        return new ContentDialog
+        {
+            XamlRoot = Shell.XamlRoot, RequestedTheme = Shell.ActualTheme,
+            Title = UiText.Get(firstTrayClick ? "TrayFirstCleanTitle" : "CleanMemory"),
+            CornerRadius = new CornerRadius(12 / Shell.XamlRoot.RasterizationScale), Content = content,
+            PrimaryButtonText = UiText.Get("CleanAction"), CloseButtonText = UiText.Get("CancelAction"),
+            DefaultButton = ContentDialogButton.Close
+        };
+    }
+
     private async void CleanFromTray()
     {
         if (_checking || _cleaning || _restartPromptOpen) return;
@@ -491,28 +542,24 @@ public sealed partial class MainWindow : Window
             ShowWindow(); SelectPage(true); ReportIssue(UiText.Get("CleanMemory"), UiText.Get("SelectArea"));
             return;
         }
-        await CleanAsync(true);
+        await CleanAsync(true, fromTray: true);
     }
 
-    private async Task CleanAsync(bool manual, bool confirm = true)
+    private async Task CleanAsync(bool manual, bool confirm = true, bool fromTray = false)
     {
         var areas = manual ? _settings.Areas : _settings.AutomaticAreas;
         if (_cleaning || _restartPromptOpen || (!manual && _gameActive) || areas == CleanAreas.None) return;
         _cleaning = true; RefreshOptions();
         try
         {
-            if (manual && confirm && _settings.ConfirmCleanup)
+            var firstTrayClick = fromTray && !_settings.TrayCleanupHintShown;
+            if (manual && confirm && (firstTrayClick || _settings.ConfirmCleanup))
             {
                 await ShowForConfirmationAsync();
-                var dialog = new ContentDialog
-                {
-                    XamlRoot = Shell.XamlRoot, RequestedTheme = Shell.ActualTheme, Title = UiText.Get("CleanMemory"),
-                    CornerRadius = new CornerRadius(12 / Shell.XamlRoot.RasterizationScale),
-                    Content = UiText.Get("CleanConfirm"),
-                    PrimaryButtonText = UiText.Get("CleanAction"), CloseButtonText = UiText.Get("CancelAction"), DefaultButton = ContentDialogButton.Close
-                };
+                var dialog = CreateCleanupDialog(firstTrayClick, out var confirmationChoice);
                 if (await dialog.ShowAsync() != ContentDialogResult.Primary)
                 { SetFeedback(CleanupFeedback.Warning, UiText.Get("CleanupCanceled")); return; }
+                if (firstTrayClick && !SaveCleanupConfirmation(confirmationChoice!.IsChecked == true, hintShown: true)) return;
             }
             if (!MemoryEngine.IsAdministrator) { RelaunchElevated("--clean"); return; }
             _lastAttempt = DateTimeOffset.UtcNow;

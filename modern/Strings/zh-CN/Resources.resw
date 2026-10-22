@@ -302,7 +302,13 @@
   <data name="MemoryCritical" xml:space="preserve"><value>内存用量很高</value></data>
   <data name="CleanupCanceled" xml:space="preserve"><value>已取消清理</value></data>
   <data name="CleanupHasErrors" xml:space="preserve"><value>清理有错误 · 右键打开查看详情</value></data>
-  <data name="TrayClickHint" xml:space="preserve"><value>左键清理 · 右键菜单</value></data>
+  <data name="TrayClickConfirmHint" xml:space="preserve"><value>左键清理（需确认）· 右键菜单</value></data>
+  <data name="TrayClickDirectHint" xml:space="preserve"><value>左键直接清理 · 右键菜单</value></data>
+  <data name="TrayFirstCleanTitle" xml:space="preserve"><value>左键点击托盘即可清理</value></data>
+  <data name="TrayFirstCleanMessage" xml:space="preserve"><value>左键点击托盘数字可清理选中的内存区域，右键打开菜单。清理后，应用可能短暂重新读取缓存数据。你可以选择以后是否需要确认，也可以随时在右键菜单或设置中修改。</value></data>
+  <data name="TrayConfirmChoice" xml:space="preserve"><value>以后手动清理前仍需确认</value></data>
+  <data name="TrayInstalledAuthorization" xml:space="preserve"><value>此选项不影响 Windows 管理员授权。程序授权后，本次运行无需重复授权；在设置中开启“开机启动”并授权，以后登录将自动以管理员权限运行。</value></data>
+  <data name="TrayPortableAuthorization" xml:space="preserve"><value>此选项不影响 Windows 管理员授权。程序授权后，本次运行无需重复授权。便携版重新打开时仍可能需要授权；安装版可通过管理员开机启动持续使用。</value></data>
   <data name="TrayBehaviorNote.Text" xml:space="preserve"><value>托盘：左键清理，右键菜单。70% 橙色预警，90% 红色告警。清理中紫色旋转，成功绿色，错误橙色或红色。</value></data>
   <data name="NotifyCleanupLabel.Text" xml:space="preserve"><value>清理成功后显示气泡通知</value></data>
   <data name="NotifyCleanupSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>清理成功后显示气泡通知</value></data>

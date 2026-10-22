@@ -14,8 +14,8 @@ internal sealed class TrayIcon : IDisposable
     internal static readonly uint ShowMessage = RegisterWindowMessage("MemReduct.Fluent.Show.50d9cf93");
     private readonly IntPtr _window;
     private readonly SubclassProc _procedure;
-    private readonly Action _show, _exit, _clean, _toggleGameMode;
-    private readonly Func<bool> _gameModeEnabled;
+    private readonly Action _show, _exit, _clean, _toggleGameMode, _toggleConfirmation;
+    private readonly Func<bool> _gameModeEnabled, _confirmationRequired;
     private readonly uint _taskbarCreated = RegisterWindowMessage("TaskbarCreated");
     private NotifyIconData _data;
     private bool _added, _version4;
@@ -26,10 +26,12 @@ internal sealed class TrayIcon : IDisposable
     private readonly UISettings _uiSettings = new();
     public bool IsVisible => _added;
 
-    public TrayIcon(IntPtr window, Action show, Action exit, Action clean, Action toggleGameMode, Func<bool> gameModeEnabled)
+    public TrayIcon(IntPtr window, Action show, Action exit, Action clean, Action toggleGameMode, Func<bool> gameModeEnabled,
+        Action toggleConfirmation, Func<bool> confirmationRequired)
     {
         _window = window; _show = show; _exit = exit; _clean = clean;
         _toggleGameMode = toggleGameMode; _gameModeEnabled = gameModeEnabled;
+        _toggleConfirmation = toggleConfirmation; _confirmationRequired = confirmationRequired;
         _procedure = WindowProc;
         if (!SetWindowSubclass(window, _procedure, 1, UIntPtr.Zero)) throw new Win32Exception(Marshal.GetLastWin32Error());
         var taskbar = FindWindow("Shell_TrayWnd", null);
@@ -71,7 +73,7 @@ internal sealed class TrayIcon : IDisposable
 
     public void Update(double percent, CleanupFeedback feedback, string status, bool gameActive, int frame = -1)
     {
-        var value = UiText.Get("TrayUsage", percent) + "\n" + status + "\n" + UiText.Get("TrayClickHint");
+        var value = UiText.Get("TrayUsage", percent) + "\n" + status + "\n" + UiText.Get(_confirmationRequired() ? "TrayClickConfirmHint" : "TrayClickDirectHint");
         if (value.Length > 127) value = value[..127];
         var taskbar = FindWindow("Shell_TrayWnd", null);
         var size = GetSystemMetricsForDpi(49, GetDpiForWindow(taskbar != IntPtr.Zero ? taskbar : _window));
@@ -124,6 +126,7 @@ internal sealed class TrayIcon : IDisposable
                         if (owner.Handle == IntPtr.Zero) return IntPtr.Zero;
                         AppendMenu(menu, 0, 1, UiText.Get("TrayOpen"));
                         AppendMenu(menu, _gameModeEnabled() ? 8u : 0u, 3, UiText.Get("GameModeMenu"));
+                        AppendMenu(menu, _confirmationRequired() ? 8u : 0u, 4, UiText.Get("ConfirmLabel.Text"));
                         AppendMenu(menu, 0, 2, UiText.Get("TrayExit"));
                         GetCursorPos(out var point);
                         owner.Activate();
@@ -132,6 +135,7 @@ internal sealed class TrayIcon : IDisposable
                         if (selected == 1) _show();
                         if (selected == 2) _exit();
                         if (selected == 3) _toggleGameMode();
+                        if (selected == 4) _toggleConfirmation();
                     }
                     finally { DestroyMenu(menu); }
                 }

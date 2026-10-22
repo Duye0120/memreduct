@@ -495,6 +495,29 @@ public sealed partial class MainWindow
             restartDialog.Hide();
             Require(await restartPrompt == ContentDialogResult.None, "Dismissing the restart dialog does not request a restart");
             checks.Add("The localized language restart dialog rendered and dismissed safely; restart arguments contain only --restart. No real restart was performed.");
+            var legacyConfirmation = JsonSerializer.Deserialize<AppSettings>("{\"ConfirmCleanup\":false}")!;
+            Require(!legacyConfirmation.TrayCleanupHintShown && !legacyConfirmation.ConfirmCleanup,
+                "Legacy settings keep their confirmation preference and get one tray introduction");
+            var trayDialog = CreateCleanupDialog(true, out var confirmationChoice);
+            Require(confirmationChoice?.IsChecked == _settings.ConfirmCleanup && trayDialog.DefaultButton == ContentDialogButton.Close,
+                "First tray cleanup uses the saved preference and defaults to cancel");
+            confirmationChoice!.IsChecked = false;
+            var trayPrompt = trayDialog.ShowAsync();
+            await WritePreview(directory, "tray-first-clean.png", trayDialog);
+            trayDialog.Hide();
+            Require(await trayPrompt == ContentDialogResult.None && !_settings.TrayCleanupHintShown && _settings.ConfirmCleanup,
+                "Canceling the first tray prompt changes neither confirmation nor onboarding state");
+            Require(SaveCleanupConfirmation(false, hintShown: true) && !ConfirmSwitch.IsOn && !_settings.ConfirmCleanup,
+                "Accepting the first tray preference synchronizes the settings switch");
+            var persistedConfirmation = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(_settings))!;
+            Require(persistedConfirmation.TrayCleanupHintShown && !persistedConfirmation.ConfirmCleanup,
+                "The introduction and confirmation choice survive a settings round trip");
+            ConfirmSwitch.IsOn = true;
+            Require(_settings.ConfirmCleanup && _settings.TrayCleanupHintShown,
+                "Settings and tray toggle callbacks share the same persisted confirmation preference");
+            _ = CreateCleanupDialog(false, out var repeatChoice);
+            Require(repeatChoice is null, "Later confirmations do not repeat onboarding");
+            checks.Add("First tray cleanup introduction, safe cancellation, preference persistence and settings synchronization passed without cleaning or authorization.");
             _settings.SidebarExpanded = true;
             SelectPage(false); Layout(760, 600, 1);
             await WritePreview(directory, "memory-sidebar.png");

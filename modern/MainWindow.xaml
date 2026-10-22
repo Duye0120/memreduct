@@ -254,7 +254,7 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <TextBlock x:Uid="ConfirmLabel" Style="{StaticResource Body}" Text="手动清理前确认" VerticalAlignment="Center" />
-                                        <ToggleSwitch x:Uid="ConfirmSwitch" x:Name="ConfirmSwitch" Grid.Column="1" MinWidth="0" OnContent="" OffContent="" Toggled="Preference_Toggled" AutomationProperties.Name="手动清理前确认" />
+                                        <ToggleSwitch x:Uid="ConfirmSwitch" x:Name="ConfirmSwitch" Grid.Column="1" MinWidth="0" OnContent="" OffContent="" Toggled="ConfirmSwitch_Toggled" AutomationProperties.Name="手动清理前确认" />
                                     </Grid>
                                     <Grid Style="{StaticResource SettingRow}" BorderThickness="0">
                                         <Grid.ColumnDefinitions>

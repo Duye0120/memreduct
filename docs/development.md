@@ -7,6 +7,14 @@
 
 ## 当前待办与已知问题
 
+### 托盘首次清理引导（0.0.1）
+
+- 首次托盘左键通过 `CleanAsync(fromTray: true)` 展示引导，复用已有清理确认弹窗；选择提交前不修改配置，取消不会清理，也不会标记引导已完成。主窗口按钮和自动清理不会触发这份引导。
+- `TrayCleanupHintShown` 默认 false，旧配置保留已有 `ConfirmCleanup` 选择；只有用户确认首次引导时才记住完成状态。保存失败恢复原选择并停止本次清理。
+- 托盘“手动清理前确认”的勾选状态直接读取 `ConfirmCleanup`，切换走设置页的同一个处理函数；提示文字也区分需要确认与直接清理。取消业务确认不代表取消 Windows 权限要求。
+- 沿用现有管理员会话和安装版最高权限登录任务，不创建新的永久提权入口、不改变用户自启选择。便携版重新打开可能需要 UAC；安装版只有用户开启管理员自启并授权后才能在之后登录时免重复确认。
+- 中英文各 17 组自检与 48 组布局通过；新增首次引导渲染、取消不改配置、选择持久化及设置开关联动检查。证据：仓库同级 `MemReduct-Fluent-验证/tray-onboarding-zh-CN` / `tray-onboarding-en-US`。未执行实际清理、注册任务或验证重新登录；真实托盘鼠标操作仍由用户验收。
+
 ### 1.0.2 安装版自启状态与关于布局
 
 - 首次安装未创建本产品登录任务时，`ITaskFolder.GetTask` 返回 `0x80070002`。在实际 WinUI 进程中，.NET 将它映射成 `FileNotFoundException`，旧代码只捕获 `COMException`，导致黄色“无法读取开机启动状态”提示（显示的异常消息可能是 ClassFactory）。按准确 HRESULT 处理“任务不存在”为关闭状态，其他错误继续向上传递。参见 [.NET COM 异常映射](https://learn.microsoft.com/en-us/dotnet/standard/exceptions/handling-com-interop-exceptions)。
@@ -166,6 +174,7 @@ SDK、NuGet 与 obj 是下一次增量构建所需缓存，不属于重复安装
 | `AutoThreshold` / `Threshold` | 关 / 90 | 允许范围 50–99% |
 | `AutoInterval` / `IntervalMinutes` | 关 / 30 | 允许范围 1–1440 分钟 |
 | `ConfirmCleanup` / `CloseToTray` | 开 / 开 | 手动清理确认；关闭窗口默认隐藏到托盘 |
+| `TrayCleanupHintShown` | 关 | 首次托盘清理引导是否已确认，不改变旧配置中的确认偏好 |
 | `AlwaysOnTop` / `SidebarExpanded` | 关 / 关 | 默认不置顶、顶部导航；可切换侧栏 |
 | `Theme` / `Language` | `System` / `System` | 主题可实时切换；语言通过重启完整生效 |
 

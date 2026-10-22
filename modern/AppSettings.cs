@@ -11,6 +11,7 @@ public sealed class AppSettings
     public bool AlwaysOnTop { get; set; }
     public bool CloseToTray { get; set; } = true;
     public bool ConfirmCleanup { get; set; } = true;
+    public bool TrayCleanupHintShown { get; set; }
     public bool NotifyAfterCleanup { get; set; }
     public bool CleanWorkingSets { get; set; } = true;
     public bool CleanSystemCache { get; set; } = true;
