@@ -77,11 +77,10 @@ public partial class App : Application
             }
             if (!checking)
             {
-                _instance = new Mutex(false, @"Local\MemReduct.Fluent." + WindowsIdentity.GetCurrent().User!.Value);
                 var timeout = Arguments.Contains("--elevated") || Arguments.Contains("--restart") ? TimeSpan.FromSeconds(10) : TimeSpan.Zero;
-                bool acquired;
-                try { acquired = _instance.WaitOne(timeout); } catch (AbandonedMutexException) { acquired = true; }
-                if (!acquired) { TrayIcon.ShowExistingWindow(); _instance.Dispose(); _instance = null; Exit(); return; }
+                using var identity = WindowsIdentity.GetCurrent();
+                _instance = AcquireInstanceMutex(@"Local\MemReduct.Fluent." + identity.User!.Value, timeout);
+                if (_instance is null) { TrayIcon.ShowExistingWindow(); Exit(); return; }
                 _installerMutex = new Mutex(false, @"Local\MemReduct.Fluent.Running");
                 var importIndex = Array.IndexOf(Arguments, "--import-settings");
                 if (Installation.IsInstalled && importIndex >= 0 && importIndex + 1 < Arguments.Length && Arguments[importIndex + 1].Length > 0)
@@ -134,6 +133,19 @@ public partial class App : Application
             if (remaining <= TimeSpan.Zero) return false;
             await Task.Delay(remaining < TimeSpan.FromMilliseconds(100) ? remaining : TimeSpan.FromMilliseconds(100));
         }
+    }
+
+    internal static Mutex? AcquireInstanceMutex(string name, TimeSpan timeout)
+    {
+        var instance = new Mutex(false, name);
+        var acquired = false;
+        try
+        {
+            try { acquired = instance.WaitOne(timeout); }
+            catch (AbandonedMutexException) { acquired = true; }
+            return acquired ? instance : null;
+        }
+        finally { if (!acquired) instance.Dispose(); }
     }
 
     internal void Finish()

@@ -53,6 +53,8 @@ public sealed partial class MainWindow
             CheckInstallationAndUpdates(directory);
             await CheckElevationHandoffAsync();
             checks.Add("Elevation handoff rejects another account, missing administrator permission and malformed requests; readiness uses a unique session-local event without changing settings or requesting UAC.");
+            CheckInstanceMutex();
+            checks.Add("Single-instance mutexes preserve ownership across contention, abandoned owners and invalid waits; unsuccessful acquisition never exposes an unowned mutex to shutdown.");
             await CheckUserDataAccessAsync(directory);
             checks.Add("User-data access keeps the same ordinary-permission identity across await; atomic settings replacement preserves the original on failure and succeeds on retry.");
             await CheckUpdateCopyAsync(directory);

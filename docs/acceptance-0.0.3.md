@@ -7,7 +7,7 @@ This is a local acceptance candidate. It has not been installed over the user's 
 - Source: `b21d2e790d0436afd22449850e5a79441c4dfe45`.
 - Installer: `MemReductFluent-0.0.3-win-x64-setup.exe`, 46,278,298 bytes (44.13 MiB).
 - SHA-256: `5680472124d41adafb4e0d0ff31da07651380db08f904361f5c29bfd9d6e8fad`.
-- Both installer-stage language checks passed all 25 groups and 48 layout cases after final packaging; the fixed preview uses the same source.
+- Both installer-stage language checks passed all 25 groups and 48 layout cases after final packaging.
 - Installed and portable settings hashes match the pre-iteration baseline.
 
 ## Changes since 0.0.2
@@ -51,3 +51,7 @@ A read-only local check still found installed version 0.0.1. Task Scheduler retu
 7. Verify settings save and update download from a same-account elevated process. Current identity checks ran from an ordinary process. If a same-account limited token is unavailable (including UAC-disabled configurations), file access intentionally fails instead of falling back to elevated user-data writes.
 
 Do not weaken path/ACL checks, enable destructive automatic cleaning, or overwrite settings to make an acceptance step appear successful.
+
+## Development after this package
+
+The fixed preview additionally includes a single-instance mutex ownership fix: unsuccessful waits dispose their handles and never reach shutdown as owned mutexes. Its Chinese check passed 26 groups and 48 layout cases, including contention, abandoned-owner recovery and invalid waits; both settings hashes remained unchanged. This correction has not yet been included in the package identified above. No UI or language resources changed in that correction.
