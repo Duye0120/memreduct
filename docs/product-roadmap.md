@@ -29,7 +29,7 @@ This is an ongoing improvement program, not a declaration that the product is co
 - Returning from scrolled settings resets the overview to its top after layout/focus changes settle. Input callbacks stop during window teardown.
 - The history fixture images use synthetic data exclusively inside the developer self-check. Regular UI always uses native measurements.
 
-Next priorities: clearer settings hierarchy, download progress/cancellation, cleanup outcome history, and measured runtime/package costs. Keep new diagnostics read-only by default and avoid process-killing features.
+Next priorities: asynchronous shutdown boundaries, actual installed permission reuse, and measured idle runtime costs. Keep new diagnostics read-only by default and avoid process-killing features.
 
 The settings hierarchy now keeps the three original cleanup areas visible and groups the five additional areas under an expander with a selected count. Existing enabled advanced choices expand automatically on launch. Download progress is bounded to percentage changes, reports size, and exposes cancellation without leaving an executable partial download. Permission descriptions distinguish session-only consent from an authorized startup task.
 
@@ -50,6 +50,8 @@ The experiment log and size/exit-code manifest were preserved in local work file
 Validation for this iteration: the incremental build completed with zero warnings/errors. Chinese and English self-checks passed 18 check groups and 48 layout cases each, including scrolling back from settings and a visible primary action at the default window size. Offscreen light/dark renders were generated; Chinese and English overview renders were inspected. The installed and portable settings hashes match the pre-iteration baseline. No real cleanup, task mutation, install or release occurred during these checks.
 
 ## Current validation boundary
+
+The local 0.0.3 candidate installer compiled successfully with Inno Setup 7.1.0. Both staged-executable self-checks passed 19 groups and 48 layouts. The installer is 46,284,158 bytes, compared with 47,107,420 bytes for 0.0.2 (1.75% smaller despite the added UI). LZMA2 ultra compression reduces download size only; it uses a 32 MiB installer decompression dictionary instead of the default 8 MiB. The normal application remains untrimmed. Installed and portable settings hashes remain unchanged. This is a local candidate, not a published release or proof of successful installation.
 
 Existing self-checks can exercise pure path/ACL rules, task XML, settings import, memory-engine contracts and offscreen layout. They do not prove real UAC consent, scheduled task activation, installed-app relaunch, actual cleanup, upgrade rollback, or clean-machine dependency availability. Keep those items open until tested at the appropriate level.
 
