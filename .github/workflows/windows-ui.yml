@@ -36,7 +36,7 @@ jobs:
           $binary = @(Get-ChildItem memreduct/bin -Recurse -Filter memreduct.exe)
           if ($binary.Count -ne 1) { throw 'Expected exactly one compiled executable.' }
           New-Item -ItemType Directory -Path preview | Out-Null
-          Copy-Item -LiteralPath $binary[0].FullName -Destination preview
+          Copy-Item -LiteralPath $binary[0].FullName -Destination preview/MemReduct-Win11.exe
           Copy-Item -LiteralPath memreduct/bin/memreduct.lng,memreduct/LICENSE,memreduct/UI-NOTES.md -Destination preview
           Set-Content -LiteralPath preview/memreduct.ini -Encoding unicode -Value "[memreduct]`nIsStartMinimized=false`nCheckUpdatesPeriod=0"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

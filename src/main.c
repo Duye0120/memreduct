@@ -905,6 +905,41 @@ BOOLEAN _app_dashboard_drawitem (
 	return TRUE;
 }
 
+LRESULT CALLBACK _app_dashboard_labelproc (
+	_In_ HWND label,
+	_In_ UINT message,
+	_In_ WPARAM wparam,
+	_In_ LPARAM lparam,
+	_In_ UINT_PTR subclass_id,
+	_In_ DWORD_PTR reference
+)
+{
+	UNREFERENCED_PARAMETER (reference);
+
+	if (message == WM_PAINT)
+	{
+		DRAWITEMSTRUCT item = {0};
+		PAINTSTRUCT paint;
+
+		item.CtlType = ODT_STATIC;
+		item.CtlID = GetDlgCtrlID (label);
+		item.hwndItem = label;
+		item.hDC = BeginPaint (label, &paint);
+		GetClientRect (label, &item.rcItem);
+		_app_dashboard_drawitem (GetParent (label), &item);
+		EndPaint (label, &paint);
+		return 0;
+	}
+
+	if (message == WM_ERASEBKGND)
+		return TRUE;
+
+	if (message == WM_NCDESTROY)
+		RemoveWindowSubclass (label, &_app_dashboard_labelproc, subclass_id);
+
+	return DefSubclassProc (label, message, wparam, lparam);
+}
+
 LONG_PTR _app_dashboard_drawbutton (
 	_In_ LPNMCUSTOMDRAW item
 )
@@ -1064,7 +1099,7 @@ VOID CALLBACK _app_timercallback (
 	for (INT i = 0; i < 3; i++)
 	{
 		config.memory_percent[i] = (ULONG)percentages[i];
-		_r_ctrl_setstringformat (hwnd, IDC_MEMORY_USAGE_FIRST + i * 3, L"%" TEXT (PR_DOUBLE) L"%%", percentages[i]);
+		_r_ctrl_setstringformat (hwnd, IDC_MEMORY_USAGE_FIRST + i * 3, L"%.1f%%", percentages[i]);
 		_r_format_bytesize64 (buffer, RTL_NUMBER_OF (buffer), free_bytes[i]);
 		_r_ctrl_setstringformat (hwnd, IDC_MEMORY_USAGE_FIRST + i * 3 + 1, L"%s: %s", _r_locale_getstring (IDS_ITEM_2), buffer);
 		_r_format_bytesize64 (buffer, RTL_NUMBER_OF (buffer), total_bytes[i]);
@@ -2006,6 +2041,16 @@ VOID _app_initialize (
 	_r_ctrl_setbuttonmargins (hwnd, IDC_CLEAN, _r_dc_getwindowdpi (hwnd));
 
 	_app_dashboard_fonts (hwnd);
+
+	// Native text controls retain their accessible values while painting card surfaces.
+	for (INT i = 0; i < 3; i++)
+	{
+		SetWindowSubclass (GetDlgItem (hwnd, IDC_MEMORY_HEADING_FIRST + i), &_app_dashboard_labelproc, 1, 0);
+
+		for (INT j = 0; j < 3; j++)
+			SetWindowSubclass (GetDlgItem (hwnd, IDC_MEMORY_USAGE_FIRST + i * 3 + j), &_app_dashboard_labelproc, 1, 0);
+	}
+
 	_r_wnd_setcontext (GetDlgItem (hwnd, IDC_CLEAN), SHORT_MAX, (PVOID)1);
 	_r_wnd_setcontext (GetDlgItem (hwnd, IDC_DASHBOARD_SETTINGS), SHORT_MAX, (PVOID)1);
 
