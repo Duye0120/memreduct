@@ -16,11 +16,22 @@ This is an ongoing improvement program, not a declaration that the product is co
 
 ## Confirmed priorities
 
-1. Manual reopen currently does not reuse the already authorized login task. Connect this path and wait for the destination window to acknowledge that it is elevated. Never replay cleanup/import/update helper arguments through the task.
-2. Build scripts currently block any running copy, including an installed copy outside the generated output. Limit the guard to output directories, while rejecting inaccessible process paths.
+1. Manual reopen now reuses an existing authorized login task and waits for an elevated window to respond. Routing and timeout checks pass; real installed-app consent/reopen validation remains pending. Cleanup/import/update helper arguments are excluded.
+2. Build scripts now limit running-process guards to output directories, while rejecting inaccessible process paths. The separate installed copy no longer blocks the fixed preview build.
 3. Installation size is primarily bundled runtime code. The 0.0.2 staging directory includes a roughly 25 MiB Windows SDK projection, 15 MiB .NET core library and 15 MiB WinUI native DLL. Measure a supported trimming strategy before changing release defaults; do not delete runtime DLLs manually.
 4. A custom user-writable installation currently loses persistent elevated startup and automatic update installation. Investigate a small protected helper design that preserves user-chosen UI locations without granting elevated execution to replaceable files. Current permission checks must remain until a complete design and validation replace them.
 5. Inspect the current real UI and consolidate permission/update status text. Validate readability rather than treating successful compilation as visual approval.
+
+## Implemented in the next-version source
+
+- Five-minute physical/committed memory trend with bounded storage (301 samples), session-only retention, accessible text summary, and explicit gaps after interrupted sampling.
+- Usage-state label, stronger secondary-text contrast, restrained 12px grouping cards and 10px controls. The cleaning action remains above the chart and visible in the default-size window.
+- Returning from scrolled settings resets the overview to its top after layout/focus changes settle. Input callbacks stop during window teardown.
+- The history fixture images use synthetic data exclusively inside the developer self-check. Regular UI always uses native measurements.
+
+Next priorities: clearer settings hierarchy, download progress/cancellation, cleanup outcome history, and measured runtime/package costs. Keep new diagnostics read-only by default and avoid process-killing features.
+
+Validation for this iteration: the incremental build completed with zero warnings/errors. Chinese and English self-checks passed 18 check groups and 48 layout cases each, including scrolling back from settings and a visible primary action at the default window size. Offscreen light/dark renders were generated; Chinese and English overview renders were inspected. The installed and portable settings hashes match the pre-iteration baseline. No real cleanup, task mutation, install or release occurred during these checks.
 
 ## Current validation boundary
 

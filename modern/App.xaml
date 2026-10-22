@@ -12,7 +12,7 @@
                     <SolidColorBrush x:Key="NavigationBrush" Color="#F5F5F7" />
                     <SolidColorBrush x:Key="SurfaceBrush" Color="White" />
                     <SolidColorBrush x:Key="OutlineBrush" Color="#E2E2E9" />
-                    <SolidColorBrush x:Key="MutedBrush" Color="#858592" />
+                    <SolidColorBrush x:Key="MutedBrush" Color="#6F707C" />
                     <Color x:Key="InputFillColor">#F0F0F4</Color>
                     <SolidColorBrush x:Key="AccentBrush" Color="#303030" />
                     <Color x:Key="NavigationSelectedColor">#FFFFFF</Color>
@@ -118,7 +118,7 @@
                 <Setter Property="FontFamily" Value="{StaticResource ContentControlThemeFontFamily}" />
             </Style>
             <Style x:Key="StatValue" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="24" />
+                <Setter Property="FontSize" Value="26" />
                 <Setter Property="FontWeight" Value="SemiBold" />
                 <Setter Property="FontFamily" Value="{StaticResource ContentControlThemeFontFamily}" />
                 <Setter Property="TextWrapping" Value="NoWrap" />

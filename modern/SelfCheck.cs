@@ -84,7 +84,7 @@ public sealed partial class MainWindow
             var buttonRadiusPixels = CleanButton.CornerRadius.TopLeft * displayScale;
             Require(Math.Abs(buttonRadiusPixels - 10) < 0.01,
                 $"Button radius must be 10 screen pixels; actual={buttonRadiusPixels}, scale={displayScale}");
-            foreach (var card in new[] { MetricsCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
+            foreach (var card in new[] { MetricsCard, HistoryCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
                 Require(Math.Abs(card.CornerRadius.TopLeft * displayScale - 12) < 0.01, "All grouping cards have 12 screen-pixel radii");
             foreach (var control in new Control[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab, PaneToggleButton,
                 ElevateButton, ThemeChoice, LanguageChoice, ThresholdNumber, IntervalNumber, SourceLink, ExitButton, UpdateButton, ReleasesLink })
@@ -106,6 +106,20 @@ public sealed partial class MainWindow
             Require(memory.PhysicalTotal > 0 && memory.PhysicalAvailable <= memory.PhysicalTotal, "Live physical memory");
             Require(memory.CommitLimit > 0 && memory.CommitUsed <= memory.CommitLimit, "Live commit memory");
             checks.Add("Read-only native memory sampling and x64 ABI passed.");
+            var history = new MemoryHistory();
+            var historyStart = DateTimeOffset.UtcNow;
+            for (var second = 0; second <= 600; second++) history.Record(memory, historyStart.AddSeconds(second));
+            Require(history.Samples.Count == MemoryHistory.Capacity && history.Samples.First().Time == historyStart.AddSeconds(300),
+                "History keeps only five minutes with bounded storage");
+            history.Record(memory, historyStart.AddMinutes(20));
+            Require(history.Samples.Count == 1, "Resuming after sleep discards stale history");
+            history.Record(memory, historyStart);
+            Require(history.Samples.Count == 1 && history.Samples.First().Time == historyStart, "A backward clock change starts a new history");
+            Require(MemoryHistory.Position(historyStart, historyStart.AddMinutes(5), 100) == 0
+                && MemoryHistory.Position(historyStart.AddMinutes(5), historyStart.AddMinutes(5), 100) == 100
+                && MemoryHistory.Position(historyStart, historyStart.AddMinutes(10), 100) == 0,
+                "History uses a fixed five-minute time axis");
+            checks.Add("Memory history stays within 301 samples, expires stale data, handles clock changes and uses a fixed time axis.");
             var options = new AppSettings { Threshold = 500, IntervalMinutes = -1, Theme = "unknown" };
             options.Normalize();
             Require(options.Threshold == 99 && options.IntervalMinutes == 1 && options.Theme == "System", "Configuration bounds");
@@ -478,8 +492,34 @@ public sealed partial class MainWindow
             foreach (var (control, size) in controlFonts) control.FontSize = size;
             foreach (var (block, size) in fonts) block.FontSize = size;
             _settings.SidebarExpanded = false;
-            SelectPage(false); Layout(700, 520, 1);
+            Layout(700, 560, 1);
+            SelectPage(true);
+            BodyScroll.ChangeView(null, BodyScroll.ScrollableHeight, null, true);
+            await Task.Delay(100);
+            SelectPage(false);
+            for (var attempt = 0; attempt < 10; attempt++)
+            {
+                await Task.Delay(50);
+                if (BodyScroll.VerticalOffset < 1) break;
+            }
+            Require(BodyScroll.VerticalOffset < 1, $"Switching from scrolled settings returns to the top of the overview; offset={BodyScroll.VerticalOffset}");
+            Require(CleanButton.TransformToVisual(Shell).TransformPoint(new Point()).Y + CleanButton.ActualHeight <= Shell.ActualHeight,
+                "The primary cleanup action stays visible at the default window size");
             await WritePreview(directory, "memory-light.png");
+            // Synthetic samples exist only in the developer self-check, never in a normal session.
+            for (var second = 0; second <= 300; second++)
+            {
+                if (second > 150 && second < 170) continue;
+                var usage = 50 + (int)(12 * Math.Sin(second / 35.0)) + (second < 220 ? 12 : 0);
+                _history.Record(new MemorySnapshot(100, (ulong)(100 - usage), 40, 100, 5, 10), historyStart.AddSeconds(second));
+            }
+            RenderHistory();
+            Require(PhysicalHistoryPath.Data is PathGeometry plot && plot.Figures.Count == 2,
+                "Missing sampling intervals are displayed as gaps");
+            Require(HistoryEmpty.Visibility == Visibility.Collapsed, "Populated history replaces the empty state");
+            Layout(700, 760, 1);
+            await WritePreview(directory, "memory-history-fixture.png");
+            await WritePreview(directory, "history-fixture.png", HistoryCard);
             SelectPage(true); Layout(700, 1600, 1);
             await WritePreview(directory, "settings-light.png");
             await WritePreview(directory, "automatic-settings.png", AutoSettingsCard);

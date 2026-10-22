@@ -167,8 +167,9 @@ public sealed partial class MainWindow : Window
         // The requested radii are screen pixels, while WinUI measures CornerRadius in DIPs.
         var cardRadius = new CornerRadius(12 / scale);
         var controlRadius = new CornerRadius(10 / scale);
-        foreach (var card in new[] { MetricsCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
+        foreach (var card in new[] { MetricsCard, HistoryCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
             card.CornerRadius = cardRadius;
+        PressureBadge.CornerRadius = controlRadius;
         foreach (var control in new Control[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab, PaneToggleButton,
             CleanButton, ElevateButton, ThemeChoice, LanguageChoice,
             ThresholdNumber, IntervalNumber, SourceLink, ExitButton, UpdateButton, ReleasesLink })
@@ -245,9 +246,10 @@ public sealed partial class MainWindow : Window
         {
             UpdateGameProtection(_settings.GameMode && GameModeMonitor.IsFullscreenApp(), DateTimeOffset.UtcNow);
             var snapshot = MemoryEngine.Read();
+            _history.Record(snapshot, DateTimeOffset.UtcNow);
             _lastPercent = snapshot.PhysicalPercent;
             ObserveThresholdRetry(snapshot.PhysicalPercent, DateTimeOffset.UtcNow);
-            if (AppWindow.IsVisible) UpdateStats(snapshot);
+            if (AppWindow.IsVisible) { UpdateStats(snapshot); RenderHistory(); }
             UpdateTray();
             if (_sampleFailed) { _sampleFailed = false; if (IssueBanner.Title == UiText.Get("SampleFailed")) IssueBanner.IsOpen = false; }
             if (!_cleaning && !_restartPromptOpen && MemoryEngine.IsAdministrator && _settings.IsAutoDue(snapshot.PhysicalPercent, DateTimeOffset.UtcNow, _lastAttempt, _gameActive, _thresholdRetryAfter))
@@ -306,6 +308,7 @@ public sealed partial class MainWindow : Window
 
     internal void UpdateStats(MemorySnapshot snapshot)
     {
+        SetText(PressureText, UiText.Get(snapshot.PhysicalPercent >= 90 ? "PressureHigh" : snapshot.PhysicalPercent >= 70 ? "PressureElevated" : "PressureNormal"));
         SetText(PhysicalValue, $"{snapshot.PhysicalPercent:0.0}%");
         SetText(PhysicalFree, UiText.Get("AvailableMemory", MemorySnapshot.Bytes(snapshot.PhysicalAvailable)));
         SetText(PhysicalTotal, UiText.Get("TotalMemory", MemorySnapshot.Bytes(snapshot.PhysicalTotal)));
@@ -322,6 +325,7 @@ public sealed partial class MainWindow : Window
         var color = Windows.UI.Color.FromArgb(255, (byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb);
         if (PhysicalValue.Foreground is not Microsoft.UI.Xaml.Media.SolidColorBrush brush || brush.Color != color)
             PhysicalValue.Foreground = PhysicalBar.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(color);
+        PressureText.Foreground = PhysicalValue.Foreground;
         SetProgress(CommitBar, snapshot.CommitPercent);
         SetProgress(CacheBar, snapshot.CacheCurrent is { } used && snapshot.CachePeak is { } total ? MemorySnapshot.Percent(used, total) : 0);
     }
@@ -353,7 +357,21 @@ public sealed partial class MainWindow : Window
         PageCaption.Text = UiText.Get(settings ? "SettingsTab.Content" : "OverviewTab.Content");
         OverviewPage.Visibility = settings ? Visibility.Collapsed : Visibility.Visible;
         SettingsPage.Visibility = settings ? Visibility.Visible : Visibility.Collapsed;
+        var selectedTab = NavigationPane.Visibility == Visibility.Visible
+            ? (settings ? SidebarSettingsTab : SidebarOverviewTab) : (settings ? SettingsTab : OverviewTab);
+        selectedTab.Focus(FocusState.Programmatic);
+        Shell.UpdateLayout();
+        if (!settings) RenderHistory();
         BodyScroll.ChangeView(null, 0, null, true);
+        // Let pending focus/extent changes settle before resetting the shared scroll viewer.
+        DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            if (!_exitRequested)
+            {
+                var page = SettingsPage.Visibility == Visibility.Visible ? SettingsPage : OverviewPage;
+                page.StartBringIntoView(new BringIntoViewOptions { AnimationDesired = false, VerticalAlignmentRatio = 0 });
+            }
+        });
     }
 
     private void ThemeChoice_SelectionChanged(object sender, SelectionChangedEventArgs args)
@@ -455,6 +473,7 @@ public sealed partial class MainWindow : Window
 
     private void AutoNumber_LostFocus(object sender, RoutedEventArgs args)
     {
+        if (!_ready) return;
         if (sender is NumberBox box && !double.IsFinite(box.Value))
             box.Value = box == ThresholdNumber ? _settings.Threshold : _settings.IntervalMinutes;
     }
@@ -624,6 +643,6 @@ public sealed partial class MainWindow : Window
         Activate(); Sample();
     }
     private void Exit_Click(object sender, RoutedEventArgs args) => ExitWindow();
-    internal void ExitWindow() { _exitRequested = true; Close(); }
+    internal void ExitWindow() { _exitRequested = true; _ready = false; Close(); }
     [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr window);
 }

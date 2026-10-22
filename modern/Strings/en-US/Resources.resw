@@ -145,7 +145,7 @@
     <value>Live</value>
   </data>
   <data name="MemoryHeading.Text" xml:space="preserve">
-    <value>Memory usage</value>
+    <value>Memory overview</value>
   </data>
   <data name="NeverCleaned" xml:space="preserve">
     <value>Not cleaned yet</value>
@@ -341,4 +341,14 @@
   <data name="UpdateStatus.Text" xml:space="preserve"><value>Check GitHub for a new version.</value></data>
   <data name="UpdateUnprotected" xml:space="preserve"><value>This installation folder is user-writable. Use Downloads and release notes to download and run the installer manually.</value></data>
   <data name="StartupResumeFailed" xml:space="preserve"><value>The authorized startup task could not be reused. The app opened normally; you can still authorize cleanup manually.</value></data>
+  <data name="HistoryHeading.Text" xml:space="preserve"><value>Memory trend · Last 5 minutes</value></data>
+  <data name="HistoryPhysicalLegend.Text" xml:space="preserve"><value>Solid · Physical memory</value></data>
+  <data name="HistoryCommitLegend.Text" xml:space="preserve"><value>Dashed · Committed memory</value></data>
+  <data name="HistoryEmpty.Text" xml:space="preserve"><value>Collecting samples…</value></data>
+  <data name="HistoryStart.Text" xml:space="preserve"><value>5 minutes ago</value></data>
+  <data name="HistoryEnd.Text" xml:space="preserve"><value>Now</value></data>
+  <data name="HistorySummary" xml:space="preserve"><value>Physical range {0:0.0}%–{1:0.0}% · Current session only</value></data>
+  <data name="PressureNormal" xml:space="preserve"><value>Normal usage</value></data>
+  <data name="PressureElevated" xml:space="preserve"><value>Elevated usage</value></data>
+  <data name="PressureHigh" xml:space="preserve"><value>High usage</value></data>
 </root>
