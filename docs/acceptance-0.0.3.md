@@ -4,10 +4,10 @@ This is a local acceptance candidate. It has not been installed over the user's 
 
 ## Candidate identity
 
-- Source: `b21d2e790d0436afd22449850e5a79441c4dfe45`.
-- Installer: `MemReductFluent-0.0.3-win-x64-setup.exe`, 46,278,298 bytes (44.13 MiB).
-- SHA-256: `5680472124d41adafb4e0d0ff31da07651380db08f904361f5c29bfd9d6e8fad`.
-- Both installer-stage language checks passed all 25 groups and 48 layout cases after final packaging.
+- Source: `e5ecc1f7cdf6cfd8f1ea0fb47e09ddf94ed97e79`.
+- Installer: `MemReductFluent-0.0.3-win-x64-setup.exe`, 46,275,591 bytes (44.13 MiB).
+- SHA-256: `de11d8a675d92f774a570934bf06c6aa6654bd4714b01574c1d401516900910d`.
+- Both installer-stage language checks passed all 27 groups and 48 layout cases after final packaging.
 - Installed and portable settings hashes match the pre-iteration baseline.
 
 ## Changes since 0.0.2
@@ -16,6 +16,8 @@ This is a local acceptance candidate. It has not been installed over the user's 
 - Manual elevation validates the requesting account before reading settings. The original window remains open until the elevated process passes that check, reads its settings, and completes a two-way handoff. Cancellation, timeout and account mismatch do not authorize delayed cleanup; preferences and duplicate actions are locked during transfer. Cross-account elevation is unsupported.
 - A five-minute physical/committed memory chart uses bounded in-memory samples, shows sampling gaps, and stops preparing geometry while the overview is hidden, minimized or outside the scroll viewport.
 - Recent cleanup results retain five actual attempts for the current session, including duration and partial/failed outcomes. Available-memory changes are observations, not guaranteed reclaimed amounts.
+- Cleanup privileges are scoped to each selected operation. A Win32 failure is retained for that operation while later operations continue. If none completes without errors, the result uses failure feedback, keeps the previous completion timestamp and does not attribute unrelated memory changes to cleanup. Fully successful zero-byte results remain valid, and a later success dismisses an earlier cleanup-error banner.
+- Single-instance mutexes are retained only after successful acquisition. Contention and invalid waits cannot expose an unowned mutex to shutdown; abandoned-owner recovery retains Windows-granted ownership.
 - The settings page groups additional cleanup areas under an expander; the two starred areas remain excluded from automatic cleaning.
 - Settings controls are created on the first visit and retained afterwards. Tray preferences continue to work before that visit, and the page initializes from the current preferences.
 - An optional process overview shows eight working sets on demand. It never terminates processes, scans in the background, saves process names, or adds shared working sets into a misleading system total.
@@ -26,15 +28,17 @@ This is a local acceptance candidate. It has not been installed over the user's 
 
 ## Evidence and limits
 
-The fixed preview builds without compiler warnings. Chinese and English self-checks exercise 25 groups and 48 layout cases each. Checks include deferred settings initialization, elevation request identity/parameter validation and event handoff, real read-only memory/process APIs, task XML/query contracts, release parsing and verified-copy cancellation, atomic settings replacement and failure preservation, ordinary-token identity across asynchronous continuations, tray handle lifetime, input editing, text scaling and offscreen rendering. Fixture screenshots use synthetic history and process names.
+The fixed preview builds without compiler warnings. Chinese and English self-checks exercise 27 groups and 48 layout cases each. Checks include deferred settings initialization, elevation request identity/parameter validation and event handoff, mutex ownership, per-operation cleanup failure dispatch and result presentation, real read-only memory/process APIs, task XML/query contracts, release parsing and verified-copy cancellation, atomic settings replacement and failure preservation, ordinary-token identity across asynchronous continuations, tray handle lifetime, input editing, text scaling and offscreen rendering. Fixture screenshots use synthetic history and process names. Installer-stage evidence is in `staged-cleanup-zh-CN` and `staged-cleanup-en-US` under the local verification directory.
 
-The [independent Windows CI build](https://github.com/Duye0120/memreduct-winui/actions/runs/39785546089) passed for this source with .NET 10.0.402, locked NuGet dependencies and resource-key parity checks. It produced a portable build artifact with seven-day retention; no desktop acceptance or installation is implied.
+The [independent Windows CI build](https://github.com/Duye0120/memreduct-winui/actions/runs/39788896155) passed for this source with .NET 10.0.402, locked NuGet dependencies and resource-key parity checks. It produced a portable build artifact with seven-day retention; no desktop acceptance or installation is implied.
 
 A separate ordinary-permission process was launched with a handoff request and no cleanup intent; it exited with the expected rejection code 2 before loading settings. The in-process event checks cover readiness, transfer confirmation, timeout and expired handles. Neither check establishes that an elevated process can access the original process's events across integrity levels; actual UAC consent and transfer remain desktop acceptance items.
 
 A local import-table inspection of 150 PE binaries found 167 unique imported modules. Non-API-set imports resolve either within staging or in the development machine's System32; no external `MSVCP`, `VCRUNTIME`, `VCCORLIB` or `CONCRT` DLL imports were found. This includes delay imports but does not cover dynamic loading or prove compatibility with a clean Windows 10 machine.
 
 A short real-process tray measurement is recorded in [the product roadmap](product-roadmap.md). CPU cost was low on the development machine, but the WinUI runtime's roughly 172 MiB working set is not comparable to the tiny native upstream application. Deferred settings creation does not demonstrate a substantial memory reduction. A smaller trimmed build crashed and was rejected; normal candidates remain untrimmed.
+
+The exact staged executable above also completed a 320.3-second tray observation after a five-second warmup, crossing the five-minute history capacity. On this 22-logical-processor machine, it used 531.25 ms CPU (0.166% of one core / 0.00754% of the machine), ending at 170.7 MiB working set and 89.6 MiB private commit. Across sixteen samples, GDI objects stayed at 82, USER objects ranged from 25 to 27, and kernel handles from 835 to 850, without sustained handle growth. Raw evidence is `tray-soak-e5ecc1f.json` in the local verification directory. This was an isolated, ordinary-permission process with automatic cleanup off, no settings file, no open settings page and no actual cleanup. The observation does not establish overnight leak freedom, active-window performance or a material reduction in runtime memory.
 
 Both the installed and portable user settings are checked against their pre-iteration hashes. Builds and self-checks do not register startup tasks, run real cleanup, install software, or alter those settings.
 
@@ -51,7 +55,3 @@ A read-only local check still found installed version 0.0.1. Task Scheduler retu
 7. Verify settings save and update download from a same-account elevated process. Current identity checks ran from an ordinary process. If a same-account limited token is unavailable (including UAC-disabled configurations), file access intentionally fails instead of falling back to elevated user-data writes.
 
 Do not weaken path/ACL checks, enable destructive automatic cleaning, or overwrite settings to make an acceptance step appear successful.
-
-## Development after this package
-
-The fixed preview additionally includes a single-instance mutex ownership fix: unsuccessful waits dispose their handles and never reach shutdown as owned mutexes. Its Chinese check passed 26 groups and 48 layout cases, including contention, abandoned-owner recovery and invalid waits; both settings hashes remained unchanged. This correction has not yet been included in the package identified above. No UI or language resources changed in that correction.
