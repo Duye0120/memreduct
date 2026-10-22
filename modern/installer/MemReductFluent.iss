@@ -162,6 +162,7 @@ end;
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var Service, Folder, Tasks, Task, Definition, Actions, Action: Variant;
     I: Integer;
+    Matches: Boolean;
 begin
   if CurUninstallStep <> usUninstall then exit;
   // Delete only this product's tasks before removing files; failures stop the uninstaller.
@@ -179,9 +180,15 @@ begin
       if Actions.Count = 1 then
       begin
         Action := Actions.Item(1);
-        if Action.Type = 0 then
-          if (CompareText(Action.Path, ExpandConstant('{app}\MemReduct.Fluent.exe')) = 0) and
-            (Action.Arguments = '--elevated --minimized') then Folder.DeleteTask(Task.Name, 0);
+        Matches := False;
+        try
+          Matches := (CompareText(Action.Path, ExpandConstant('{app}\MemReduct.Fluent.exe')) = 0) and
+            (Action.Arguments = '--elevated --minimized');
+        except
+          // Non-executable actions do not expose Path/Arguments; leave those tasks alone.
+          Log('Skipping a task without an executable action.');
+        end;
+        if Matches then Folder.DeleteTask(Task.Name, 0);
       end;
     end;
   end;

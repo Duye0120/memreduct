@@ -20,6 +20,12 @@
 pwsh -File .\modern\build-installer.ps1 -Compiler 'C:\Program Files\Inno Setup 7\ISCC.exe'
 ```
 
+当前用户机器已安装到 D 盘，使用：
+
+```powershell
+pwsh -File .\modern\build-installer.ps1 -Compiler 'D:\apps\Inno Setup 7\ISCC.exe'
+```
+
 - `-BuildRoot` 默认 `D:\tmp\memreduct-tray-build`，复用既有 .NET 10、NuGet、obj 与固定预览输出。
 - `-Compiler` 可显式指定；自动寻找工具链目录、Program Files、当前用户 Programs 下的 Inno Setup 7。
 - 先检查编译器和运行实例，再发布到单一 `installer-stage`；缺少编译器时不会创建发布副本。
@@ -48,9 +54,10 @@ SHA-256 用于检查下载完整性，信任根是 GitHub 仓库/Release；它�
 - 应用 Release/x64 编译通过；中英文自检通过，包含配置导入保留原文件、拒绝无效 JSON、任务身份/参数、安装路径与写入 ACL 边界、Release 来源/版本/哈希检查。
 - Windows Task Scheduler COM 接受生成的 XML；仅设置内存中的 TaskDefinition，**未注册任务、未提权**。
 - 构建脚本语法、缺少编译器时提前退出、XAML/资源以及预览设置保持检查通过。
-- **未编译 `.iss`，未生成安装 EXE，未实际安装/升级/卸载或重启登录验证。** 当前机器缺少 Inno Setup，自动审批拒绝了编译器安装；用户选择稍后生成安装包，不重试绕过。
+- 2026-10-22 用户自行安装 Inno Setup 7.1.0 后，发布与 `.iss` 编译通过，生成约 44.93 MiB 的 `MemReductFluent-1.0.0-win-x64-setup.exe` 及 `.sha256`；未包含用户设置。实编译时修复了 Pascal 的 `Type` 保留字冲突，卸载仍仅按本产品任务名称与执行目标匹配移除。
+- **未实际安装/升级/卸载或重启登录验证。** 安装包尚未签名，没有发布到 GitHub Release。
 - 仓库目前没有正式 Release，因此尚无真实更新下载与安装验收；自检使用本地发布元数据及哈希样本，不伪造发布。
 
-编译器准备好后的验收：先生成安装包，在隔离 Windows 环境验证首次安装/导入、UAC 取消、同用户授权、退出后重新登录自动管理员运行、更新保留设置及任务、降级拦截、卸载任务移除且设置保留。确认后再对用户本机安装和正式发布。
+后续在隔离 Windows 环境验证首次安装/导入、UAC 取消、同用户授权、退出后重新登录自动管理员运行、更新保留设置及任务、降级拦截、卸载任务移除且设置保留。确认后再对用户本机安装和正式发布。
 
 参考：[Windows 任务安全上下文](https://learn.microsoft.com/en-us/windows/win32/taskschd/security-contexts-for-running-tasks)、[GitHub Release API](https://docs.github.com/en/rest/releases/releases)、[Inno Setup 文档](https://jrsoftware.org/ishelp/)。
