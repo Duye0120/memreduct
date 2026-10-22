@@ -170,7 +170,7 @@ public sealed partial class MainWindow : Window
         NavigationPanel.Visibility = sidebar ? Visibility.Collapsed : Visibility.Visible;
         HeaderBreadcrumb.Visibility = sidebar ? Visibility.Visible : Visibility.Collapsed;
         PaneToggleButton.IsEnabled = textScale <= 1.25;
-        ThresholdNumber.Width = IntervalNumber.Width = 80 * textScale;
+        ThresholdNumber.Width = IntervalNumber.Width = 112 * textScale;
         ThresholdUnit.Width = IntervalUnit.Width = 32 * textScale;
         LanguageChoice.MinWidth = ThemeChoice.MinWidth = 144 * textScale;
         var pageInset = (Thickness)Application.Current.Resources["PageInset"];

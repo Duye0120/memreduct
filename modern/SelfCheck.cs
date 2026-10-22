@@ -155,6 +155,71 @@ public sealed partial class MainWindow
             Require(writes == 0 && ReferenceEquals(valueControl, PhysicalValue), "Unchanged samples never rewrite text or replace controls");
             checks.Add("1,000 identical samples caused zero text writes; existing visual controls were retained.");
 
+            var savedAutoThreshold = _settings.AutoThreshold;
+            var savedAutoInterval = _settings.AutoInterval;
+            var savedThreshold = _settings.Threshold;
+            var savedInterval = _settings.IntervalMinutes;
+            _settings.AutoThreshold = _settings.AutoInterval = true;
+            RefreshOptions();
+            SelectPage(true); Layout(700, 560, 1);
+            BodyScroll.ChangeView(null, BodyScroll.ScrollableHeight, null, true);
+            await Task.Delay(100);
+            var inputChecks = new List<object>();
+            foreach (var (box, text) in new[] { (ThresholdNumber, "75"), (IntervalNumber, "1440") })
+            {
+                var editor = Descendants(box).OfType<TextBox>().First();
+                Require(editor.Focus(FocusState.Programmatic), "The enabled input can receive focus");
+                editor.Text = "";
+                await Task.Delay(30);
+                Require(editor.Text.Length == 0, "Clearing a focused input keeps an empty draft");
+                foreach (var digit in text)
+                {
+                    editor.Text += digit;
+                    UpdateStats(memory);
+                    await Task.Delay(20);
+                }
+                Shell.UpdateLayout();
+                await WritePreview(directory, box == ThresholdNumber ? "threshold-editing.png" : "interval-editing.png", AutoSettingsCard);
+                Require(editor.Text == text, "Multiple digits survive editing and memory refreshes until commit");
+                Require(VisualTreeHelper.GetOpenPopupsForXamlRoot(Shell.XamlRoot).Count == 0,
+                    "Typing does not open an overlapping spin popup");
+                var content = Descendants(editor).OfType<ScrollViewer>().First(x => x.Name == "ContentElement");
+                var glyphs = new TextBlock { Text = text, FontSize = editor.FontSize, FontFamily = editor.FontFamily };
+                glyphs.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                var textWidth = content.ActualWidth - content.Padding.Left - content.Padding.Right;
+                Require(textWidth >= glyphs.DesiredSize.Width + 2, "The focused input has enough visible space for all digits and the caret");
+                var upper = Descendants(ThresholdNumber).OfType<Border>().First(x => x.Name == "BorderElement");
+                var lower = Descendants(IntervalNumber).OfType<Border>().First(x => x.Name == "BorderElement");
+                Require(Math.Abs(upper.TransformToVisual(AutoSettingsCard).TransformPoint(new Point()).X
+                    - lower.TransformToVisual(AutoSettingsCard).TransformPoint(new Point()).X) < 0.5
+                    && Math.Abs(upper.ActualWidth - lower.ActualWidth) < 0.5, "Focused and unfocused input borders align");
+                // Moving focus uses NumberBox's real validation and the app's LostFocus handler.
+                var other = Descendants(box == ThresholdNumber ? IntervalNumber : ThresholdNumber).OfType<TextBox>().First();
+                Require(other.Focus(FocusState.Programmatic), "Focus can move to the next input");
+                await Task.Delay(50);
+                var committed = box == ThresholdNumber ? _settings.Threshold : _settings.IntervalMinutes;
+                Require(committed == int.Parse(text) && editor.Text == text, "Leaving an input commits the completed number");
+                Require(editor.Focus(FocusState.Programmatic), "An input can be edited again");
+                editor.Text = "";
+                other.Focus(FocusState.Programmatic);
+                await Task.Delay(50);
+                Require(editor.Text == text, "An empty input restores the last committed value on blur");
+                editor.Focus(FocusState.Programmatic);
+                editor.Text = "abc";
+                other.Focus(FocusState.Programmatic);
+                await Task.Delay(50);
+                Require(editor.Text == text, "Invalid text restores the last committed value on blur");
+                inputChecks.Add(new { box.Name, text, visibleTextWidth = textWidth, requiredTextWidth = glyphs.DesiredSize.Width + 2, committed });
+            }
+            File.WriteAllText(Path.Combine(directory, "input-editing.json"), JsonSerializer.Serialize(inputChecks, new JsonSerializerOptions { WriteIndented = true }));
+            checks.Add("Real input controls retained cleared/multi-digit drafts, kept digits visible without popups, aligned focused borders, committed on blur and recovered empty/invalid input; no user settings were written.");
+            _settings.AutoThreshold = savedAutoThreshold;
+            _settings.AutoInterval = savedAutoInterval;
+            ThresholdNumber.Value = _settings.Threshold = savedThreshold;
+            IntervalNumber.Value = _settings.IntervalMinutes = savedInterval;
+            CleanButton.Focus(FocusState.Programmatic);
+            RefreshOptions();
+
             // Layout is measured inside this hidden app window, without inspecting the user's desktop.
             Shell.RequestedTheme = ElementTheme.Light;
             SelectPage(false);
