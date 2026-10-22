@@ -252,6 +252,7 @@ public sealed partial class MainWindow : Window
 
     private void Sample()
     {
+        if (_exitRequested) return;
         try
         {
             UpdateGameProtection(_settings.GameMode && GameModeMonitor.IsFullscreenApp(), DateTimeOffset.UtcNow);
@@ -496,18 +497,20 @@ public sealed partial class MainWindow : Window
         try
         {
             await StartupRegistration.SetEnabledAsync(desired);
+            if (_exitRequested) return;
             if (desired && Installation.IsInstalled && !MemoryEngine.IsAdministrator && SaveSettings())
             { StartupRegistration.RunInstalled(); ExitWindow(); }
         }
         catch (Exception error)
         {
+            if (_exitRequested) return;
             _ready = false;
             try { StartupSwitch.IsOn = StartupRegistration.IsEnabled(); }
             catch { StartupSwitch.IsOn = !desired; }
             _ready = true;
             ReportIssue(UiText.Get("StartupFailed"), error.Message);
         }
-        finally { if (!_exitRequested) StartupSwitch.IsEnabled = true; }
+        finally { if (!_exitRequested) { StartupSwitch.IsEnabled = true; RefreshOptions(); } }
     }
 
     private async void CleanButton_Click(object sender, RoutedEventArgs args) => await CleanAsync(true);
@@ -565,7 +568,7 @@ public sealed partial class MainWindow : Window
 
     private async void CleanFromTray()
     {
-        if (_checking || _cleaning || _restartPromptOpen) return;
+        if (_exitRequested || _checking || _cleaning || _restartPromptOpen) return;
         if (_settings.Areas == CleanAreas.None)
         {
             SetFeedback(CleanupFeedback.Warning, UiText.Get("SelectArea"));
@@ -577,6 +580,7 @@ public sealed partial class MainWindow : Window
 
     private async Task CleanAsync(bool manual, bool confirm = true, bool fromTray = false)
     {
+        if (_exitRequested || _checking) return;
         var areas = manual ? _settings.Areas : _settings.AutomaticAreas;
         if (_cleaning || _restartPromptOpen || (!manual && _gameActive) || areas == CleanAreas.None) return;
         _cleaning = true; RefreshOptions();
@@ -587,8 +591,11 @@ public sealed partial class MainWindow : Window
             if (manual && confirm && (firstTrayClick || _settings.ConfirmCleanup))
             {
                 await ShowForConfirmationAsync();
+                if (_exitRequested) return;
                 var dialog = CreateCleanupDialog(firstTrayClick, out var confirmationChoice);
-                if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+                var choice = await dialog.ShowAsync();
+                if (_exitRequested) return;
+                if (choice != ContentDialogResult.Primary)
                 { SetFeedback(CleanupFeedback.Warning, UiText.Get("CleanupCanceled")); return; }
                 if (firstTrayClick && !SaveCleanupConfirmation(confirmationChoice!.IsChecked == true, hintShown: true)) return;
             }

@@ -10,6 +10,14 @@ public sealed partial class MainWindow
 {
     private static async Task CheckUpdateCopyAsync(string directory)
     {
+        using (var canceled = new CancellationTokenSource())
+        {
+            canceled.Cancel();
+            var checkCanceled = false;
+            try { await UpdateService.CheckAsync(canceled.Token); }
+            catch (OperationCanceledException) { checkCanceled = true; }
+            Require(checkCanceled, "Canceled release checks stop before starting a network request");
+        }
         var attempts = 0;
         Require(await App.WaitForWindowAsync(() => ++attempts == 3, TimeSpan.FromSeconds(2)) && attempts == 3,
             "Startup waits for the destination window instead of dropping the first show request");

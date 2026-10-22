@@ -41,6 +41,8 @@ The graph now uses one polyline per uninterrupted series instead of one WinRT se
 
 Recent cleanups now retain the last five native attempts in memory for the current session. They show manual/automatic origin, duration, the observed available-memory increase, and partial/failed outcomes. Confirmation or UAC cancellation does not create a fake cleanup record. Chinese and English checks passed 19 groups and 48 layout cases, including bounded retention and failure rendering. Fixture images were inspected; no real cleanup was invoked.
 
+Shutdown now cancels an in-flight release check as well as a download, and ignores asynchronous startup/update/dialog results after exit. Sampling and cleanup entry points reject teardown work; developer self-check mode cannot invoke native cleaning through the window. Startup switch completion refreshes the permission description immediately. The incremental build passed without warnings, and Chinese/English checks passed 20 groups and 48 layouts each. This includes a pre-canceled release request that performs no network access; real UAC/task lifecycle acceptance remains separate.
+
 ## Size experiment boundary
 
 An isolated .NET 10.0.402 partial-trimming experiment reduced the publish folder from 178,340,120 to 87,032,681 bytes. It was **rejected for delivery**: the executable exited with `0xC0000005` before producing a self-check report. Analysis also warned about dynamic COM, reflection-based serialization and WinRT projections. Normal builds remain untrimmed and unchanged; do not enable trimming just to reproduce the smaller number. See Microsoft's [known trimming incompatibilities](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/incompatibilities).

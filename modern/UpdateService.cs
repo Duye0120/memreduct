@@ -28,9 +28,11 @@ internal static class UpdateService
         return client;
     }
 
-    internal static async Task<AppRelease?> CheckAsync()
+    internal static async Task<AppRelease?> CheckAsync(CancellationToken cancellationToken = default)
     {
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        cancellationToken.ThrowIfCancellationRequested();
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(20));
         using var response = await Client.GetAsync("https://api.github.com/repos/Duye0120/memreduct-winui/releases/latest", HttpCompletionOption.ResponseHeadersRead, timeout.Token);
         if (response.StatusCode == HttpStatusCode.NotFound) return null;
         response.EnsureSuccessStatusCode();

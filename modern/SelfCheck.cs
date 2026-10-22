@@ -28,6 +28,19 @@ public sealed partial class MainWindow
             CheckInstallationAndUpdates(directory);
             await CheckUpdateCopyAsync(directory);
             checks.Add("Background-update copy accepts the exact release payload and rejects tampering, truncation, oversized data and cancellation without executing setup.");
+            var initialCleanupTime = _settings.LastCleanUtc;
+            await CleanAsync(true, confirm: false);
+            await CleanAsync(false);
+            Require(!_cleaning && _settings.LastCleanUtc == initialCleanupTime && _cleanupHistory.Count == 0,
+                "Developer checks never start native cleanup through the main window");
+            _exitRequested = true;
+            var initialSamples = _history.Samples.Count;
+            Sample();
+            await CheckUpdateAsync();
+            Require(_history.Samples.Count == initialSamples && !_updateBusy && _updateCancellation is null,
+                "Closing windows do not enqueue new sampling or update work");
+            _exitRequested = false;
+            checks.Add("Canceled release checks and closing-window guards stop late work; developer checks cannot invoke native cleanup.");
             Require(UpdateButton.Content?.ToString() == (english ? "Check for updates" : "检查更新"), "Update controls are translated");
             checks.Add("Installed-path/ACL boundaries, task XML, non-overwriting settings import, release filtering, download-source and SHA-256 checks passed without creating tasks, downloading or installing anything.");
             Require(SettingsTab.Content?.ToString() == (english ? "Settings" : "设置"), "XAML loads the selected language");

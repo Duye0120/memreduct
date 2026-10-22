@@ -23,8 +23,9 @@ public sealed partial class MainWindow
 
     private async Task CheckUpdateAsync()
     {
-        if (_checking || _cleaning || _restartPromptOpen || _updateBusy) return;
+        if (_exitRequested || _checking || _cleaning || _restartPromptOpen || _updateBusy) return;
         _updateBusy = true;
+        _updateCancellation = new CancellationTokenSource();
         UpdateButton.IsEnabled = false;
         UpdateProgress.Visibility = Visibility.Collapsed;
         try
@@ -36,11 +37,13 @@ public sealed partial class MainWindow
                 if (!SaveSettings()) return;
                 UpdateStatus.Text = UiText.Get("UpdateInstalling");
                 await UpdateService.RequestInstallAsync(_downloadedInstaller);
+                if (_exitRequested) return;
                 ExitWindow();
                 return;
             }
             UpdateStatus.Text = UiText.Get("UpdateChecking");
-            var release = await UpdateService.CheckAsync();
+            var release = await UpdateService.CheckAsync(_updateCancellation.Token);
+            if (_exitRequested) return;
             if (release is null) { UpdateStatus.Text = UiText.Get("UpdateNone"); return; }
             UpdateStatus.Text = UiText.Get("UpdateAvailable", release.Version);
             if (!Installation.IsInstalled)
@@ -68,8 +71,8 @@ public sealed partial class MainWindow
                 if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
             }
             finally { _restartPromptOpen = false; RefreshOptions(); }
+            if (_exitRequested) return;
             UpdateStatus.Text = UiText.Get("UpdateDownloading");
-            _updateCancellation = new CancellationTokenSource();
             UpdateProgress.Value = 0;
             UpdateProgress.Visibility = Visibility.Visible;
             UpdateButton.Content = UiText.Get("UpdateCancelDownload");
@@ -88,7 +91,7 @@ public sealed partial class MainWindow
             UpdateStatus.Text = UiText.Get("UpdateReady");
         }
         catch (Win32Exception error) when (error.NativeErrorCode == 1223)
-        { UpdateStatus.Text = UiText.Get("UpdateCanceled"); }
+        { if (!_exitRequested) UpdateStatus.Text = UiText.Get("UpdateCanceled"); }
         catch (OperationCanceledException) when (_updateCancellation?.IsCancellationRequested == true)
         {
             if (_exitRequested) return;
