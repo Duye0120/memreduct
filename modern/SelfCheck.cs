@@ -49,6 +49,7 @@ public sealed partial class MainWindow
             Require(_settings.Language == chosenLanguage, "Language selection reaches settings");
             var roundTrip = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(_settings))!;
             Require(roundTrip.Language == chosenLanguage && roundTrip.Areas == _settings.Areas, "Language survives serialization without changing cleaning areas");
+            Require(UiText.LanguageTag == (english ? "en-US" : "zh-CN"), "Pending language changes do not leave a partly translated current window");
             LanguageChoice.SelectedIndex = selectedLanguage;
             Require(JsonSerializer.Deserialize<AppSettings>("{}")!.Language == "System", "Existing settings default to the system language");
             var invalidLanguage = new AppSettings { Language = "unsupported" };
@@ -87,6 +88,7 @@ public sealed partial class MainWindow
             Require(Marshal.SizeOf<MemoryEngine.MemoryStatus>() == 64, "MEMORYSTATUSEX ABI");
             Require(Marshal.SizeOf<MemoryEngine.PerformanceInfo>() == 104, "PERFORMANCE_INFORMATION ABI");
             Require(Marshal.SizeOf<MemoryEngine.FileCacheInfo>() == 64, "SYSTEM_FILECACHE_INFORMATION ABI");
+            Require(Marshal.SizeOf<MemoryEngine.CombineInfo>() == 24, "MEMORY_COMBINE_INFORMATION_EX ABI");
             var memory = MemoryEngine.Read();
             Require(memory.PhysicalTotal > 0 && memory.PhysicalAvailable <= memory.PhysicalTotal, "Live physical memory");
             Require(memory.CommitLimit > 0 && memory.CommitUsed <= memory.CommitLimit, "Live commit memory");
@@ -103,10 +105,46 @@ public sealed partial class MainWindow
             Require(options.IsAutoDue(0, now, now.AddMinutes(-30)), "Interval deadline");
             options.CleanWorkingSets = options.CleanSystemCache = options.CleanLowPriorityStandby = false;
             Require(!options.IsAutoDue(100, now, now.AddDays(-1)), "Empty cleanup selection");
+            options.CleanModifiedPages = options.CleanStandby = true;
+            options.AutoThreshold = true;
+            Require(options.AutomaticAreas == CleanAreas.None && !options.IsAutoDue(100, now, now.AddDays(-1)),
+                "Starred options never trigger threshold or interval automatic cleaning");
+            Require(MemoryEngine.GetOperations((CleanAreas)255, false).Length == 8, "All eight areas are available for manual cleaning");
+            var automaticOperations = MemoryEngine.GetOperations((CleanAreas)255, true);
+            Require(automaticOperations.Length == 6 && automaticOperations.All(x => (x.Area & MemoryEngine.ManualOnlyAreas) == 0),
+                "Both starred areas are removed at the native dispatch boundary");
+            var skipped = MemoryEngine.Clean(MemoryEngine.ManualOnlyAreas, automatic: true);
+            Require(skipped.FreedBytes == 0 && skipped.Errors.Count == 0,
+                "An automatic request containing only starred areas returns before privilege checks or native cleanup");
+            var defaults = JsonSerializer.Deserialize<AppSettings>("{}")!;
+            Require(defaults.Areas == (CleanAreas.WorkingSets | CleanAreas.SystemCache | CleanAreas.LowPriorityStandby),
+                "New and legacy settings keep all five added cleanup areas off");
+            var addedChecks = new[] { ModifiedFileCheck, ModifiedPagesCheck, FullStandbyCheck, RegistryCheck, CombineCheck };
+            Require(addedChecks.All(x => x.IsChecked == false), "All five added checkboxes are initially unchecked");
+            foreach (var box in addedChecks) box.IsChecked = true;
+            CleanupOption_Click(CombineCheck, new RoutedEventArgs());
+            Require(_settings.Areas == (CleanAreas)255 && JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(_settings))!.Areas == (CleanAreas)255,
+                "Every added checkbox reaches settings and survives serialization");
+            foreach (var box in addedChecks) box.IsChecked = false;
+            CleanupOption_Click(CombineCheck, new RoutedEventArgs());
+            Require(_settings.Areas == savedAreas, "Checking added options does not alter the existing selection");
+            foreach (var key in new[] { "WorkingSet", "SystemCache", "ModifiedFile", "ModifiedPages", "FullStandby", "Standby", "Registry", "Combine" })
+                Require(UiText.Get(key + "Description.Text").Length > 20, "Every cleaning area has an explanation");
+            const string volume = @"\\?\Volume{12345678-1234-1234-1234-123456789abc}\";
+            Require(MemoryEngine.VolumeDevicePath(volume) == volume[..^1], "Volume GUID handle paths omit the trailing slash");
+            foreach (var invalid in new[] { @"C:\", @"\\.\PhysicalDrive0", volume[..^1], volume.Replace("12345678", "notaguid") })
+            {
+                var denied = false;
+                try { MemoryEngine.VolumeDevicePath(invalid); } catch (ArgumentException) { denied = true; }
+                Require(denied, "Non-volume paths are rejected before opening any handle");
+            }
             var rejected = false;
-            try { MemoryEngine.ValidateAreas((CleanAreas)8); } catch (ArgumentOutOfRangeException) { rejected = true; }
+            try { MemoryEngine.ValidateAreas((CleanAreas)256); } catch (ArgumentOutOfRangeException) { rejected = true; }
             Require(rejected, "Unsupported cleanup command rejected");
-            checks.Add("Settings bounds, automatic-cleanup deadlines, cooldown and cleanup selection passed.");
+            checks.Add("Eight cleanup options, five disabled defaults, descriptions, persistence, native dispatch filtering, auto deadlines/cooldown and volume path validation passed; no native cleanup was invoked.");
+            var restart = CreateRestartStartInfo();
+            Require(restart.FileName == Environment.ProcessPath && restart.ArgumentList.SequenceEqual(new[] { "--restart" })
+                && restart.UseShellExecute && restart.Verb.Length == 0, "Language restart runs only this app, without replaying --clean or requesting elevation");
 
             UpdateStats(memory);
             var valueControl = PhysicalValue;
@@ -179,6 +217,15 @@ public sealed partial class MainWindow
             await WritePreview(directory, "settings-light.png");
             Layout(700, 660, 1);
             await WritePreview(directory, "language-settings.png");
+            var restartDialog = CreateLanguageRestartDialog();
+            Require(restartDialog.PrimaryButtonText == (english ? "Restart now" : "立即重启")
+                && restartDialog.CloseButtonText == (english ? "Restart later" : "稍后重启")
+                && restartDialog.DefaultButton == ContentDialogButton.Close, "The translated restart dialog defaults to restarting later");
+            var restartPrompt = restartDialog.ShowAsync();
+            await WritePreview(directory, "language-restart.png", restartDialog);
+            restartDialog.Hide();
+            Require(await restartPrompt == ContentDialogResult.None, "Dismissing the restart dialog does not request a restart");
+            checks.Add("The localized language restart dialog rendered and dismissed safely; restart arguments contain only --restart. No real restart was performed.");
             _settings.SidebarExpanded = true;
             SelectPage(false); Layout(760, 600, 1);
             await WritePreview(directory, "memory-sidebar.png");
@@ -211,11 +258,11 @@ public sealed partial class MainWindow
         Shell.UpdateLayout();
     }
 
-    private async Task WritePreview(string directory, string filename)
+    private async Task WritePreview(string directory, string filename, UIElement? element = null)
     {
         await Task.Delay(250);
         var bitmap = new RenderTargetBitmap();
-        await bitmap.RenderAsync(Shell);
+        await bitmap.RenderAsync(element ?? Shell);
         var bytes = (await bitmap.GetPixelsAsync()).ToArray();
         using var stream = File.Open(Path.Combine(directory, filename), FileMode.Create, FileAccess.ReadWrite);
         var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream.AsRandomAccessStream());

@@ -100,7 +100,7 @@
                                 </StackPanel>
                                 <Border x:Name="CommitCell" Grid.Column="1" BorderBrush="{ThemeResource OutlineBrush}" BorderThickness="1,0,1,0" Margin="0,16">
                                     <StackPanel x:Name="CommitStack" Padding="16,0" Spacing="4">
-                                        <TextBlock x:Uid="CommitLabel" Style="{StaticResource Muted}" Text="提交内存" Foreground="{ThemeResource MutedBrush}" />
+                                        <TextBlock x:Uid="CommitLabel" Style="{StaticResource Muted}" Text="已提交内存" Foreground="{ThemeResource MutedBrush}" />
                                         <TextBlock x:Name="CommitValue" Text="—" Style="{StaticResource StatValue}" />
                                         <ProgressBar x:Name="CommitBar" Maximum="100" Height="3" Foreground="{ThemeResource AccentBrush}" />
                                         <TextBlock x:Name="CommitUsed" Text="—" Style="{StaticResource Muted}" Margin="0,8,0,0" />
@@ -146,7 +146,7 @@
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Spacing="4" VerticalAlignment="Center">
                                             <TextBlock Text="语言 / Language" Style="{StaticResource Body}" VerticalAlignment="Center" />
-                                            <TextBlock x:Uid="LanguageRestartHint" x:Name="LanguageRestartHint" Text="更改语言后，下次启动时生效。" Style="{StaticResource Muted}" />
+                                            <TextBlock x:Uid="LanguageRestartHint" x:Name="LanguageRestartHint" Text="更改后可选择立即或稍后重启程序。" Style="{StaticResource Muted}" />
                                         </StackPanel>
                                         <ComboBox x:Name="LanguageChoice" Grid.Column="1" MinWidth="144" CornerRadius="{StaticResource AppControlCornerRadius}" SelectionChanged="LanguageChoice_SelectionChanged" AutomationProperties.Name="语言 / Language" FontSize="13">
                                             <ComboBoxItem x:Uid="FollowSystem" Content="跟随系统" Tag="System" />
@@ -201,13 +201,52 @@
                             <Border x:Name="CleanupSettingsCard" Style="{StaticResource Card}">
                                 <StackPanel>
                                     <Grid Style="{StaticResource SettingRow}">
-                                        <CheckBox x:Uid="WorkingSetCheck" x:Name="WorkingSetCheck" Content="进程工作集" Click="CleanupOption_Click" FontSize="13" />
+                                        <StackPanel Spacing="4">
+                                            <CheckBox x:Uid="WorkingSetCheck" x:Name="WorkingSetCheck" Content="进程工作集" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
+                                            <TextBlock x:Uid="WorkingSetDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                                        </StackPanel>
                                     </Grid>
                                     <Grid Style="{StaticResource SettingRow}">
-                                        <CheckBox x:Uid="SystemCacheCheck" x:Name="SystemCacheCheck" Content="系统文件缓存" Click="CleanupOption_Click" FontSize="13" />
+                                        <StackPanel Spacing="4">
+                                            <CheckBox x:Uid="SystemCacheCheck" x:Name="SystemCacheCheck" Content="系统文件缓存" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
+                                            <TextBlock x:Uid="SystemCacheDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                                        </StackPanel>
                                     </Grid>
                                     <Grid Style="{StaticResource SettingRow}">
-                                        <CheckBox x:Uid="StandbyCheck" x:Name="StandbyCheck" Content="低优先级备用列表" Click="CleanupOption_Click" FontSize="13" />
+                                        <StackPanel Spacing="4">
+                                            <CheckBox x:Uid="ModifiedFileCheck" x:Name="ModifiedFileCheck" Content="已修改文件缓存" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
+                                            <TextBlock x:Uid="ModifiedFileDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <Grid Style="{StaticResource SettingRow}">
+                                        <StackPanel Spacing="4">
+                                            <CheckBox x:Uid="ModifiedPagesCheck" x:Name="ModifiedPagesCheck" Content="已修改页面列表 *" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
+                                            <TextBlock x:Uid="ModifiedPagesDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <Grid Style="{StaticResource SettingRow}">
+                                        <StackPanel Spacing="4">
+                                            <CheckBox x:Uid="FullStandbyCheck" x:Name="FullStandbyCheck" Content="全部备用列表 *" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
+                                            <TextBlock x:Uid="FullStandbyDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <Grid Style="{StaticResource SettingRow}">
+                                        <StackPanel Spacing="4">
+                                            <CheckBox x:Uid="StandbyCheck" x:Name="StandbyCheck" Content="低优先级备用列表" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
+                                            <TextBlock x:Uid="StandbyDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <Grid Style="{StaticResource SettingRow}">
+                                        <StackPanel Spacing="4">
+                                            <CheckBox x:Uid="RegistryCheck" x:Name="RegistryCheck" Content="注册表缓存" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
+                                            <TextBlock x:Uid="RegistryDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <Grid Style="{StaticResource SettingRow}">
+                                        <StackPanel Spacing="4">
+                                            <CheckBox x:Uid="CombineCheck" x:Name="CombineCheck" Content="合并重复内存页" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
+                                            <TextBlock x:Uid="CombineDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                                        </StackPanel>
                                     </Grid>
                                     <Grid Style="{StaticResource SettingRow}" BorderThickness="0">
                                         <Grid.ColumnDefinitions>
@@ -219,7 +258,7 @@
                                     </Grid>
                                 </StackPanel>
                             </Border>
-                            <TextBlock x:Uid="AreasNote" Text="至少选择一项；自动清理使用相同的区域。" Style="{StaticResource Muted}" Margin="2,0" />
+                            <TextBlock x:Uid="AreasNote" Text="至少选择一项。带 * 的选项仅供手动清理，自动清理始终跳过。" Style="{StaticResource Muted}" Margin="2,0" />
                         </StackPanel>
                         <StackPanel Spacing="{StaticResource Space8}">
                             <TextBlock x:Uid="AutomaticHeading" Style="{StaticResource Muted}" Text="自动清理" />

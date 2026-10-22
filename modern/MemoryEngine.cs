@@ -3,12 +3,17 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
+using System.Text;
 using Microsoft.Win32.SafeHandles;
 
 namespace MemReduct.Fluent;
 
 [Flags]
-public enum CleanAreas { None = 0, WorkingSets = 1, SystemCache = 2, LowPriorityStandby = 4 }
+public enum CleanAreas
+{
+    None = 0, WorkingSets = 1, SystemCache = 2, LowPriorityStandby = 4,
+    ModifiedFileCache = 8, ModifiedPages = 16, Standby = 32, RegistryCache = 64, CombinePages = 128
+}
 
 public sealed record MemorySnapshot(ulong PhysicalTotal, ulong PhysicalAvailable, ulong CommitUsed,
     ulong CommitLimit, ulong? CacheCurrent, ulong? CachePeak)
@@ -25,6 +30,23 @@ public sealed record CleanupResult(ulong FreedBytes, IReadOnlyList<string> Error
 
 internal static class MemoryEngine
 {
+    internal const CleanAreas ManualOnlyAreas = CleanAreas.ModifiedPages | CleanAreas.Standby;
+    private const CleanAreas AllAreas = (CleanAreas)255;
+    internal static CleanAreas ForAutomaticCleanup(CleanAreas areas) => areas & ~ManualOnlyAreas;
+
+    internal static (CleanAreas Area, string Key)[] GetOperations(CleanAreas areas, bool automatic)
+    {
+        ValidateAreas(areas);
+        if (automatic) areas = ForAutomaticCleanup(areas);
+        (CleanAreas Area, string Key)[] operations =
+        [
+            (CleanAreas.WorkingSets, "WorkingSetCheck.Content"), (CleanAreas.SystemCache, "SystemCacheCheck.Content"),
+            (CleanAreas.ModifiedFileCache, "ModifiedFileCheck.Content"), (CleanAreas.ModifiedPages, "ModifiedPagesCheck.Content"),
+            (CleanAreas.Standby, "FullStandbyCheck.Content"), (CleanAreas.LowPriorityStandby, "StandbyCheck.Content"),
+            (CleanAreas.RegistryCache, "RegistryCheck.Content"), (CleanAreas.CombinePages, "CombineCheck.Content")
+        ];
+        return operations.Where(operation => areas.HasFlag(operation.Area)).ToArray();
+    }
     public static bool IsAdministrator { get; } = ReadAdministrator();
     private static bool ReadAdministrator()
     { using var identity = WindowsIdentity.GetCurrent(); return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator); }
@@ -42,20 +64,42 @@ internal static class MemoryEngine
             status >= 0 ? cache.Current.ToUInt64() : null, status >= 0 ? cache.Peak.ToUInt64() : null);
     }
 
-    public static CleanupResult Clean(CleanAreas areas)
+    public static CleanupResult Clean(CleanAreas areas, bool automatic = false)
     {
-        ValidateAreas(areas);
+        var operations = GetOperations(areas, automatic);
+        if (operations.Length == 0) return new(0, Array.Empty<string>());
+        areas = operations.Aggregate(CleanAreas.None, (selected, operation) => selected | operation.Area);
         if (!IsAdministrator) throw new UnauthorizedAccessException(UiText.Get("PermissionRequired"));
         var errors = new List<string>();
         var before = ReadPhysical();
-        using var profile = (areas & (CleanAreas.WorkingSets | CleanAreas.LowPriorityStandby)) != 0
+        using var profile = (areas & (CleanAreas.WorkingSets | CleanAreas.LowPriorityStandby | ManualOnlyAreas | CleanAreas.CombinePages)) != 0
             ? new PrivilegeScope("SeProfileSingleProcessPrivilege") : null;
         using var quota = areas.HasFlag(CleanAreas.SystemCache) ? new PrivilegeScope("SeIncreaseQuotaPrivilege") : null;
 
-        if (areas.HasFlag(CleanAreas.WorkingSets)) RunListCommand(2, UiText.Get("WorkingSetCheck.Content"), errors);
-        if (areas.HasFlag(CleanAreas.SystemCache) && !SetSystemFileCacheSize(UIntPtr.MaxValue, UIntPtr.MaxValue, 0))
-            errors.Add(UiText.Get("SystemCacheCheck.Content") + ": " + new Win32Exception(Marshal.GetLastWin32Error()).Message);
-        if (areas.HasFlag(CleanAreas.LowPriorityStandby)) RunListCommand(5, UiText.Get("StandbyCheck.Content"), errors);
+        foreach (var (area, key) in operations)
+        {
+            var name = UiText.Get(key);
+            try
+            {
+                switch (area)
+                {
+                    case CleanAreas.WorkingSets: RunListCommand(2, name, errors); break;
+                    case CleanAreas.SystemCache:
+                        if (!SetSystemFileCacheSize(UIntPtr.MaxValue, UIntPtr.MaxValue, 0)) throw new Win32Exception(Marshal.GetLastWin32Error());
+                        break;
+                    case CleanAreas.ModifiedFileCache: FlushVolumeCaches(name, errors); break;
+                    case CleanAreas.ModifiedPages: RunListCommand(3, name, errors); break;
+                    case CleanAreas.Standby: RunListCommand(4, name, errors); break;
+                    case CleanAreas.LowPriorityStandby: RunListCommand(5, name, errors); break;
+                    case CleanAreas.RegistryCache: CheckStatus(NtSetSystemInformation(155, IntPtr.Zero, 0)); break;
+                    case CleanAreas.CombinePages:
+                        var combine = new CombineInfo();
+                        CheckStatus(NtSetSystemInformation(130, ref combine, Marshal.SizeOf<CombineInfo>()));
+                        break;
+                }
+            }
+            catch (Win32Exception error) { errors.Add(name + ": " + error.Message); }
+        }
 
         var after = ReadPhysical();
         // RAM changes concurrently; only report an observed increase in available memory.
@@ -64,8 +108,7 @@ internal static class MemoryEngine
 
     internal static void ValidateAreas(CleanAreas areas)
     {
-        const CleanAreas allowed = CleanAreas.WorkingSets | CleanAreas.SystemCache | CleanAreas.LowPriorityStandby;
-        if (areas == CleanAreas.None || (areas & ~allowed) != 0)
+        if (areas == CleanAreas.None || (areas & ~AllAreas) != 0)
             throw new ArgumentOutOfRangeException(nameof(areas), UiText.Get("InvalidAreas"));
     }
 
@@ -80,6 +123,42 @@ internal static class MemoryEngine
     {
         var status = NtSetSystemInformation(80, ref command, sizeof(int));
         if (status < 0) errors.Add(name + "：" + new Win32Exception((int)RtlNtStatusToDosError(status)).Message);
+    }
+
+    private static void CheckStatus(int status)
+    { if (status < 0) throw new Win32Exception((int)RtlNtStatusToDosError(status)); }
+
+    internal static string VolumeDevicePath(string volume)
+    {
+        if (volume.Length != 49 || !volume.StartsWith(@"\\?\Volume{", StringComparison.Ordinal)
+            || !volume.EndsWith(@"}\", StringComparison.Ordinal) || !Guid.TryParse(volume.AsSpan(11, 36), out _))
+            throw new ArgumentException("Invalid volume GUID path.", nameof(volume));
+        return volume[..^1];
+    }
+
+    private static void FlushVolumeCaches(string name, List<string> errors)
+    {
+        var buffer = new StringBuilder(1024);
+        var search = FindFirstVolume(buffer, buffer.Capacity);
+        if (search == new IntPtr(-1)) throw new Win32Exception(Marshal.GetLastWin32Error());
+        try
+        {
+            while (true)
+            {
+                var volume = buffer.ToString();
+                // Flush existing volume caches only; never lock, dismount or write raw disk data.
+                using (var handle = CreateFile(VolumeDevicePath(volume), 0x40000000, 3, IntPtr.Zero, 3, 0, IntPtr.Zero))
+                {
+                    if (handle.IsInvalid || !FlushFileBuffers(handle))
+                        errors.Add(name + " (" + volume + "): " + new Win32Exception(Marshal.GetLastWin32Error()).Message);
+                }
+                if (FindNextVolume(search, buffer, buffer.Capacity)) continue;
+                var error = Marshal.GetLastWin32Error();
+                if (error != 18) throw new Win32Exception(error); // ERROR_NO_MORE_FILES
+                break;
+            }
+        }
+        finally { FindVolumeClose(search); }
     }
 
     private sealed class PrivilegeScope : IDisposable
@@ -131,6 +210,8 @@ internal static class MemoryEngine
         public uint TransitionRepurposeCount, Flags;
     }
     [StructLayout(LayoutKind.Sequential)]
+    internal struct CombineInfo { public IntPtr Handle; public UIntPtr PagesCombined; public uint Flags; }
+    [StructLayout(LayoutKind.Sequential)]
     private struct Luid { public uint Low; public int High; }
     [StructLayout(LayoutKind.Sequential)]
     private struct TokenPrivileges { public uint Count; public Luid Luid; public uint Attributes; }
@@ -141,9 +222,19 @@ internal static class MemoryEngine
     [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GetPerformanceInfo(out PerformanceInfo info, uint size);
     [DllImport("ntdll.dll")] private static extern int NtQuerySystemInformation(int type, ref FileCacheInfo info, int size, out int returned);
     [DllImport("ntdll.dll")] private static extern int NtSetSystemInformation(int type, ref int value, int size);
+    [DllImport("ntdll.dll")] private static extern int NtSetSystemInformation(int type, IntPtr value, int size);
+    [DllImport("ntdll.dll")] private static extern int NtSetSystemInformation(int type, ref CombineInfo value, int size);
     [DllImport("ntdll.dll")] private static extern uint RtlNtStatusToDosError(int status);
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)] private static extern bool SetSystemFileCacheSize(UIntPtr minimum, UIntPtr maximum, uint flags);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, EntryPoint = "FindFirstVolumeW", SetLastError = true)]
+    private static extern IntPtr FindFirstVolume(StringBuilder name, int length);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, EntryPoint = "FindNextVolumeW", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)] private static extern bool FindNextVolume(IntPtr search, StringBuilder name, int length);
+    [DllImport("kernel32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool FindVolumeClose(IntPtr search);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, EntryPoint = "CreateFileW", SetLastError = true)]
+    private static extern SafeFileHandle CreateFile(string name, uint access, uint share, IntPtr security, uint creation, uint flags, IntPtr template);
+    [DllImport("kernel32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool FlushFileBuffers(SafeFileHandle handle);
     [DllImport("advapi32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)] private static extern bool OpenProcessToken(IntPtr process, uint access, out SafeAccessTokenHandle token);
     [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]

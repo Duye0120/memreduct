@@ -35,7 +35,7 @@ public partial class App : Application
             if (!checking)
             {
                 _instance = new Mutex(false, @"Local\MemReduct.Fluent." + WindowsIdentity.GetCurrent().User!.Value);
-                var timeout = Arguments.Contains("--elevated") ? TimeSpan.FromSeconds(10) : TimeSpan.Zero;
+                var timeout = Arguments.Contains("--elevated") || Arguments.Contains("--restart") ? TimeSpan.FromSeconds(10) : TimeSpan.Zero;
                 bool acquired;
                 try { acquired = _instance.WaitOne(timeout); } catch (AbandonedMutexException) { acquired = true; }
                 if (!acquired) { TrayIcon.ShowExistingWindow(); _instance.Dispose(); _instance = null; Exit(); return; }

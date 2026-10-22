@@ -6,6 +6,7 @@ namespace MemReduct.Fluent;
 internal static class UiText
 {
     private static ResourceLoader? _resources;
+    private static readonly string SystemLanguage = CultureInfo.CurrentUICulture.Name;
     public static string LanguageTag { get; private set; } = "en-US";
 
     internal static string ResolveLanguage(string selected, string systemLanguage) => selected == "System"
@@ -14,11 +15,13 @@ internal static class UiText
 
     public static void Initialize(string selected)
     {
-        LanguageTag = ResolveLanguage(selected, CultureInfo.CurrentUICulture.Name);
+        LanguageTag = ResolveSelectedLanguage(selected);
         Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = LanguageTag;
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(LanguageTag);
         _resources = new ResourceLoader(ResourceLoader.GetDefaultResourceFilePath(), "Resources");
     }
+
+    internal static string ResolveSelectedLanguage(string selected) => ResolveLanguage(selected, SystemLanguage);
 
     public static string Get(string key, params object[] values)
     {

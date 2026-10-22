@@ -15,7 +15,7 @@ public sealed partial class MainWindow : Window
     private readonly bool _checking;
     private readonly DispatcherQueueTimer? _timer;
     private readonly TrayIcon? _tray;
-    private bool _ready, _cleaning, _exitRequested, _sampleFailed;
+    private bool _ready, _cleaning, _exitRequested, _sampleFailed, _restartPromptOpen;
     private bool _statsStacked;
     private double _cornerScale;
     private DateTimeOffset _lastAttempt;
@@ -79,7 +79,7 @@ public sealed partial class MainWindow : Window
             UpdateCornerRadii();
             Shell.XamlRoot.Changed -= XamlRoot_Changed;
             Shell.XamlRoot.Changed += XamlRoot_Changed;
-            if (App.Arguments.Contains("--clean") && !checking) await CleanAsync(false);
+            if (App.Arguments.Contains("--clean") && !checking) await CleanAsync(true, confirm: false);
         };
     }
 
@@ -93,6 +93,11 @@ public sealed partial class MainWindow : Window
         WorkingSetCheck.IsChecked = _settings.CleanWorkingSets;
         SystemCacheCheck.IsChecked = _settings.CleanSystemCache;
         StandbyCheck.IsChecked = _settings.CleanLowPriorityStandby;
+        ModifiedFileCheck.IsChecked = _settings.CleanModifiedFileCache;
+        ModifiedPagesCheck.IsChecked = _settings.CleanModifiedPages;
+        FullStandbyCheck.IsChecked = _settings.CleanStandby;
+        RegistryCheck.IsChecked = _settings.CleanRegistryCache;
+        CombineCheck.IsChecked = _settings.CombineMemoryPages;
         ThresholdSwitch.IsOn = _settings.AutoThreshold;
         IntervalSwitch.IsOn = _settings.AutoInterval;
         ThresholdNumber.Value = _settings.Threshold;
@@ -141,10 +146,12 @@ public sealed partial class MainWindow : Window
         if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.IsAlwaysOnTop = _settings.AlwaysOnTop;
         ThresholdNumber.IsEnabled = _settings.AutoThreshold;
         IntervalNumber.IsEnabled = _settings.AutoInterval;
-        CleanButton.IsEnabled = !_cleaning && _settings.Areas != CleanAreas.None;
+        CleanButton.IsEnabled = !_cleaning && !_restartPromptOpen && _settings.Areas != CleanAreas.None;
+        LanguageChoice.IsEnabled = !_cleaning && !_restartPromptOpen;
         if (!_cleaning) CleanButton.Content = UiText.Get(MemoryEngine.IsAdministrator ? "CleanMemory" : "AuthorizeClean");
         CleanDescription.Text = UiText.Get(MemoryEngine.IsAdministrator ? "CleanDescription" : "AuthorizeDescription");
-        AdminBanner.IsOpen = (_settings.AutoThreshold || _settings.AutoInterval) && !MemoryEngine.IsAdministrator;
+        AdminBanner.IsOpen = (_settings.AutoThreshold || _settings.AutoInterval)
+            && _settings.AutomaticAreas != CleanAreas.None && !MemoryEngine.IsAdministrator;
         AdminBanner.Visibility = AdminBanner.IsOpen ? Visibility.Visible : Visibility.Collapsed;
         var modes = new List<string>();
         if (_settings.AutoThreshold) modes.Add(UiText.Get("ThresholdMode", _settings.Threshold));
@@ -152,6 +159,7 @@ public sealed partial class MainWindow : Window
         AutoStatusText.Text = modes.Count == 0 ? UiText.Get("AutoOff") :
             UiText.Get("AutoModes", string.Join(" / ", modes)) + (AdminBanner.IsOpen ? UiText.Get("WaitingPermission") : "");
         if (_settings.Areas == CleanAreas.None) AutoStatusText.Text = UiText.Get("SelectArea");
+        else if (modes.Count != 0 && _settings.AutomaticAreas == CleanAreas.None) AutoStatusText.Text = UiText.Get("ManualOnlyAuto");
     }
 
     internal void ReflowMetrics(double width, double textScale)
@@ -187,7 +195,7 @@ public sealed partial class MainWindow : Window
             if (AppWindow.IsVisible) UpdateStats(snapshot);
             _tray?.Update(snapshot.PhysicalPercent);
             if (_sampleFailed) { _sampleFailed = false; if (IssueBanner.Title == UiText.Get("SampleFailed")) IssueBanner.IsOpen = false; }
-            if (!_cleaning && MemoryEngine.IsAdministrator && _settings.IsAutoDue(snapshot.PhysicalPercent, DateTimeOffset.UtcNow, _lastAttempt))
+            if (!_cleaning && !_restartPromptOpen && MemoryEngine.IsAdministrator && _settings.IsAutoDue(snapshot.PhysicalPercent, DateTimeOffset.UtcNow, _lastAttempt))
                 _ = CleanAsync(false);
         }
         catch (Exception error)
@@ -249,16 +257,49 @@ public sealed partial class MainWindow : Window
         ApplyTheme(); SaveSettings();
     }
 
-    private void LanguageChoice_SelectionChanged(object sender, SelectionChangedEventArgs args)
+    private async void LanguageChoice_SelectionChanged(object sender, SelectionChangedEventArgs args)
     {
         if (!_ready) return;
         var previous = _settings.Language;
         _settings.Language = (LanguageChoice.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "System";
-        if (SaveSettings()) return;
-        _settings.Language = previous;
-        _ready = false;
-        LanguageChoice.SelectedIndex = previous == "zh-CN" ? 1 : previous == "en-US" ? 2 : 0;
-        _ready = true;
+        if (!SaveSettings())
+        {
+            _settings.Language = previous;
+            _ready = false;
+            LanguageChoice.SelectedIndex = previous == "zh-CN" ? 1 : previous == "en-US" ? 2 : 0;
+            _ready = true;
+            return;
+        }
+        if (_checking || UiText.ResolveSelectedLanguage(_settings.Language) == UiText.LanguageTag) return;
+        _restartPromptOpen = true;
+        RefreshOptions();
+        try
+        {
+            if (await CreateLanguageRestartDialog().ShowAsync() != ContentDialogResult.Primary) return;
+            using var process = Process.Start(CreateRestartStartInfo());
+            if (process is null) throw new InvalidOperationException(UiText.Get("RestartFailed"));
+            ExitWindow();
+        }
+        catch (Exception error) { ReportIssue(UiText.Get("RestartFailed"), error.Message); }
+        finally { _restartPromptOpen = false; if (!_exitRequested) RefreshOptions(); }
+    }
+
+    private ContentDialog CreateLanguageRestartDialog() => new()
+    {
+        XamlRoot = Shell.XamlRoot, RequestedTheme = Shell.ActualTheme,
+        CornerRadius = new CornerRadius(12 / Shell.XamlRoot.RasterizationScale),
+        Title = UiText.Get("LanguageRestartTitle"), Content = UiText.Get("LanguageRestartMessage"),
+        PrimaryButtonText = UiText.Get("RestartNow"), CloseButtonText = UiText.Get("RestartLater"),
+        DefaultButton = ContentDialogButton.Close
+    };
+
+    internal static ProcessStartInfo CreateRestartStartInfo()
+    {
+        var start = new ProcessStartInfo(Environment.ProcessPath!)
+        { UseShellExecute = true, WorkingDirectory = AppContext.BaseDirectory };
+        // Restart only this app; never replay a previous --clean request.
+        start.ArgumentList.Add("--restart");
+        return start;
     }
 
     private void Preference_Toggled(object sender, RoutedEventArgs args)
@@ -277,6 +318,11 @@ public sealed partial class MainWindow : Window
         _settings.CleanWorkingSets = WorkingSetCheck.IsChecked == true;
         _settings.CleanSystemCache = SystemCacheCheck.IsChecked == true;
         _settings.CleanLowPriorityStandby = StandbyCheck.IsChecked == true;
+        _settings.CleanModifiedFileCache = ModifiedFileCheck.IsChecked == true;
+        _settings.CleanModifiedPages = ModifiedPagesCheck.IsChecked == true;
+        _settings.CleanStandby = FullStandbyCheck.IsChecked == true;
+        _settings.CleanRegistryCache = RegistryCheck.IsChecked == true;
+        _settings.CombineMemoryPages = CombineCheck.IsChecked == true;
         RefreshOptions(); SaveSettings();
     }
 
@@ -310,13 +356,14 @@ public sealed partial class MainWindow : Window
     }
 
     private async void CleanButton_Click(object sender, RoutedEventArgs args) => await CleanAsync(true);
-    private async Task CleanAsync(bool manual)
+    private async Task CleanAsync(bool manual, bool confirm = true)
     {
-        if (_cleaning || _settings.Areas == CleanAreas.None) return;
-        _cleaning = true; CleanButton.IsEnabled = false;
+        var areas = manual ? _settings.Areas : _settings.AutomaticAreas;
+        if (_cleaning || _restartPromptOpen || areas == CleanAreas.None) return;
+        _cleaning = true; RefreshOptions();
         try
         {
-            if (manual && _settings.ConfirmCleanup)
+            if (manual && confirm && _settings.ConfirmCleanup)
             {
                 var dialog = new ContentDialog
                 {
@@ -330,8 +377,7 @@ public sealed partial class MainWindow : Window
             if (!MemoryEngine.IsAdministrator) { RelaunchElevated("--clean"); return; }
             _lastAttempt = DateTimeOffset.UtcNow;
             CleanButton.Content = UiText.Get("Cleaning");
-            var areas = _settings.Areas;
-            var result = await Task.Run(() => MemoryEngine.Clean(areas));
+            var result = await Task.Run(() => MemoryEngine.Clean(areas, automatic: !manual));
             _settings.LastCleanUtc = DateTimeOffset.UtcNow;
             SaveSettings();
             ResultText.Text = UiText.Get("FreedStatus", DateTime.Now, MemorySnapshot.Bytes(result.FreedBytes));

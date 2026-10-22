@@ -19,7 +19,7 @@
     <value>Appearance &amp; window</value>
   </data>
   <data name="AreasNote.Text" xml:space="preserve">
-    <value>Select at least one area. Automatic cleaning uses the same selection.</value>
+    <value>Select at least one area. Items marked * are manual only and always skipped by automatic cleaning.</value>
   </data>
   <data name="AuthorizeClean" xml:space="preserve">
     <value>Authorize and clean</value>
@@ -130,7 +130,7 @@
     <value>Select at least one valid cleaning area.</value>
   </data>
   <data name="LanguageRestartHint.Text" xml:space="preserve">
-    <value>Language changes take effect the next time you start the app.</value>
+    <value>After changing language, restart the app now or later.</value>
   </data>
   <data name="LastClean" xml:space="preserve">
     <value>Last cleaned · {0:MM-dd HH:mm}</value>
@@ -271,4 +271,23 @@
   <data name="MinutesUnit.Text" xml:space="preserve"><value>min</value></data>
   <data name="PaneToggleButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Toggle navigation layout</value></data>
   <data name="PaneToggleButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Switch between top navigation and sidebar</value></data>
+  <data name="ModifiedFileCheck.Content" xml:space="preserve"><value>Modified file cache</value></data>
+  <data name="ModifiedPagesCheck.Content" xml:space="preserve"><value>Modified page list *</value></data>
+  <data name="FullStandbyCheck.Content" xml:space="preserve"><value>Full standby list *</value></data>
+  <data name="RegistryCheck.Content" xml:space="preserve"><value>Registry cache</value></data>
+  <data name="CombineCheck.Content" xml:space="preserve"><value>Combine duplicate memory pages</value></data>
+  <data name="WorkingSetDescription.Text" xml:space="preserve"><value>Trim pages that processes are not actively using. Accessing them again may require a reload.</value></data>
+  <data name="SystemCacheDescription.Text" xml:space="preserve"><value>Shrink the system file cache. Opening files later may need another disk read.</value></data>
+  <data name="ModifiedFileDescription.Text" xml:space="preserve"><value>Flush pending file writes on each volume to disk. Adds disk activity and may not immediately free RAM.</value></data>
+  <data name="ModifiedPagesDescription.Text" xml:space="preserve"><value>Write modified pages to backing storage so they can be reclaimed. May cause pauses; manual only.</value></data>
+  <data name="FullStandbyDescription.Text" xml:space="preserve"><value>Empty standby caches at all priorities, including frequently used data. May cause pauses; manual only.</value></data>
+  <data name="StandbyDescription.Text" xml:space="preserve"><value>Release only low-priority standby caches, with less impact on frequently used cached data.</value></data>
+  <data name="RegistryDescription.Text" xml:space="preserve"><value>Synchronize cached registry data to disk. Adds disk writes and may not immediately free RAM.</value></data>
+  <data name="CombineDescription.Text" xml:space="preserve"><value>Scan and merge physical pages with identical content. Uses some CPU; savings depend on duplicate pages.</value></data>
+  <data name="ManualOnlyAuto" xml:space="preserve"><value>Automatic cleaning paused · Only manual items marked * are selected.</value></data>
+  <data name="LanguageRestartTitle" xml:space="preserve"><value>Restart to apply language</value></data>
+  <data name="LanguageRestartMessage" xml:space="preserve"><value>Your language choice is saved. Restart Mem Reduct to apply it throughout the app. You can restart now or reopen it later. Your PC will not restart.</value></data>
+  <data name="RestartNow" xml:space="preserve"><value>Restart now</value></data>
+  <data name="RestartLater" xml:space="preserve"><value>Restart later</value></data>
+  <data name="RestartFailed" xml:space="preserve"><value>Unable to restart the app. Please reopen it later.</value></data>
 </root>

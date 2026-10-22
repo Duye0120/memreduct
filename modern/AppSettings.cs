@@ -14,6 +14,11 @@ public sealed class AppSettings
     public bool CleanWorkingSets { get; set; } = true;
     public bool CleanSystemCache { get; set; } = true;
     public bool CleanLowPriorityStandby { get; set; } = true;
+    public bool CleanModifiedFileCache { get; set; }
+    public bool CleanModifiedPages { get; set; }
+    public bool CleanStandby { get; set; }
+    public bool CleanRegistryCache { get; set; }
+    public bool CombineMemoryPages { get; set; }
     public bool AutoThreshold { get; set; }
     public int Threshold { get; set; } = 90;
     public bool AutoInterval { get; set; }
@@ -24,7 +29,15 @@ public sealed class AppSettings
     public CleanAreas Areas =>
         (CleanWorkingSets ? CleanAreas.WorkingSets : 0) |
         (CleanSystemCache ? CleanAreas.SystemCache : 0) |
-        (CleanLowPriorityStandby ? CleanAreas.LowPriorityStandby : 0);
+        (CleanLowPriorityStandby ? CleanAreas.LowPriorityStandby : 0) |
+        (CleanModifiedFileCache ? CleanAreas.ModifiedFileCache : 0) |
+        (CleanModifiedPages ? CleanAreas.ModifiedPages : 0) |
+        (CleanStandby ? CleanAreas.Standby : 0) |
+        (CleanRegistryCache ? CleanAreas.RegistryCache : 0) |
+        (CombineMemoryPages ? CleanAreas.CombinePages : 0);
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public CleanAreas AutomaticAreas => MemoryEngine.ForAutomaticCleanup(Areas);
 
     public void Normalize()
     {
@@ -36,7 +49,7 @@ public sealed class AppSettings
 
     public bool IsAutoDue(double physicalPercent, DateTimeOffset now, DateTimeOffset lastAttempt)
     {
-        if (Areas == CleanAreas.None || now - lastAttempt < TimeSpan.FromSeconds(30)) return false;
+        if (AutomaticAreas == CleanAreas.None || now - lastAttempt < TimeSpan.FromSeconds(30)) return false;
         return (AutoThreshold && physicalPercent >= Threshold) ||
             (AutoInterval && now - lastAttempt >= TimeSpan.FromMinutes(IntervalMinutes));
     }

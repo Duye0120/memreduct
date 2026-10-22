@@ -19,7 +19,7 @@
     <value>外观与窗口</value>
   </data>
   <data name="AreasNote.Text" xml:space="preserve">
-    <value>至少选择一项；自动清理使用相同的区域。</value>
+    <value>至少选择一项。带 * 的选项仅供手动清理，自动清理始终跳过。</value>
   </data>
   <data name="AuthorizeClean" xml:space="preserve">
     <value>授权并清理</value>
@@ -70,7 +70,7 @@
     <value>关闭窗口后留在托盘</value>
   </data>
   <data name="CommitLabel.Text" xml:space="preserve">
-    <value>提交内存</value>
+    <value>已提交内存</value>
   </data>
   <data name="CommitLimit" xml:space="preserve">
     <value>上限 {0}</value>
@@ -130,7 +130,7 @@
     <value>请至少选择一项有效的清理区域。</value>
   </data>
   <data name="LanguageRestartHint.Text" xml:space="preserve">
-    <value>更改语言后，下次启动时生效。</value>
+    <value>更改后可选择立即或稍后重启程序。</value>
   </data>
   <data name="LastClean" xml:space="preserve">
     <value>上次清理 · {0:MM-dd HH:mm}</value>
@@ -271,4 +271,23 @@
   <data name="MinutesUnit.Text" xml:space="preserve"><value>分钟</value></data>
   <data name="PaneToggleButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>切换导航布局</value></data>
   <data name="PaneToggleButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>切换顶部导航与侧栏</value></data>
+  <data name="ModifiedFileCheck.Content" xml:space="preserve"><value>已修改文件缓存</value></data>
+  <data name="ModifiedPagesCheck.Content" xml:space="preserve"><value>已修改页面列表 *</value></data>
+  <data name="FullStandbyCheck.Content" xml:space="preserve"><value>全部备用列表 *</value></data>
+  <data name="RegistryCheck.Content" xml:space="preserve"><value>注册表缓存</value></data>
+  <data name="CombineCheck.Content" xml:space="preserve"><value>合并重复内存页</value></data>
+  <data name="WorkingSetDescription.Text" xml:space="preserve"><value>释放进程暂时不用的驻留页面；再次访问时可能重新读入。</value></data>
+  <data name="SystemCacheDescription.Text" xml:space="preserve"><value>缩减系统文件缓存；之后打开文件可能需要重新读取磁盘。</value></data>
+  <data name="ModifiedFileDescription.Text" xml:space="preserve"><value>将各磁盘卷待写入的文件缓存刷入磁盘；可能增加磁盘活动，不一定立即释放内存。</value></data>
+  <data name="ModifiedPagesDescription.Text" xml:space="preserve"><value>将已修改的内存页写回后备存储以便回收；可能短暂卡顿，仅限手动清理。</value></data>
+  <data name="FullStandbyDescription.Text" xml:space="preserve"><value>清空所有优先级的备用缓存；常用数据也需重新读入，可能卡顿，仅限手动清理。</value></data>
+  <data name="StandbyDescription.Text" xml:space="preserve"><value>仅释放低优先级的备用缓存，相比全部清空对常用缓存影响较小。</value></data>
+  <data name="RegistryDescription.Text" xml:space="preserve"><value>将注册表缓存同步到磁盘；可能产生磁盘写入，不一定立即释放内存。</value></data>
+  <data name="CombineDescription.Text" xml:space="preserve"><value>扫描并合并内容相同的物理内存页；会占用少量 CPU，收益取决于重复页数量。</value></data>
+  <data name="ManualOnlyAuto" xml:space="preserve"><value>自动清理已暂停 · 当前仅选择了带 * 的手动清理项。</value></data>
+  <data name="LanguageRestartTitle" xml:space="preserve"><value>重启以应用语言</value></data>
+  <data name="LanguageRestartMessage" xml:space="preserve"><value>语言设置已保存，需要重启 Mem Reduct 才能完整生效。可以立即重启程序，或稍后重新打开。不会重启电脑。</value></data>
+  <data name="RestartNow" xml:space="preserve"><value>立即重启</value></data>
+  <data name="RestartLater" xml:space="preserve"><value>稍后重启</value></data>
+  <data name="RestartFailed" xml:space="preserve"><value>程序重启失败，请稍后手动重新打开。</value></data>
 </root>
