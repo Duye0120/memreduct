@@ -489,12 +489,45 @@ public sealed partial class MainWindow
             Require(_cleanupHistory[0].Outcome == UiText.Get("CleanupFailed") && !_cleanupHistory[0].Details.Contains("123 MB")
                 && _cleanupHistory[0].Details.Contains("Every selected operation failed")
                 && _settings.LastCleanUtc == previousCleanup && _feedback == CleanupFeedback.Failed
-                && ResultText.Text == UiText.Get("CleanupFailed") && IssueBanner.Title == UiText.Get("CleanupFailed"),
+                && ResultText.Text == UiText.Get("CleanupFailed") && IssueBanner.Title == UiText.Get("CleanupFailed")
+                && IssueBanner.Severity == InfoBarSeverity.Error,
                 "An unsuccessful cleanup preserves the previous timestamp and reports failure without attributing unrelated memory changes to cleanup");
+            SelectPage(false); Layout(700, 780, 1);
+            await WritePreview(directory, "cleanup-failure-fixture.png");
+            var issueY = IssueBanner.TransformToVisual(Shell).TransformPoint(new Point()).Y;
+            var bodyY = BodyScroll.TransformToVisual(Shell).TransformPoint(new Point()).Y;
+            Require(issueY >= AppTitleBar.ActualHeight && IssueBanner.ActualHeight > 0
+                && issueY + IssueBanner.ActualHeight <= bodyY,
+                "Page navigation cannot scroll a critical error out of the visible notification area");
+            Require(Math.Abs(IssueBanner.CornerRadius.TopLeft * displayScale - 12) < 0.01
+                && Math.Abs(AdminBanner.CornerRadius.TopLeft * displayScale - 12) < 0.01,
+                "Global notifications retain the requested 12 screen-pixel corner radius");
+            Shell.RequestedTheme = ElementTheme.Dark;
+            UpdateStats(memory);
+            await WritePreview(directory, "cleanup-failure-dark-fixture.png");
+            Shell.RequestedTheme = ElementTheme.Light;
+            UpdateStats(memory);
+            BodyScroll.ChangeView(null, BodyScroll.ScrollableHeight, null, true);
+            await Task.Delay(80);
+            Require(Math.Abs(IssueBanner.TransformToVisual(Shell).TransformPoint(new Point()).Y - issueY) < 0.5,
+                "Scrolling the overview leaves the global error visible");
+            SelectPage(true); Layout(700, 780, 1);
+            await WritePreview(directory, "settings-error-fixture.png");
+            Require(IssueBanner.IsOpen && IssueBanner.TransformToVisual(Shell).TransformPoint(new Point()).Y >= AppTitleBar.ActualHeight,
+                "Switching to settings keeps the same error visible");
+            IssueBanner.Message = string.Join("\n", Enumerable.Repeat("Self-check fixture: an operation could not complete.", 40));
+            Layout(560, 520, 1);
+            Require(NotificationScroll.ActualHeight <= 200.5 && NotificationScroll.ScrollableHeight > 0 && BodyScroll.ActualHeight > 100,
+                "Long error details remain scrollable without pushing the entire page out of a small window");
+            IssueBanner.Message = "Every selected operation failed";
+            SelectPage(false); Layout(700, 780, 1);
             ApplyCleanupResult(true, new CleanupResult(0, [], CleanAreas.WorkingSets), TimeSpan.FromSeconds(1));
             Require(_settings.LastCleanUtc is not null && _feedback == CleanupFeedback.Success
-                && _cleanupHistory[0].Outcome == UiText.Get("CleanupSucceeded") && !IssueBanner.IsOpen,
+                && _cleanupHistory[0].Outcome == UiText.Get("CleanupSucceeded") && !IssueBanner.IsOpen
+                && IssueBanner.Visibility == Visibility.Collapsed,
                 "A completed zero-byte cleanup records its real completion rather than treating it as an error");
+            ReportIssue("Self-check warning", "A later warning must not inherit the earlier error's severity.");
+            Require(IssueBanner.Severity == InfoBarSeverity.Warning, "Every issue sets its own severity independently of the previous banner");
             _settings.LastCleanUtc = previousCleanup;
             IssueBanner.IsOpen = false;
             IssueBanner.Visibility = Visibility.Collapsed;

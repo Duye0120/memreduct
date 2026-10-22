@@ -8,18 +8,34 @@ public sealed partial class MainWindow
     {
         var initialGameMode = _settings.GameMode;
         var initialConfirmation = _settings.ConfirmCleanup;
+        var initialSidebar = _settings.SidebarExpanded;
         _elevating = true;
         try
         {
             RefreshOptions();
+            ReflowMetrics(700, 1);
             SetGameMode(!initialGameMode);
+            PaneToggle_Click(PaneToggleButton, new Microsoft.UI.Xaml.RoutedEventArgs());
             Require(!SaveCleanupConfirmation(!initialConfirmation) && _settings.GameMode == initialGameMode
-                && _settings.ConfirmCleanup == initialConfirmation && !SettingsHost.IsEnabled && !PaneToggleButton.IsEnabled
+                && _settings.ConfirmCleanup == initialConfirmation && _settings.SidebarExpanded == initialSidebar
+                && !SettingsHost.IsEnabled && !PaneToggleButton.IsEnabled
                 && !CleanButton.IsEnabled && !ElevateButton.IsEnabled,
                 "Pending elevation prevents duplicate actions and preference changes before transfer");
         }
         finally { _elevating = false; RefreshOptions(); }
         Require(SettingsHost.IsEnabled && PaneToggleButton.IsEnabled, "The original interface becomes usable again after unsuccessful elevation");
+        foreach (var scale in new[] { 1.5, 2.0 })
+        {
+            ReflowMetrics(700, scale);
+            RefreshOptions();
+            PaneToggle_Click(PaneToggleButton, new Microsoft.UI.Xaml.RoutedEventArgs());
+            Require(!PaneToggleButton.IsEnabled && _settings.SidebarExpanded == initialSidebar,
+                "Preference refresh and queued clicks preserve the large-text navigation restriction");
+        }
+        ReflowMetrics(700, 1);
+        RefreshOptions();
+        Require(PaneToggleButton.IsEnabled && _settings.SidebarExpanded == initialSidebar,
+            "Returning to the normal text scale restores navigation without changing its saved preference");
         using var identity = WindowsIdentity.GetCurrent();
         var sid = identity.User!.Value;
         var request = Guid.NewGuid();

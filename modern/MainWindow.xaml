@@ -51,6 +51,7 @@
                 </Grid>
             </Grid>
             <Grid x:Name="HeaderBar" Grid.Column="1" Margin="16,8,16,12" ColumnSpacing="12">
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
@@ -73,15 +74,19 @@
                     <Ellipse Fill="#16A06B" Width="5" Height="5" VerticalAlignment="Center" />
                     <TextBlock Text="实时" Style="{StaticResource Muted}" x:Uid="LiveLabel" />
                 </StackPanel>
+                <ScrollViewer x:Name="NotificationScroll" Grid.Row="1" Grid.ColumnSpan="3" MaxHeight="200" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <InfoBar x:Name="IssueBanner" IsOpen="False" Visibility="Collapsed" IsClosable="True" Severity="Warning" Closed="IssueBanner_Closed" Margin="0,12,0,0" CornerRadius="{StaticResource CardCornerRadius}" />
+                        <InfoBar x:Uid="AdminBanner" x:Name="AdminBanner" Title="自动清理已暂停" Message="自动清理需要管理员权限。" IsOpen="False" Visibility="Collapsed" IsClosable="False" Severity="Informational" Margin="0,12,0,0" CornerRadius="{StaticResource CardCornerRadius}">
+                            <InfoBar.ActionButton>
+                                <Button x:Uid="ElevateButton" x:Name="ElevateButton" Content="以管理员运行" CornerRadius="{StaticResource AppControlCornerRadius}" Click="Elevate_Click" />
+                            </InfoBar.ActionButton>
+                        </InfoBar>
+                    </StackPanel>
+                </ScrollViewer>
             </Grid>
             <ScrollViewer x:Name="BodyScroll" Grid.Column="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="{StaticResource PageInset}" Grid.Row="1">
                 <StackPanel Spacing="{StaticResource Space16}" MaxWidth="760" HorizontalAlignment="Stretch">
-                    <InfoBar x:Name="IssueBanner" IsOpen="False" Visibility="Collapsed" IsClosable="True" Severity="Warning" />
-                    <InfoBar x:Uid="AdminBanner" x:Name="AdminBanner" Title="自动清理已暂停" Message="自动清理需要管理员权限。" IsOpen="False" Visibility="Collapsed" IsClosable="False" Severity="Informational">
-                        <InfoBar.ActionButton>
-                            <Button x:Uid="ElevateButton" x:Name="ElevateButton" Content="以管理员运行" CornerRadius="{StaticResource AppControlCornerRadius}" Click="Elevate_Click" />
-                        </InfoBar.ActionButton>
-                    </InfoBar>
                     <StackPanel x:Name="OverviewPage" Spacing="{StaticResource Space16}">
                         <Grid ColumnSpacing="12">
                             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>

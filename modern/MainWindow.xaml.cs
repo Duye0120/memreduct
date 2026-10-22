@@ -22,6 +22,7 @@ public sealed partial class MainWindow : Window
     private SettingsView SettingsPage { get; set; } = null!;
     private bool _startupReadable = true;
     private bool _statsStacked;
+    private bool _sidebarAvailable = true;
     private double _cornerScale;
     private DateTimeOffset _lastAttempt;
     private DateTimeOffset _thresholdRetryAfter;
@@ -219,6 +220,7 @@ public sealed partial class MainWindow : Window
         var controlRadius = new CornerRadius(10 / scale);
         foreach (var card in new[] { MetricsCard, HistoryCard, CleanupHistoryCard, CleanCard, SettingsPage?.AppearanceCard, SettingsPage?.CleanupSettingsCard, SettingsPage?.AutoSettingsCard, SettingsPage?.AboutCard })
             if (card is not null) card.CornerRadius = cardRadius;
+        IssueBanner.CornerRadius = AdminBanner.CornerRadius = cardRadius;
         PressureBadge.CornerRadius = controlRadius;
         foreach (var control in new Control?[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab, PaneToggleButton,
             CleanButton, ElevateButton, SettingsPage?.ThemeChoice, SettingsPage?.LanguageChoice,
@@ -231,7 +233,8 @@ public sealed partial class MainWindow : Window
     private void RefreshOptions()
     {
         if (_exitRequested) return;
-        SettingsHost.IsEnabled = PaneToggleButton.IsEnabled = !_elevating;
+        SettingsHost.IsEnabled = !_elevating;
+        PaneToggleButton.IsEnabled = _sidebarAvailable && !_elevating;
         if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.IsAlwaysOnTop = _settings.AlwaysOnTop;
         if (SettingsPage is not null)
         {
@@ -273,12 +276,13 @@ public sealed partial class MainWindow : Window
     internal void ReflowMetrics(double width, double textScale)
     {
         if (_exitRequested) return;
-        var sidebar = _settings.SidebarExpanded && textScale <= 1.25;
+        _sidebarAvailable = textScale <= 1.25;
+        var sidebar = _settings.SidebarExpanded && _sidebarAvailable;
         NavigationColumn.Width = new GridLength(sidebar ? (double)Application.Current.Resources["SidebarWidth"] : 0);
         NavigationPane.Visibility = sidebar ? Visibility.Visible : Visibility.Collapsed;
         NavigationPanel.Visibility = sidebar ? Visibility.Collapsed : Visibility.Visible;
         HeaderBreadcrumb.Visibility = sidebar ? Visibility.Visible : Visibility.Collapsed;
-        PaneToggleButton.IsEnabled = textScale <= 1.25;
+        PaneToggleButton.IsEnabled = _sidebarAvailable && !_elevating;
         var pageInset = (Thickness)Application.Current.Resources["PageInset"];
         var inset = (double)Application.Current.Resources["Space16"];
         if (SettingsPage is not null)
@@ -407,16 +411,20 @@ public sealed partial class MainWindow : Window
     private static void SetProgress(ProgressBar bar, double value)
     { value = Math.Round(value, 1); if (bar.Value != value) bar.Value = value; }
 
-    private void ReportIssue(string title, string message)
+    private void ReportIssue(string title, string message, InfoBarSeverity severity = InfoBarSeverity.Warning)
     {
         if (_exitRequested) return;
-        IssueBanner.Title = title; IssueBanner.Message = message; IssueBanner.Visibility = Visibility.Visible; IssueBanner.IsOpen = true;
+        IssueBanner.Title = title; IssueBanner.Message = message; IssueBanner.Severity = severity;
+        IssueBanner.Visibility = Visibility.Visible; IssueBanner.IsOpen = true;
     }
+
+    private void IssueBanner_Closed(InfoBar sender, InfoBarClosedEventArgs args) => sender.Visibility = Visibility.Collapsed;
 
     private void OverviewTab_Click(object sender, RoutedEventArgs args) => SelectPage(false);
     private void SettingsTab_Click(object sender, RoutedEventArgs args) => SelectPage(true);
     private void PaneToggle_Click(object sender, RoutedEventArgs args)
     {
+        if (!_ready || _exitRequested || _elevating || !_sidebarAvailable) return;
         _settings.SidebarExpanded = !_settings.SidebarExpanded;
         ReflowMetrics(Shell.ActualWidth, _uiSettings.TextScaleFactor);
         SaveSettings();
@@ -700,7 +708,7 @@ public sealed partial class MainWindow : Window
             if (_exitRequested) return;
             if (cleanupDuration is not null) RecordCleanup(manual, null, cleanupDuration.Elapsed, error.Message);
             CompleteCleanupAttempt(manual, _lastPercent, DateTimeOffset.UtcNow);
-            SetFeedback(CleanupFeedback.Failed, UiText.Get("CleanupFailed")); ReportIssue(UiText.Get("CleanupFailed"), error.Message);
+            SetFeedback(CleanupFeedback.Failed, UiText.Get("CleanupFailed")); ReportIssue(UiText.Get("CleanupFailed"), error.Message, InfoBarSeverity.Error);
         }
         finally { _animationTimer?.Stop(); _cleaning = false; RefreshOptions(); }
     }
@@ -717,7 +725,8 @@ public sealed partial class MainWindow : Window
             : UiText.Get("CleanupFailed");
         SetFeedback(!completed ? CleanupFeedback.Failed : result.Errors.Count == 0 ? CleanupFeedback.Success : CleanupFeedback.Warning,
             result.Errors.Count == 0 ? ResultText.Text : UiText.Get(CleanupOutcomeKey(result)));
-        if (result.Errors.Count != 0) ReportIssue(UiText.Get(CleanupOutcomeKey(result)), string.Join("\n", result.Errors));
+        if (result.Errors.Count != 0) ReportIssue(UiText.Get(CleanupOutcomeKey(result)), string.Join("\n", result.Errors),
+            completed ? InfoBarSeverity.Warning : InfoBarSeverity.Error);
         else if (completed && (IssueBanner.Title == UiText.Get("CleanupFailed") || IssueBanner.Title == UiText.Get("PartialCleanup")))
             IssueBanner.IsOpen = false;
     }
