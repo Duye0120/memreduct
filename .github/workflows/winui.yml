@@ -1,0 +1,67 @@
+name: WinUI build
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - modern/**
+      - .github/workflows/winui.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: winui-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 10.0.402
+          cache: true
+          cache-dependency-path: modern/packages.lock.json
+      - name: Check language resources
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $english = [xml](Get-Content modern/Strings/en-US/Resources.resw -Raw)
+          $chinese = [xml](Get-Content modern/Strings/zh-CN/Resources.resw -Raw)
+          foreach ($document in @($english, $chinese)) {
+            if (@($document.root.data.name | Group-Object | Where-Object Count -gt 1).Count) { throw 'Duplicate language resource keys.' }
+          }
+          if (Compare-Object @($english.root.data.name | Sort-Object) @($chinese.root.data.name | Sort-Object)) {
+            throw 'English and Chinese resource keys do not match.'
+          }
+      - name: Restore locked dependencies and publish x64
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          dotnet restore modern/MemReduct.Fluent.csproj --locked-mode -p:Platform=x64
+          if ($LASTEXITCODE -ne 0) { throw 'Locked restore failed.' }
+          $output = Join-Path $env:RUNNER_TEMP 'memreduct-winui'
+          dotnet publish modern/MemReduct.Fluent.csproj -c Release -p:Platform=x64 --no-restore -o $output
+          if ($LASTEXITCODE -ne 0) { throw 'WinUI publish failed.' }
+          if (!(Test-Path (Join-Path $output 'MemReduct.Fluent.exe'))) { throw 'Executable is missing.' }
+          if (Get-ChildItem $output -Filter 'settings.json*' -Recurse) { throw 'Settings must not be packaged.' }
+          Copy-Item LICENSE (Join-Path $output 'LICENSE.txt')
+          @{ commit = $env:GITHUB_SHA; sdk = (dotnet --version); configuration = 'Release'; platform = 'x64' } |
+            ConvertTo-Json | Set-Content (Join-Path $output 'build-info.json') -Encoding utf8
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: memreduct-winui-${{ github.sha }}-win-x64
+          path: |
+            ${{ runner.temp }}/memreduct-winui/
+            !${{ runner.temp }}/memreduct-winui/**/*.pdb
+          if-no-files-found: error
+          retention-days: 7

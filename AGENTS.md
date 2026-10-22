@@ -12,7 +12,7 @@
 2. 读 [README.md](README.md)，再按任务读 [docs/development.md](docs/development.md) 对应部分。
 3. 当前产品是 `modern/MemReduct.Fluent.csproj`。根目录 `memreduct.sln` 与 `src/` 是历史 Win32 路线，不能把改动做错项目。
 4. 在现有分支继续工作，当前分支和提交以 Git 状态为准，不依据历史交接快照切换分支。
-5. `UI-NOTES.md` 和现有 `windows-ui.yml` 描述/构建的是旧版；新版没有专用 WinUI CI。
+5. `UI-NOTES.md` 和 `windows-ui.yml` 描述/构建的是旧版；新版使用 `.github/workflows/winui.yml`，在独立 Windows runner 编译和发布便携构建产物，不自动创建 Release。
 
 ## 文档分工
 
@@ -37,6 +37,7 @@
 - 新增五项清理默认关闭；原有三项选择、旧配置默认值与用户设置保持兼容。
 - 自动阈值范围 50–99%，间隔 1–1440 分钟，至少 30 秒冷却。空输入、NaN、非法输入必须能恢复，编辑中的部分数字不能被刷新覆盖。
 - 便携版 `settings.json` 在 EXE 旁；本项目安装版在 `%LOCALAPPDATA%\MemReductFluent\settings.json`。导入只复制且不覆盖已有设置，升级和卸载保留个人设置。不覆盖原版 INI 或原版登录任务。
+- 设置及用户下载缓存通过 `UserDataAccess` 使用当前账户的普通令牌访问；不得在获取受限令牌失败时回退管理员文件写入。设置保存/导入使用独占随机临时文件加原子移动，保留读取大小上限及失败时原文件不变的约束。
 - 安装目录由安装器选择，通过 HKLM 64 位卸载项的 `InstallLocation` 识别；未登记时兼容原默认路径。管理员自启仅允许安装目录、文件和祖先目录通过 ACL / 非链接校验，不能因为支持自定义目录而放宽此检查；仅当前登录的同一管理员账户，无密码、无 SYSTEM 身份。便携版仍禁止永久提权。
 - 便携版保留自身当前用户 Run 项；安装版使用 `MemReduct.Fluent.<用户 SID>` 任务，升级保留、卸载按名称及执行目标匹配后移除。语言重启不能重放 `--clean` 或 `--update`。
 - 更新只读取 `Duye0120/memreduct-winui` 的正式 `fluent-vX.Y.Z` Release，检查 x64 安装包精确名称、来源、大小与 GitHub SHA-256。后台下载到当前用户的单一缓存；点击安装才启动同账户提权助手，重新获取可信元数据、复制到受保护目录并再次校验后执行。不得直接执行用户可写缓存，不得自动发布 Release、安装或绕过 UAC。
