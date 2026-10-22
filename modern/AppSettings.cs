@@ -49,10 +49,11 @@ public sealed class AppSettings
         if (Language is not ("System" or "zh-CN" or "en-US")) Language = "System";
     }
 
-    public bool IsAutoDue(double physicalPercent, DateTimeOffset now, DateTimeOffset lastAttempt, bool gameActive = false)
+    public bool IsAutoDue(double physicalPercent, DateTimeOffset now, DateTimeOffset lastAttempt, bool gameActive = false,
+        DateTimeOffset thresholdRetryAfter = default)
     {
         if ((GameMode && gameActive) || AutomaticAreas == CleanAreas.None || now - lastAttempt < TimeSpan.FromSeconds(30)) return false;
-        return (AutoThreshold && physicalPercent >= Threshold) ||
+        return (AutoThreshold && physicalPercent >= Threshold && now >= thresholdRetryAfter) ||
             (AutoInterval && now - lastAttempt >= TimeSpan.FromMinutes(IntervalMinutes));
     }
 }

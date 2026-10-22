@@ -324,4 +324,7 @@
   <data name="Later" xml:space="preserve"><value>Later</value></data>
   <data name="UpdateDownloading" xml:space="preserve"><value>Downloading and verifying the installer…</value></data>
   <data name="UpdateFailed" xml:space="preserve"><value>Update did not complete. The current version and settings are preserved.</value></data>
+  <data name="ThresholdRetryDeferred" xml:space="preserve">
+    <value> · Still above threshold; threshold retry deferred for 5 minutes</value>
+  </data>
 </root>

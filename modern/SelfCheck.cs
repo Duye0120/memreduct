@@ -134,6 +134,33 @@ public sealed partial class MainWindow
             Require(!options.IsAutoDue(100, now.AddSeconds(29), _lastAttempt)
                 && options.IsAutoDue(100, now.AddSeconds(30), _lastAttempt), "Alt-Tab has a 30-second grace period");
             _lastAttempt = savedAttempt;
+            var savedThresholdPolicy = (_settings.AutoThreshold, _settings.AutoInterval, _settings.Threshold, _settings.IntervalMinutes);
+            _settings.AutoThreshold = true; _settings.AutoInterval = false; _settings.Threshold = 90;
+            CompleteCleanupAttempt(false, 95, now);
+            Require(_thresholdRetryAfter == now.AddMinutes(5) && _lastAttempt == now,
+                "Persistently high usage defers threshold retries from completion");
+            Require(AutoStatusText.Text.Contains(UiText.Get("ThresholdRetryDeferred")), "The deferred threshold retry is explained in the current language");
+            foreach (var seconds in new[] { 30, 60, 299 })
+                Require(!_settings.IsAutoDue(95, now.AddSeconds(seconds), _lastAttempt, thresholdRetryAfter: _thresholdRetryAfter),
+                    "High memory after cleanup does not cause repeated 30-second threshold attempts");
+            Require(_settings.IsAutoDue(95, now.AddMinutes(5), _lastAttempt, thresholdRetryAfter: _thresholdRetryAfter), "Threshold retries resume at five minutes");
+            _settings.AutoInterval = true; _settings.IntervalMinutes = 1;
+            Require(_settings.IsAutoDue(95, now.AddMinutes(1), _lastAttempt, thresholdRetryAfter: _thresholdRetryAfter), "Explicit interval cleanup remains independent of threshold backoff");
+            Require(!_settings.IsAutoDue(95, now.AddMinutes(1), _lastAttempt, gameActive: true, thresholdRetryAfter: _thresholdRetryAfter), "Game protection still overrides both schedules");
+            _settings.AutoInterval = false;
+            ObserveThresholdRetry(89, now.AddSeconds(10));
+            Require(_thresholdRetryAfter == default && _settings.IsAutoDue(95, now.AddSeconds(30), _lastAttempt, thresholdRetryAfter: _thresholdRetryAfter),
+                "Recovery below the threshold re-arms threshold cleaning without changing user settings");
+            CompleteCleanupAttempt(true, 95, now);
+            Require(_thresholdRetryAfter == default, "Manual cleanup does not impose threshold backoff");
+            Require(!_settings.IsAutoDue(95, now.AddSeconds(29), _lastAttempt), "Even a slow cleanup has a full cooldown after completion");
+            CompleteCleanupAttempt(false, 95, now);
+            ObserveThresholdRetry(95, now.AddMinutes(5));
+            Require(_thresholdRetryAfter == default, "Expired backoff clears its UI status");
+            (_settings.AutoThreshold, _settings.AutoInterval, _settings.Threshold, _settings.IntervalMinutes) = savedThresholdPolicy;
+            _lastAttempt = savedAttempt;
+            RefreshOptions();
+            checks.Add("Persistent-high-memory threshold retries, recovery, five-minute expiry, completion cooldown, explicit intervals and game protection passed without cleaning memory or saving settings.");
             var screen = new GameModeMonitor.Rect { Left = -1920, Top = 0, Right = 0, Bottom = 1080 };
             Require(GameModeMonitor.CoversMonitor(screen, screen), "Borderless full screen works on monitors with negative coordinates");
             Require(!GameModeMonitor.CoversMonitor(new() { Left = -1920, Top = 0, Right = 0, Bottom = 1040 }, screen),

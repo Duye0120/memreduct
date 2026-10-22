@@ -324,4 +324,7 @@
   <data name="Later" xml:space="preserve"><value>稍后</value></data>
   <data name="UpdateDownloading" xml:space="preserve"><value>正在下载并校验安装包…</value></data>
   <data name="UpdateFailed" xml:space="preserve"><value>更新未完成，当前版本和设置仍保留。</value></data>
+  <data name="ThresholdRetryDeferred" xml:space="preserve">
+    <value> · 清理后仍超阈值，阈值重试暂缓 5 分钟</value>
+  </data>
 </root>

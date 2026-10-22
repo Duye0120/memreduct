@@ -21,6 +21,7 @@ public sealed partial class MainWindow : Window
     private bool _statsStacked;
     private double _cornerScale;
     private DateTimeOffset _lastAttempt;
+    private DateTimeOffset _thresholdRetryAfter;
     private bool _gameActive;
     private double _lastPercent;
     private CleanupFeedback _feedback;
@@ -194,6 +195,8 @@ public sealed partial class MainWindow : Window
             UiText.Get("AutoModes", string.Join(" / ", modes)) + (AdminBanner.IsOpen ? UiText.Get("WaitingPermission") : "");
         if (_settings.Areas == CleanAreas.None) AutoStatusText.Text = UiText.Get("SelectArea");
         else if (modes.Count != 0 && _settings.AutomaticAreas == CleanAreas.None) AutoStatusText.Text = UiText.Get("ManualOnlyAuto");
+        else if (_settings.AutoThreshold && _thresholdRetryAfter > DateTimeOffset.UtcNow)
+            AutoStatusText.Text += UiText.Get("ThresholdRetryDeferred");
         if (_gameActive) AutoStatusText.Text = UiText.Get("GameModeActive");
         GameModeStatus.Text = UiText.Get(_gameActive ? "GameModeActive" : _settings.GameMode ? "GameModeWatching" : "GameModeOff");
     }
@@ -231,10 +234,11 @@ public sealed partial class MainWindow : Window
             UpdateGameProtection(_settings.GameMode && GameModeMonitor.IsFullscreenApp(), DateTimeOffset.UtcNow);
             var snapshot = MemoryEngine.Read();
             _lastPercent = snapshot.PhysicalPercent;
+            ObserveThresholdRetry(snapshot.PhysicalPercent, DateTimeOffset.UtcNow);
             if (AppWindow.IsVisible) UpdateStats(snapshot);
             UpdateTray();
             if (_sampleFailed) { _sampleFailed = false; if (IssueBanner.Title == UiText.Get("SampleFailed")) IssueBanner.IsOpen = false; }
-            if (!_cleaning && !_restartPromptOpen && MemoryEngine.IsAdministrator && _settings.IsAutoDue(snapshot.PhysicalPercent, DateTimeOffset.UtcNow, _lastAttempt, _gameActive))
+            if (!_cleaning && !_restartPromptOpen && MemoryEngine.IsAdministrator && _settings.IsAutoDue(snapshot.PhysicalPercent, DateTimeOffset.UtcNow, _lastAttempt, _gameActive, _thresholdRetryAfter))
                 _ = CleanAsync(false);
         }
         catch (Exception error)
@@ -250,6 +254,22 @@ public sealed partial class MainWindow : Window
         // A full-screen exit or Alt+Tab must not immediately trigger a pending cleanup.
         if (_gameActive) _lastAttempt = now;
         _gameActive = active;
+        RefreshOptions();
+    }
+
+    private void ObserveThresholdRetry(double percent, DateTimeOffset now)
+    {
+        if (_thresholdRetryAfter == default || (percent >= _settings.Threshold && now < _thresholdRetryAfter)) return;
+        _thresholdRetryAfter = default;
+        RefreshOptions();
+    }
+
+    private void CompleteCleanupAttempt(bool manual, double percent, DateTimeOffset now)
+    {
+        // Count the cooldown from completion, including slow native operations.
+        _lastAttempt = now;
+        if (!manual)
+            _thresholdRetryAfter = percent >= _settings.Threshold ? now.AddMinutes(5) : default;
         RefreshOptions();
     }
 
@@ -383,6 +403,7 @@ public sealed partial class MainWindow : Window
         _settings.CloseToTray = TraySwitch.IsOn;
         _settings.ConfirmCleanup = ConfirmSwitch.IsOn;
         _settings.NotifyAfterCleanup = NotifyCleanupSwitch.IsOn;
+        if (_settings.AutoThreshold != ThresholdSwitch.IsOn) _thresholdRetryAfter = default;
         _settings.AutoThreshold = ThresholdSwitch.IsOn;
         _settings.AutoInterval = IntervalSwitch.IsOn;
         RefreshOptions(); SaveSettings();
@@ -413,7 +434,7 @@ public sealed partial class MainWindow : Window
     private void AutoNumber_ValueChanged(NumberBox sender, NumberBoxValueChangedEventArgs args)
     {
         if (!_ready || !double.IsFinite(args.NewValue)) return;
-        if (sender == ThresholdNumber) _settings.Threshold = (int)Math.Round(args.NewValue);
+        if (sender == ThresholdNumber) { _settings.Threshold = (int)Math.Round(args.NewValue); _thresholdRetryAfter = default; }
         else _settings.IntervalMinutes = (int)Math.Round(args.NewValue);
         _settings.Normalize();
         var committed = sender == ThresholdNumber ? _settings.Threshold : _settings.IntervalMinutes;
@@ -494,6 +515,7 @@ public sealed partial class MainWindow : Window
                 result.Errors.Count == 0 ? ResultText.Text : UiText.Get("CleanupHasErrors"));
             if (result.Errors.Count != 0) ReportIssue(UiText.Get("PartialCleanup"), string.Join("\n", result.Errors));
             Sample();
+            CompleteCleanupAttempt(manual, _lastPercent, DateTimeOffset.UtcNow);
             if (ShouldNotifyCleanup(_settings.NotifyAfterCleanup, result.Errors.Count, manual, _gameActive))
             {
                 try { _tray?.NotifySuccess(MemorySnapshot.Bytes(result.FreedBytes)); }
@@ -501,7 +523,7 @@ public sealed partial class MainWindow : Window
             }
         }
         catch (Exception error)
-        { _lastAttempt = DateTimeOffset.UtcNow; SetFeedback(CleanupFeedback.Failed, UiText.Get("CleanupFailed")); ReportIssue(UiText.Get("CleanupFailed"), error.Message); }
+        { CompleteCleanupAttempt(manual, _lastPercent, DateTimeOffset.UtcNow); SetFeedback(CleanupFeedback.Failed, UiText.Get("CleanupFailed")); ReportIssue(UiText.Get("CleanupFailed"), error.Message); }
         finally { _animationTimer?.Stop(); _cleaning = false; RefreshOptions(); }
     }
 
