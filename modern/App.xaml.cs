@@ -40,7 +40,13 @@ public partial class App : Application
                 try { acquired = _instance.WaitOne(timeout); } catch (AbandonedMutexException) { acquired = true; }
                 if (!acquired) { TrayIcon.ShowExistingWindow(); _instance.Dispose(); _instance = null; Exit(); return; }
             }
-            _window = new MainWindow(checking ? new AppSettings() : SettingsStore.Load(), checking);
+            var settings = checking ? new AppSettings { Language = "zh-CN" } : SettingsStore.Load();
+            var languageIndex = Array.IndexOf(Arguments, "--check-language");
+            if (checking && languageIndex >= 0 && languageIndex + 1 < Arguments.Length)
+                settings.Language = Arguments[languageIndex + 1];
+            settings.Normalize();
+            UiText.Initialize(settings.Language);
+            _window = new MainWindow(settings, checking);
             if (checking)
             {
                 var index = Array.IndexOf(Arguments, "--self-check");
@@ -52,7 +58,7 @@ public partial class App : Application
         catch (Exception error)
         {
             if (!Arguments.Contains("--self-check"))
-                MessageBox(IntPtr.Zero, error.Message + "\n原版配置和启动任务未修改。", "Mem Reduct Fluent", 0x10);
+                MessageBox(IntPtr.Zero, error.Message + "\n" + UiText.Get("OriginalUntouched"), "Mem Reduct Fluent", 0x10);
             else
             {
                 Console.Error.WriteLine(error);

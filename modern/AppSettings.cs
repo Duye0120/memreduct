@@ -6,6 +6,7 @@ namespace MemReduct.Fluent;
 public sealed class AppSettings
 {
     public string Theme { get; set; } = "System";
+    public string Language { get; set; } = "System";
     public bool AlwaysOnTop { get; set; }
     public bool CloseToTray { get; set; } = true;
     public bool ConfirmCleanup { get; set; } = true;
@@ -29,6 +30,7 @@ public sealed class AppSettings
         Threshold = Math.Clamp(Threshold, 50, 99);
         IntervalMinutes = Math.Clamp(IntervalMinutes, 1, 1440);
         if (Theme is not ("System" or "Light" or "Dark")) Theme = "System";
+        if (Language is not ("System" or "zh-CN" or "en-US")) Language = "System";
     }
 
     public bool IsAutoDue(double physicalPercent, DateTimeOffset now, DateTimeOffset lastAttempt)
@@ -47,7 +49,7 @@ internal static class SettingsStore
     {
         if (!File.Exists(FilePath)) return new();
         var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath))
-            ?? throw new InvalidDataException("配置文件内容为空；原文件未覆盖。");
+            ?? throw new InvalidDataException(UiText.Get("EmptySettings"));
         settings.Normalize();
         return settings;
     }

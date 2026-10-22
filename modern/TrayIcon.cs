@@ -43,7 +43,7 @@ internal sealed class TrayIcon : IDisposable
 
     public void Update(double percent)
     {
-        var value = $"Mem Reduct Fluent · 内存 {percent:0.0}%";
+        var value = UiText.Get("TrayUsage", percent);
         if (value == _tooltip) return;
         _tooltip = value;
         _data.Tip = value;
@@ -65,8 +65,8 @@ internal sealed class TrayIcon : IDisposable
                 {
                     try
                     {
-                        AppendMenu(menu, 0, 1, "打开 Mem Reduct");
-                        AppendMenu(menu, 0, 2, "退出");
+                        AppendMenu(menu, 0, 1, UiText.Get("TrayOpen"));
+                        AppendMenu(menu, 0, 2, UiText.Get("TrayExit"));
                         GetCursorPos(out var point);
                         SetForegroundWindow(window);
                         var selected = TrackPopupMenuEx(menu, 0x100 | 0x80 | 2, point.X, point.Y, window, IntPtr.Zero);

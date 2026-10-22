@@ -28,6 +28,7 @@ public sealed partial class MainWindow : Window
         _checking = checking;
         _lastAttempt = settings.LastCleanUtc is { } last && last <= DateTimeOffset.UtcNow ? last : DateTimeOffset.UtcNow;
         InitializeComponent();
+        Shell.Language = UiText.LanguageTag;
         IssueBanner.Closed += (_, _) => IssueBanner.Visibility = Visibility.Collapsed;
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
@@ -48,11 +49,11 @@ public sealed partial class MainWindow : Window
             try
             {
                 _tray = new TrayIcon(handle, ShowWindow, ExitWindow);
-                if (!_tray.IsVisible) ReportIssue("托盘未建立", "关闭窗口时将退出程序。");
+                if (!_tray.IsVisible) ReportIssue(UiText.Get("TrayUnavailable"), UiText.Get("ExitOnClose"));
             }
-            catch (Exception error) { ReportIssue("托盘未建立", error.Message + " 关闭窗口时将退出程序。"); }
+            catch (Exception error) { ReportIssue(UiText.Get("TrayUnavailable"), error.Message + " " + UiText.Get("ExitOnClose")); }
             try { StartupSwitch.IsOn = StartupRegistration.IsEnabled(); }
-            catch (Exception error) { ReportIssue("无法读取开机启动状态", error.Message); StartupSwitch.IsEnabled = false; }
+            catch (Exception error) { ReportIssue(UiText.Get("StartupReadFailed"), error.Message); StartupSwitch.IsEnabled = false; }
             _timer = DispatcherQueue.CreateTimer();
             _timer.Interval = TimeSpan.FromSeconds(1);
             _timer.Tick += (_, _) => Sample();
@@ -79,6 +80,7 @@ public sealed partial class MainWindow : Window
     private void LoadSettings()
     {
         ThemeChoice.SelectedIndex = _settings.Theme == "Light" ? 1 : _settings.Theme == "Dark" ? 2 : 0;
+        LanguageChoice.SelectedIndex = _settings.Language == "zh-CN" ? 1 : _settings.Language == "en-US" ? 2 : 0;
         PinSwitch.IsOn = _settings.AlwaysOnTop;
         TraySwitch.IsOn = _settings.CloseToTray;
         ConfirmSwitch.IsOn = _settings.ConfirmCleanup;
@@ -89,7 +91,8 @@ public sealed partial class MainWindow : Window
         IntervalSwitch.IsOn = _settings.AutoInterval;
         ThresholdNumber.Value = _settings.Threshold;
         IntervalNumber.Value = _settings.IntervalMinutes;
-        if (_settings.LastCleanUtc is { } last) ResultText.Text = "上次清理 · " + last.ToLocalTime().ToString("MM-dd HH:mm");
+        ResultText.Text = _settings.LastCleanUtc is { } last
+            ? UiText.Get("LastClean", last.ToLocalTime()) : UiText.Get("NeverCleaned");
         ApplyTheme();
     }
 
@@ -97,7 +100,7 @@ public sealed partial class MainWindow : Window
     {
         if (_checking) return true;
         try { SettingsStore.Save(_settings); return true; }
-        catch (Exception error) { ReportIssue("设置未能保存", error.Message); return false; }
+        catch (Exception error) { ReportIssue(UiText.Get("SaveFailed"), error.Message); return false; }
     }
 
     private void ApplyTheme()
@@ -119,7 +122,7 @@ public sealed partial class MainWindow : Window
         var controlRadius = new CornerRadius(10 / scale);
         foreach (var card in new[] { MetricsCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
             card.CornerRadius = cardRadius;
-        foreach (var control in new Control[] { OverviewTab, SettingsTab, CleanButton, ElevateButton, ThemeChoice,
+        foreach (var control in new Control[] { OverviewTab, SettingsTab, CleanButton, ElevateButton, ThemeChoice, LanguageChoice,
             ThresholdNumber, IntervalNumber, SourceLink, ExitButton })
             control.CornerRadius = controlRadius;
         _cornerScale = scale;
@@ -131,16 +134,16 @@ public sealed partial class MainWindow : Window
         ThresholdNumber.IsEnabled = _settings.AutoThreshold;
         IntervalNumber.IsEnabled = _settings.AutoInterval;
         CleanButton.IsEnabled = !_cleaning && _settings.Areas != CleanAreas.None;
-        if (!_cleaning) CleanButton.Content = MemoryEngine.IsAdministrator ? "清理内存" : "授权并清理";
-        CleanDescription.Text = MemoryEngine.IsAdministrator ? "按设置中选择的区域清理。" : "清理时会请求管理员权限。";
+        if (!_cleaning) CleanButton.Content = UiText.Get(MemoryEngine.IsAdministrator ? "CleanMemory" : "AuthorizeClean");
+        CleanDescription.Text = UiText.Get(MemoryEngine.IsAdministrator ? "CleanDescription" : "AuthorizeDescription");
         AdminBanner.IsOpen = (_settings.AutoThreshold || _settings.AutoInterval) && !MemoryEngine.IsAdministrator;
         AdminBanner.Visibility = AdminBanner.IsOpen ? Visibility.Visible : Visibility.Collapsed;
         var modes = new List<string>();
-        if (_settings.AutoThreshold) modes.Add($"用量达到 {_settings.Threshold}%");
-        if (_settings.AutoInterval) modes.Add($"每 {_settings.IntervalMinutes} 分钟");
-        AutoStatusText.Text = modes.Count == 0 ? "自动清理未开启" :
-            "自动清理 · " + string.Join(" / ", modes) + (AdminBanner.IsOpen ? " · 等待管理员权限" : "");
-        if (_settings.Areas == CleanAreas.None) AutoStatusText.Text = "请在设置中至少选择一项清理区域。";
+        if (_settings.AutoThreshold) modes.Add(UiText.Get("ThresholdMode", _settings.Threshold));
+        if (_settings.AutoInterval) modes.Add(UiText.Get("IntervalMode", _settings.IntervalMinutes));
+        AutoStatusText.Text = modes.Count == 0 ? UiText.Get("AutoOff") :
+            UiText.Get("AutoModes", string.Join(" / ", modes)) + (AdminBanner.IsOpen ? UiText.Get("WaitingPermission") : "");
+        if (_settings.Areas == CleanAreas.None) AutoStatusText.Text = UiText.Get("SelectArea");
     }
 
     internal void ReflowMetrics(double width, double textScale)
@@ -165,13 +168,13 @@ public sealed partial class MainWindow : Window
             var snapshot = MemoryEngine.Read();
             if (AppWindow.IsVisible) UpdateStats(snapshot);
             _tray?.Update(snapshot.PhysicalPercent);
-            if (_sampleFailed) { _sampleFailed = false; if (IssueBanner.Title == "内存读取失败") IssueBanner.IsOpen = false; }
+            if (_sampleFailed) { _sampleFailed = false; if (IssueBanner.Title == UiText.Get("SampleFailed")) IssueBanner.IsOpen = false; }
             if (!_cleaning && MemoryEngine.IsAdministrator && _settings.IsAutoDue(snapshot.PhysicalPercent, DateTimeOffset.UtcNow, _lastAttempt))
                 _ = CleanAsync(false);
         }
         catch (Exception error)
         {
-            if (!_sampleFailed) ReportIssue("内存读取失败", error.Message);
+            if (!_sampleFailed) ReportIssue(UiText.Get("SampleFailed"), error.Message);
             _sampleFailed = true;
         }
     }
@@ -179,13 +182,13 @@ public sealed partial class MainWindow : Window
     internal void UpdateStats(MemorySnapshot snapshot)
     {
         SetText(PhysicalValue, $"{snapshot.PhysicalPercent:0.0}%");
-        SetText(PhysicalFree, "可用 " + MemorySnapshot.Bytes(snapshot.PhysicalAvailable));
-        SetText(PhysicalTotal, "共 " + MemorySnapshot.Bytes(snapshot.PhysicalTotal));
+        SetText(PhysicalFree, UiText.Get("AvailableMemory", MemorySnapshot.Bytes(snapshot.PhysicalAvailable)));
+        SetText(PhysicalTotal, UiText.Get("TotalMemory", MemorySnapshot.Bytes(snapshot.PhysicalTotal)));
         SetText(CommitValue, $"{snapshot.CommitPercent:0.0}%");
-        SetText(CommitUsed, "已提交 " + MemorySnapshot.Bytes(snapshot.CommitUsed));
-        SetText(CommitTotal, "上限 " + MemorySnapshot.Bytes(snapshot.CommitLimit));
+        SetText(CommitUsed, UiText.Get("CommittedMemory", MemorySnapshot.Bytes(snapshot.CommitUsed)));
+        SetText(CommitTotal, UiText.Get("CommitLimit", MemorySnapshot.Bytes(snapshot.CommitLimit)));
         SetText(CacheValue, snapshot.CacheCurrent is { } current ? MemorySnapshot.Bytes(current) : "—");
-        SetText(CachePeak, snapshot.CachePeak is { } peak ? "峰值 " + MemorySnapshot.Bytes(peak) : "峰值不可用");
+        SetText(CachePeak, snapshot.CachePeak is { } peak ? UiText.Get("PeakMemory", MemorySnapshot.Bytes(peak)) : UiText.Get("PeakUnavailable"));
         SetProgress(PhysicalBar, snapshot.PhysicalPercent);
         SetProgress(CommitBar, snapshot.CommitPercent);
         SetProgress(CacheBar, snapshot.CacheCurrent is { } used && snapshot.CachePeak is { } total ? MemorySnapshot.Percent(used, total) : 0);
@@ -215,6 +218,18 @@ public sealed partial class MainWindow : Window
         if (!_ready) return;
         _settings.Theme = (ThemeChoice.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "System";
         ApplyTheme(); SaveSettings();
+    }
+
+    private void LanguageChoice_SelectionChanged(object sender, SelectionChangedEventArgs args)
+    {
+        if (!_ready) return;
+        var previous = _settings.Language;
+        _settings.Language = (LanguageChoice.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "System";
+        if (SaveSettings()) return;
+        _settings.Language = previous;
+        _ready = false;
+        LanguageChoice.SelectedIndex = previous == "zh-CN" ? 1 : previous == "en-US" ? 2 : 0;
+        _ready = true;
     }
 
     private void Preference_Toggled(object sender, RoutedEventArgs args)
@@ -261,7 +276,7 @@ public sealed partial class MainWindow : Window
         catch (Exception error)
         {
             _ready = false; StartupSwitch.IsOn = !desired; _ready = true;
-            ReportIssue("开机启动设置失败", error.Message);
+            ReportIssue(UiText.Get("StartupFailed"), error.Message);
         }
     }
 
@@ -276,25 +291,25 @@ public sealed partial class MainWindow : Window
             {
                 var dialog = new ContentDialog
                 {
-                    XamlRoot = Shell.XamlRoot, RequestedTheme = Shell.ActualTheme, Title = "清理内存",
+                    XamlRoot = Shell.XamlRoot, RequestedTheme = Shell.ActualTheme, Title = UiText.Get("CleanMemory"),
                     CornerRadius = new CornerRadius(12 / Shell.XamlRoot.RasterizationScale),
-                    Content = "将释放选中区域的可回收内存。应用可能短暂重新读取缓存数据。",
-                    PrimaryButtonText = "清理", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Close
+                    Content = UiText.Get("CleanConfirm"),
+                    PrimaryButtonText = UiText.Get("CleanAction"), CloseButtonText = UiText.Get("CancelAction"), DefaultButton = ContentDialogButton.Close
                 };
                 if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
             }
             if (!MemoryEngine.IsAdministrator) { RelaunchElevated("--clean"); return; }
             _lastAttempt = DateTimeOffset.UtcNow;
-            CleanButton.Content = "正在清理…";
+            CleanButton.Content = UiText.Get("Cleaning");
             var areas = _settings.Areas;
             var result = await Task.Run(() => MemoryEngine.Clean(areas));
             _settings.LastCleanUtc = DateTimeOffset.UtcNow;
             SaveSettings();
-            ResultText.Text = $"{DateTime.Now:HH:mm} · 可用内存增加 {MemorySnapshot.Bytes(result.FreedBytes)}";
-            if (result.Errors.Count != 0) ReportIssue("部分区域未能清理", string.Join("\n", result.Errors));
+            ResultText.Text = UiText.Get("FreedStatus", DateTime.Now, MemorySnapshot.Bytes(result.FreedBytes));
+            if (result.Errors.Count != 0) ReportIssue(UiText.Get("PartialCleanup"), string.Join("\n", result.Errors));
             Sample();
         }
-        catch (Exception error) { _lastAttempt = DateTimeOffset.UtcNow; ReportIssue("清理未完成", error.Message); }
+        catch (Exception error) { _lastAttempt = DateTimeOffset.UtcNow; ReportIssue(UiText.Get("CleanupFailed"), error.Message); }
         finally { _cleaning = false; RefreshOptions(); }
     }
 
@@ -310,8 +325,8 @@ public sealed partial class MainWindow : Window
             using var process = Process.Start(start);
             if (process is not null) ExitWindow();
         }
-        catch (Win32Exception error) when (error.NativeErrorCode == 1223) { ResultText.Text = "已取消管理员授权。"; }
-        catch (Exception error) { ReportIssue("无法以管理员运行", error.Message); }
+        catch (Win32Exception error) when (error.NativeErrorCode == 1223) { ResultText.Text = UiText.Get("ElevationCanceled"); }
+        catch (Exception error) { ReportIssue(UiText.Get("ElevationFailed"), error.Message); }
     }
 
     private void ShowWindow()

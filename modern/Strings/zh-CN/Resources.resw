@@ -1,0 +1,270 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <data name="AboutHeading.Text" xml:space="preserve">
+    <value>关于</value>
+  </data>
+  <data name="AdminBanner.Message" xml:space="preserve">
+    <value>自动清理需要管理员权限。</value>
+  </data>
+  <data name="AdminBanner.Title" xml:space="preserve">
+    <value>自动清理已暂停</value>
+  </data>
+  <data name="AppearanceHeading.Text" xml:space="preserve">
+    <value>外观与窗口</value>
+  </data>
+  <data name="AreasNote.Text" xml:space="preserve">
+    <value>至少选择一项；自动清理使用相同的区域。</value>
+  </data>
+  <data name="AuthorizeClean" xml:space="preserve">
+    <value>授权并清理</value>
+  </data>
+  <data name="AuthorizeDescription" xml:space="preserve">
+    <value>清理时会请求管理员权限。</value>
+  </data>
+  <data name="AutoModes" xml:space="preserve">
+    <value>自动清理 · {0}</value>
+  </data>
+  <data name="AutoOff" xml:space="preserve">
+    <value>自动清理未开启</value>
+  </data>
+  <data name="AutomaticHeading.Text" xml:space="preserve">
+    <value>自动清理</value>
+  </data>
+  <data name="AvailableMemory" xml:space="preserve">
+    <value>可用 {0}</value>
+  </data>
+  <data name="CacheLabel.Text" xml:space="preserve">
+    <value>系统文件缓存</value>
+  </data>
+  <data name="CancelAction" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="CleanAction" xml:space="preserve">
+    <value>清理</value>
+  </data>
+  <data name="CleanConfirm" xml:space="preserve">
+    <value>将释放选中区域的可回收内存。应用可能短暂重新读取缓存数据。</value>
+  </data>
+  <data name="CleanDescription" xml:space="preserve">
+    <value>按设置中选择的区域清理。</value>
+  </data>
+  <data name="CleanMemory" xml:space="preserve">
+    <value>清理内存</value>
+  </data>
+  <data name="Cleaning" xml:space="preserve">
+    <value>正在清理…</value>
+  </data>
+  <data name="CleanupFailed" xml:space="preserve">
+    <value>清理未完成</value>
+  </data>
+  <data name="CleanupHeading.Text" xml:space="preserve">
+    <value>内存清理</value>
+  </data>
+  <data name="CloseToTrayLabel.Text" xml:space="preserve">
+    <value>关闭窗口后留在托盘</value>
+  </data>
+  <data name="CommitLabel.Text" xml:space="preserve">
+    <value>提交内存</value>
+  </data>
+  <data name="CommitLimit" xml:space="preserve">
+    <value>上限 {0}</value>
+  </data>
+  <data name="CommittedMemory" xml:space="preserve">
+    <value>已提交 {0}</value>
+  </data>
+  <data name="ConfirmLabel.Text" xml:space="preserve">
+    <value>手动清理前确认</value>
+  </data>
+  <data name="ConfirmSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>手动清理前确认</value>
+  </data>
+  <data name="CooldownNote.Text" xml:space="preserve">
+    <value>连续两次自动清理至少间隔 30 秒。</value>
+  </data>
+  <data name="DarkTheme.Content" xml:space="preserve">
+    <value>深色</value>
+  </data>
+  <data name="ElevateButton.Content" xml:space="preserve">
+    <value>以管理员运行</value>
+  </data>
+  <data name="ElevationCanceled" xml:space="preserve">
+    <value>已取消管理员授权。</value>
+  </data>
+  <data name="ElevationFailed" xml:space="preserve">
+    <value>无法以管理员运行</value>
+  </data>
+  <data name="EmptySettings" xml:space="preserve">
+    <value>配置文件内容为空；原文件未覆盖。</value>
+  </data>
+  <data name="ExitButton.Content" xml:space="preserve">
+    <value>退出程序</value>
+  </data>
+  <data name="ExitOnClose" xml:space="preserve">
+    <value>关闭窗口时将退出程序。</value>
+  </data>
+  <data name="FollowSystem.Content" xml:space="preserve">
+    <value>跟随系统</value>
+  </data>
+  <data name="FreedStatus" xml:space="preserve">
+    <value>{0:HH:mm} · 可用内存增加 {1}</value>
+  </data>
+  <data name="IntervalLabel.Text" xml:space="preserve">
+    <value>按时间间隔清理</value>
+  </data>
+  <data name="IntervalMode" xml:space="preserve">
+    <value>每 {0} 分钟</value>
+  </data>
+  <data name="IntervalNumber.Header" xml:space="preserve">
+    <value>间隔（分钟）</value>
+  </data>
+  <data name="IntervalSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>按时间间隔清理</value>
+  </data>
+  <data name="InvalidAreas" xml:space="preserve">
+    <value>请至少选择一项有效的清理区域。</value>
+  </data>
+  <data name="LanguageRestartHint.Text" xml:space="preserve">
+    <value>更改语言后，下次启动时生效。</value>
+  </data>
+  <data name="LastClean" xml:space="preserve">
+    <value>上次清理 · {0:MM-dd HH:mm}</value>
+  </data>
+  <data name="LicenseNote.Text" xml:space="preserve">
+    <value>基于 Henry++ 的 Mem Reduct，遵循 GPL 许可。</value>
+  </data>
+  <data name="LightTheme.Content" xml:space="preserve">
+    <value>浅色</value>
+  </data>
+  <data name="LiveLabel.Text" xml:space="preserve">
+    <value>实时</value>
+  </data>
+  <data name="MemoryHeading.Text" xml:space="preserve">
+    <value>内存用量</value>
+  </data>
+  <data name="NeverCleaned" xml:space="preserve">
+    <value>尚未清理</value>
+  </data>
+  <data name="OriginalUntouched" xml:space="preserve">
+    <value>原版配置和启动任务未修改。</value>
+  </data>
+  <data name="OverviewTab.Content" xml:space="preserve">
+    <value>内存</value>
+  </data>
+  <data name="OverviewTab.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>内存概览</value>
+  </data>
+  <data name="PartialCleanup" xml:space="preserve">
+    <value>部分区域未能清理</value>
+  </data>
+  <data name="PeakMemory" xml:space="preserve">
+    <value>峰值 {0}</value>
+  </data>
+  <data name="PeakUnavailable" xml:space="preserve">
+    <value>峰值不可用</value>
+  </data>
+  <data name="PermissionRequired" xml:space="preserve">
+    <value>清理内存需要管理员权限。</value>
+  </data>
+  <data name="PhysicalLabel.Text" xml:space="preserve">
+    <value>物理内存</value>
+  </data>
+  <data name="PinSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>窗口始终置顶</value>
+  </data>
+  <data name="ReclaimHeading.Text" xml:space="preserve">
+    <value>释放可回收内存</value>
+  </data>
+  <data name="ResidentLabel.Text" xml:space="preserve">
+    <value>当前驻留</value>
+  </data>
+  <data name="SampleFailed" xml:space="preserve">
+    <value>内存读取失败</value>
+  </data>
+  <data name="SaveFailed" xml:space="preserve">
+    <value>设置未能保存</value>
+  </data>
+  <data name="SelectArea" xml:space="preserve">
+    <value>请在设置中至少选择一项清理区域。</value>
+  </data>
+  <data name="SettingsHeading.Text" xml:space="preserve">
+    <value>设置</value>
+  </data>
+  <data name="SettingsTab.Content" xml:space="preserve">
+    <value>设置</value>
+  </data>
+  <data name="SourceLink.Content" xml:space="preserve">
+    <value>项目源码</value>
+  </data>
+  <data name="StandbyCheck.Content" xml:space="preserve">
+    <value>低优先级备用列表</value>
+  </data>
+  <data name="StartupFailed" xml:space="preserve">
+    <value>开机启动设置失败</value>
+  </data>
+  <data name="StartupLabel.Text" xml:space="preserve">
+    <value>开机启动</value>
+  </data>
+  <data name="StartupNote.Text" xml:space="preserve">
+    <value>登录后在托盘运行；自动清理需重新授权。</value>
+  </data>
+  <data name="StartupReadFailed" xml:space="preserve">
+    <value>无法读取开机启动状态</value>
+  </data>
+  <data name="StartupSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>开机启动</value>
+  </data>
+  <data name="SystemCacheCheck.Content" xml:space="preserve">
+    <value>系统文件缓存</value>
+  </data>
+  <data name="ThemeChoice.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>主题</value>
+  </data>
+  <data name="ThemeLabel.Text" xml:space="preserve">
+    <value>主题</value>
+  </data>
+  <data name="ThresholdLabel.Text" xml:space="preserve">
+    <value>内存达到阈值时清理</value>
+  </data>
+  <data name="ThresholdMode" xml:space="preserve">
+    <value>用量达到 {0}%</value>
+  </data>
+  <data name="ThresholdNumber.Header" xml:space="preserve">
+    <value>用量阈值（%）</value>
+  </data>
+  <data name="ThresholdSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>内存达到阈值时清理</value>
+  </data>
+  <data name="TopmostLabel.Text" xml:space="preserve">
+    <value>窗口始终置顶</value>
+  </data>
+  <data name="TotalMemory" xml:space="preserve">
+    <value>共 {0}</value>
+  </data>
+  <data name="TrayExit" xml:space="preserve">
+    <value>退出</value>
+  </data>
+  <data name="TrayOpen" xml:space="preserve">
+    <value>打开 Mem Reduct</value>
+  </data>
+  <data name="TraySwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>关闭窗口后留在托盘</value>
+  </data>
+  <data name="TrayUnavailable" xml:space="preserve">
+    <value>托盘未建立</value>
+  </data>
+  <data name="TrayUsage" xml:space="preserve">
+    <value>Mem Reduct Fluent · 内存 {0:0.0}%</value>
+  </data>
+  <data name="WaitingPermission" xml:space="preserve">
+    <value> · 等待管理员权限</value>
+  </data>
+  <data name="WorkingSetCheck.Content" xml:space="preserve">
+    <value>进程工作集</value>
+  </data>
+</root>

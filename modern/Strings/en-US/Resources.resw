@@ -1,0 +1,270 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <data name="AboutHeading.Text" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="AdminBanner.Message" xml:space="preserve">
+    <value>Automatic cleaning requires administrator permission.</value>
+  </data>
+  <data name="AdminBanner.Title" xml:space="preserve">
+    <value>Automatic cleaning paused</value>
+  </data>
+  <data name="AppearanceHeading.Text" xml:space="preserve">
+    <value>Appearance &amp; window</value>
+  </data>
+  <data name="AreasNote.Text" xml:space="preserve">
+    <value>Select at least one area. Automatic cleaning uses the same selection.</value>
+  </data>
+  <data name="AuthorizeClean" xml:space="preserve">
+    <value>Authorize and clean</value>
+  </data>
+  <data name="AuthorizeDescription" xml:space="preserve">
+    <value>Cleaning asks for administrator permission.</value>
+  </data>
+  <data name="AutoModes" xml:space="preserve">
+    <value>Automatic cleaning · {0}</value>
+  </data>
+  <data name="AutoOff" xml:space="preserve">
+    <value>Automatic cleaning is off</value>
+  </data>
+  <data name="AutomaticHeading.Text" xml:space="preserve">
+    <value>Automatic cleaning</value>
+  </data>
+  <data name="AvailableMemory" xml:space="preserve">
+    <value>Available {0}</value>
+  </data>
+  <data name="CacheLabel.Text" xml:space="preserve">
+    <value>System file cache</value>
+  </data>
+  <data name="CancelAction" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="CleanAction" xml:space="preserve">
+    <value>Clean</value>
+  </data>
+  <data name="CleanConfirm" xml:space="preserve">
+    <value>Reclaim memory from the selected areas. Apps may briefly need to reload cached data.</value>
+  </data>
+  <data name="CleanDescription" xml:space="preserve">
+    <value>Clean the areas selected in Settings.</value>
+  </data>
+  <data name="CleanMemory" xml:space="preserve">
+    <value>Clean memory</value>
+  </data>
+  <data name="Cleaning" xml:space="preserve">
+    <value>Cleaning…</value>
+  </data>
+  <data name="CleanupFailed" xml:space="preserve">
+    <value>Cleaning did not complete</value>
+  </data>
+  <data name="CleanupHeading.Text" xml:space="preserve">
+    <value>Memory cleaning</value>
+  </data>
+  <data name="CloseToTrayLabel.Text" xml:space="preserve">
+    <value>Keep running in the tray</value>
+  </data>
+  <data name="CommitLabel.Text" xml:space="preserve">
+    <value>Committed memory</value>
+  </data>
+  <data name="CommitLimit" xml:space="preserve">
+    <value>Limit {0}</value>
+  </data>
+  <data name="CommittedMemory" xml:space="preserve">
+    <value>Committed {0}</value>
+  </data>
+  <data name="ConfirmLabel.Text" xml:space="preserve">
+    <value>Confirm before manual cleaning</value>
+  </data>
+  <data name="ConfirmSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Confirm before manual cleaning</value>
+  </data>
+  <data name="CooldownNote.Text" xml:space="preserve">
+    <value>Automatic cleaning runs no more than once every 30 seconds.</value>
+  </data>
+  <data name="DarkTheme.Content" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="ElevateButton.Content" xml:space="preserve">
+    <value>Run as administrator</value>
+  </data>
+  <data name="ElevationCanceled" xml:space="preserve">
+    <value>Administrator authorization was canceled.</value>
+  </data>
+  <data name="ElevationFailed" xml:space="preserve">
+    <value>Unable to run as administrator</value>
+  </data>
+  <data name="EmptySettings" xml:space="preserve">
+    <value>The settings file is empty. The original file has not been overwritten.</value>
+  </data>
+  <data name="ExitButton.Content" xml:space="preserve">
+    <value>Exit application</value>
+  </data>
+  <data name="ExitOnClose" xml:space="preserve">
+    <value>Closing the window will exit the app.</value>
+  </data>
+  <data name="FollowSystem.Content" xml:space="preserve">
+    <value>Follow system</value>
+  </data>
+  <data name="FreedStatus" xml:space="preserve">
+    <value>{0:HH:mm} · Available memory increased by {1}</value>
+  </data>
+  <data name="IntervalLabel.Text" xml:space="preserve">
+    <value>Clean at regular intervals</value>
+  </data>
+  <data name="IntervalMode" xml:space="preserve">
+    <value>Every {0} minutes</value>
+  </data>
+  <data name="IntervalNumber.Header" xml:space="preserve">
+    <value>Interval (minutes)</value>
+  </data>
+  <data name="IntervalSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Clean at regular intervals</value>
+  </data>
+  <data name="InvalidAreas" xml:space="preserve">
+    <value>Select at least one valid cleaning area.</value>
+  </data>
+  <data name="LanguageRestartHint.Text" xml:space="preserve">
+    <value>Language changes take effect the next time you start the app.</value>
+  </data>
+  <data name="LastClean" xml:space="preserve">
+    <value>Last cleaned · {0:MM-dd HH:mm}</value>
+  </data>
+  <data name="LicenseNote.Text" xml:space="preserve">
+    <value>Based on Henry++'s Mem Reduct, licensed under GPL.</value>
+  </data>
+  <data name="LightTheme.Content" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="LiveLabel.Text" xml:space="preserve">
+    <value>Live</value>
+  </data>
+  <data name="MemoryHeading.Text" xml:space="preserve">
+    <value>Memory usage</value>
+  </data>
+  <data name="NeverCleaned" xml:space="preserve">
+    <value>Not cleaned yet</value>
+  </data>
+  <data name="OriginalUntouched" xml:space="preserve">
+    <value>The original app settings and startup task have not been changed.</value>
+  </data>
+  <data name="OverviewTab.Content" xml:space="preserve">
+    <value>Memory</value>
+  </data>
+  <data name="OverviewTab.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Memory overview</value>
+  </data>
+  <data name="PartialCleanup" xml:space="preserve">
+    <value>Some areas could not be cleaned</value>
+  </data>
+  <data name="PeakMemory" xml:space="preserve">
+    <value>Peak {0}</value>
+  </data>
+  <data name="PeakUnavailable" xml:space="preserve">
+    <value>Peak unavailable</value>
+  </data>
+  <data name="PermissionRequired" xml:space="preserve">
+    <value>Cleaning memory requires administrator permission.</value>
+  </data>
+  <data name="PhysicalLabel.Text" xml:space="preserve">
+    <value>Physical memory</value>
+  </data>
+  <data name="PinSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Always on top</value>
+  </data>
+  <data name="ReclaimHeading.Text" xml:space="preserve">
+    <value>Reclaim available memory</value>
+  </data>
+  <data name="ResidentLabel.Text" xml:space="preserve">
+    <value>Resident now</value>
+  </data>
+  <data name="SampleFailed" xml:space="preserve">
+    <value>Unable to read memory usage</value>
+  </data>
+  <data name="SaveFailed" xml:space="preserve">
+    <value>Unable to save settings</value>
+  </data>
+  <data name="SelectArea" xml:space="preserve">
+    <value>Select at least one cleaning area in Settings.</value>
+  </data>
+  <data name="SettingsHeading.Text" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="SettingsTab.Content" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="SourceLink.Content" xml:space="preserve">
+    <value>Source code</value>
+  </data>
+  <data name="StandbyCheck.Content" xml:space="preserve">
+    <value>Low-priority standby list</value>
+  </data>
+  <data name="StartupFailed" xml:space="preserve">
+    <value>Unable to change sign-in settings</value>
+  </data>
+  <data name="StartupLabel.Text" xml:space="preserve">
+    <value>Start at sign-in</value>
+  </data>
+  <data name="StartupNote.Text" xml:space="preserve">
+    <value>Starts in the tray. Automatic cleaning needs authorization again.</value>
+  </data>
+  <data name="StartupReadFailed" xml:space="preserve">
+    <value>Unable to read sign-in settings</value>
+  </data>
+  <data name="StartupSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Start at sign-in</value>
+  </data>
+  <data name="SystemCacheCheck.Content" xml:space="preserve">
+    <value>System file cache</value>
+  </data>
+  <data name="ThemeChoice.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="ThemeLabel.Text" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="ThresholdLabel.Text" xml:space="preserve">
+    <value>Clean at memory threshold</value>
+  </data>
+  <data name="ThresholdMode" xml:space="preserve">
+    <value>At {0}% memory usage</value>
+  </data>
+  <data name="ThresholdNumber.Header" xml:space="preserve">
+    <value>Usage threshold (%)</value>
+  </data>
+  <data name="ThresholdSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Clean at memory threshold</value>
+  </data>
+  <data name="TopmostLabel.Text" xml:space="preserve">
+    <value>Always on top</value>
+  </data>
+  <data name="TotalMemory" xml:space="preserve">
+    <value>Total {0}</value>
+  </data>
+  <data name="TrayExit" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+  <data name="TrayOpen" xml:space="preserve">
+    <value>Open Mem Reduct</value>
+  </data>
+  <data name="TraySwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Keep running in the tray</value>
+  </data>
+  <data name="TrayUnavailable" xml:space="preserve">
+    <value>Tray icon unavailable</value>
+  </data>
+  <data name="TrayUsage" xml:space="preserve">
+    <value>Mem Reduct Fluent · Memory {0:0.0}%</value>
+  </data>
+  <data name="WaitingPermission" xml:space="preserve">
+    <value> · Awaiting administrator permission</value>
+  </data>
+  <data name="WorkingSetCheck.Content" xml:space="preserve">
+    <value>Process working sets</value>
+  </data>
+</root>

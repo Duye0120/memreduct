@@ -24,6 +24,30 @@ public sealed partial class MainWindow
             AppWindow.Move(new Windows.Graphics.PointInt32(-30000, -30000));
             AppWindow.Show(false);
             await Task.Delay(250);
+            var english = UiText.LanguageTag == "en-US";
+            Require(SettingsTab.Content?.ToString() == (english ? "Settings" : "设置"), "XAML loads the selected language");
+            Require(WorkingSetCheck.Content?.ToString() == (english ? "Process working sets" : "进程工作集"), "Settings controls are translated");
+            Require(Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(PinSwitch) == (english ? "Always on top" : "窗口始终置顶"),
+                "Accessibility labels are translated");
+            Require(UiText.Get("TrayOpen") == (english ? "Open Mem Reduct" : "打开 Mem Reduct"), "Tray resources are translated");
+            Require(UiText.Get("PermissionRequired") == (english ? "Cleaning memory requires administrator permission." : "清理内存需要管理员权限。"),
+                "Permission messages are translated");
+            Require(LanguageChoice.Items.Count == 3, "Only supported languages and the system option are listed");
+            var selectedLanguage = LanguageChoice.SelectedIndex;
+            LanguageChoice.SelectedIndex = selectedLanguage == 2 ? 1 : 2;
+            var chosenLanguage = selectedLanguage == 2 ? "zh-CN" : "en-US";
+            Require(_settings.Language == chosenLanguage, "Language selection reaches settings");
+            var roundTrip = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(_settings))!;
+            Require(roundTrip.Language == chosenLanguage && roundTrip.Areas == _settings.Areas, "Language survives serialization without changing cleaning areas");
+            LanguageChoice.SelectedIndex = selectedLanguage;
+            Require(JsonSerializer.Deserialize<AppSettings>("{}")!.Language == "System", "Existing settings default to the system language");
+            var invalidLanguage = new AppSettings { Language = "unsupported" };
+            invalidLanguage.Normalize();
+            Require(invalidLanguage.Language == "System", "Unknown language values fall back safely");
+            Require(UiText.ResolveLanguage("System", "zh-SG") == "zh-CN"
+                && UiText.ResolveLanguage("System", "fr-FR") == "en-US"
+                && UiText.ResolveLanguage("en-US", "zh-CN") == "en-US", "System-language matching and explicit override");
+            checks.Add($"{UiText.LanguageTag}: XAML, settings, accessibility, tray and permission text; language selection, persistence and fallback passed.");
             var savedTheme = _settings.Theme;
             foreach (var (theme, captionTheme) in new[]
             {
@@ -128,11 +152,13 @@ public sealed partial class MainWindow
             await WritePreview(directory, "memory-light.png");
             SelectPage(true); Layout(680, 1600, 1);
             await WritePreview(directory, "settings-light.png");
+            Layout(600, 600, 1);
+            await WritePreview(directory, "language-settings.png");
             Shell.RequestedTheme = ElementTheme.Dark;
             SelectPage(false); Layout(600, 520, 1);
             await WritePreview(directory, "memory-dark.png");
             File.WriteAllText(Path.Combine(directory, "self-check.json"), JsonSerializer.Serialize(new
-            { passed = true, checks, layouts, displayScale, cardRadiusPixels = MetricsCard.CornerRadius.TopLeft * displayScale,
+            { passed = true, language = UiText.LanguageTag, checks, layouts, displayScale, cardRadiusPixels = MetricsCard.CornerRadius.TopLeft * displayScale,
                 buttonRadiusPixels, physicalTotal = memory.PhysicalTotal, cacheAvailable = memory.CacheCurrent.HasValue },
                 new JsonSerializerOptions { WriteIndented = true }));
         }

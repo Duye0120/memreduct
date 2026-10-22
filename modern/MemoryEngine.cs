@@ -45,17 +45,17 @@ internal static class MemoryEngine
     public static CleanupResult Clean(CleanAreas areas)
     {
         ValidateAreas(areas);
-        if (!IsAdministrator) throw new UnauthorizedAccessException("清理内存需要管理员权限。");
+        if (!IsAdministrator) throw new UnauthorizedAccessException(UiText.Get("PermissionRequired"));
         var errors = new List<string>();
         var before = ReadPhysical();
         using var profile = (areas & (CleanAreas.WorkingSets | CleanAreas.LowPriorityStandby)) != 0
             ? new PrivilegeScope("SeProfileSingleProcessPrivilege") : null;
         using var quota = areas.HasFlag(CleanAreas.SystemCache) ? new PrivilegeScope("SeIncreaseQuotaPrivilege") : null;
 
-        if (areas.HasFlag(CleanAreas.WorkingSets)) RunListCommand(2, "进程工作集", errors);
+        if (areas.HasFlag(CleanAreas.WorkingSets)) RunListCommand(2, UiText.Get("WorkingSetCheck.Content"), errors);
         if (areas.HasFlag(CleanAreas.SystemCache) && !SetSystemFileCacheSize(UIntPtr.MaxValue, UIntPtr.MaxValue, 0))
-            errors.Add("系统文件缓存：" + new Win32Exception(Marshal.GetLastWin32Error()).Message);
-        if (areas.HasFlag(CleanAreas.LowPriorityStandby)) RunListCommand(5, "低优先级备用列表", errors);
+            errors.Add(UiText.Get("SystemCacheCheck.Content") + ": " + new Win32Exception(Marshal.GetLastWin32Error()).Message);
+        if (areas.HasFlag(CleanAreas.LowPriorityStandby)) RunListCommand(5, UiText.Get("StandbyCheck.Content"), errors);
 
         var after = ReadPhysical();
         // RAM changes concurrently; only report an observed increase in available memory.
@@ -66,7 +66,7 @@ internal static class MemoryEngine
     {
         const CleanAreas allowed = CleanAreas.WorkingSets | CleanAreas.SystemCache | CleanAreas.LowPriorityStandby;
         if (areas == CleanAreas.None || (areas & ~allowed) != 0)
-            throw new ArgumentOutOfRangeException(nameof(areas), "请至少选择一项有效的清理区域。");
+            throw new ArgumentOutOfRangeException(nameof(areas), UiText.Get("InvalidAreas"));
     }
 
     private static MemoryStatus ReadPhysical()
