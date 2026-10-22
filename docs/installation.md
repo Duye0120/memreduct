@@ -74,7 +74,7 @@ SHA-256 用于检查下载完整性，信任根是 GitHub 仓库/Release；它�
 
 安装包：`MemReductFluent-1.0.1-win-x64-setup.exe`（47,074,654 字节）。SHA-256：`2a7f4c8a57f67c9479ff66dd6b7bb60589d9e7492b36d420e661ad11cc9720df`。
 
-已发布 [fluent-v1.0.1](https://github.com/Duye0120/memreduct-winui/releases/tag/fluent-v1.0.1)，标签对应源码提交 `dad47ada37d72d70175bd0e53bb09163b16f4587`。GitHub latest API 返回正式版本，两项附件上传完成，安装包的服务端 digest、大小与本地一致。通过实际发布元数据调用应用的版本解析逻辑，确认 1.0.0 可识别 1.0.1，1.0.1 不会提示同版本更新；未执行下载后的安装升级。
+已发布 [fluent-v1.0.1](https://github.com/Duye0120/memreduct-winui/releases/tag/fluent-v1.0.1)，标签对应源码提交 `45748e972cb5ff56236578374028ebc60de0d9ea`。GitHub latest API 返回正式版本，两项附件上传完成，安装包的服务端 digest、大小与本地一致。通过实际发布元数据调用应用的版本解析逻辑，确认 1.0.0 可识别 1.0.1，1.0.1 不会提示同版本更新；未执行下载后的安装升级。
 
 更名前的本地 1.0.0 使用旧 API 地址且不跟随 API 重定向，因此此次通过 Release 手动安装 1.0.1，后续检查更新使用新仓库地址。
 
@@ -88,7 +88,7 @@ SHA-256 用于检查下载完整性，信任根是 GitHub 仓库/Release；它�
 
 `MemReductFluent-1.0.2-win-x64-setup.exe` 已经 Inno Setup 7.1.0 实编译，大小 47,137,366 字节，SHA-256 为 `2fc7d8b4ae7dfe1a6814dac6311eec311a84fde31c15303d1dc385374ed7a02c`。构建前后安装版与便携版设置文件哈希均一致，未修改用户登录任务或原版安装目录。
 
-经用户确认已发布 [fluent-v1.0.2](https://github.com/Duye0120/memreduct-winui/releases/tag/fluent-v1.0.2)，源码提交 `3134e8356dab23b2ddb577197cc020cf7a503e07`。两项附件上传成功，服务端 digest 和大小与本地一致，latest API 指向 1.0.2。使用真实发布 JSON 调用应用 `ParseRelease`，确认当前 1.0.1 可识别更新，当前 1.0.2 不提示重复安装；未代用户安装。
+经用户确认已发布 [fluent-v1.0.2](https://github.com/Duye0120/memreduct-winui/releases/tag/fluent-v1.0.2)，源码提交 `11152aef1920e97800703a9a864f28aca77b6f02`。两项附件上传成功，服务端 digest 和大小与本地一致，latest API 指向 1.0.2。使用真实发布 JSON 调用应用 `ParseRelease`，确认当前 1.0.1 可识别更新，当前 1.0.2 不提示重复安装；未代用户安装。
 
 仓库已脱离 GitHub fork 网络，默认分支和当前本地维护分支均为 `master`。原有分支、标签和 1.0.1 Release 仍可访问，README 保留 Henry++ 来源署名。
 
@@ -102,6 +102,6 @@ Inno Setup 7.1.0 实编译生成 `MemReductFluent-0.0.1-win-x64-setup.exe`，随
 
 首次引导补充验证：中英文各 17 组自检、48 组布局通过，包含取消不改配置、选择记忆和设置开关同步；详见 [开发指南](development.md#托盘首次清理引导001)。权限路线沿用现有实现，未更改任何开机任务。
 
-经用户明确授权，2026-10-22 已发布 [fluent-v0.0.1](https://github.com/Duye0120/memreduct-winui/releases/tag/fluent-v0.0.1) 并显式设为 latest。标签对应源码提交 `9f2ee0709dc53bef48cf803fd074382d724cd8c6`，两项附件的服务端 SHA-256 与大小均与本地一致；latest API 和发布列表均确认 0.0.1 为唯一当前 Release。确认新包可用后删除旧的 1.0.1、1.0.2 发布及附件，保留源码历史与 Git 标签。
+经用户明确授权，2026-10-22 已发布 [fluent-v0.0.1](https://github.com/Duye0120/memreduct-winui/releases/tag/fluent-v0.0.1) 并显式设为 latest。标签对应源码提交 `5c7db3d7d76e6772bf1a4348cfef2a83581544f2`，两项附件的服务端 SHA-256 与大小均与本地一致；latest API 和发布列表均确认 0.0.1 为唯一当前 Release。确认新包可用后删除旧的 1.0.1、1.0.2 发布及附件，保留源码历史与 Git 标签。
 
 待验证边界：真实托盘鼠标操作、UAC 取消、旧版覆盖安装、完整下载—提权—安装—自动打开流程。未代用户安装或修改设置；旧 1.0.x 必须手动下载 0.0.1 安装一次，之后按新版本序列更新。
