@@ -37,6 +37,14 @@ Settings/update checks passed in Chinese and English, including 48 layout cases 
 
 Initial microbenchmark on the development machine: native sampling averaged 0.104 ms per call; a populated 282-sample graph required 5.060 ms and approximately 335,751 managed bytes per geometry preparation. This excludes composition and is not an idle CPU benchmark. Reduce graph geometry allocations before adding more per-second visuals.
 
+The graph now uses one polyline per uninterrupted series instead of one WinRT segment per sample. The same check measured 0.651 ms and 82,926 managed bytes per frame (approximately 87% less preparation time and 75% fewer managed allocations). The Chinese self-check passed all 18 groups and 48 layout cases after the change; data-gap assertions still pass. Timing is machine/load dependent.
+
+## Size experiment boundary
+
+An isolated .NET 10.0.402 partial-trimming experiment reduced the publish folder from 178,340,120 to 87,032,681 bytes. It was **rejected for delivery**: the executable exited with `0xC0000005` before producing a self-check report. Analysis also warned about dynamic COM, reflection-based serialization and WinRT projections. Normal builds remain untrimmed and unchanged; do not enable trimming just to reproduce the smaller number. See Microsoft's [known trimming incompatibilities](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/incompatibilities).
+
+The experiment log and size/exit-code manifest were preserved in local work files. Automatic approval rejected cleanup of `D:\tmp\memreduct-tray-build\trim-experiment` with only `blocked by policy`; that directory remains and must not be deleted through an alternate mechanism. It contains temporary build outputs, not user settings. This cleanup restriction does not block normal development.
+
 Validation for this iteration: the incremental build completed with zero warnings/errors. Chinese and English self-checks passed 18 check groups and 48 layout cases each, including scrolling back from settings and a visible primary action at the default window size. Offscreen light/dark renders were generated; Chinese and English overview renders were inspected. The installed and portable settings hashes match the pre-iteration baseline. No real cleanup, task mutation, install or release occurred during these checks.
 
 ## Current validation boundary

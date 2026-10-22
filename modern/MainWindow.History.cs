@@ -17,7 +17,7 @@ public sealed partial class MainWindow
         HistoryEmpty.Visibility = samples.Length < 2 ? Visibility.Visible : Visibility.Collapsed;
         var physical = new PathGeometry();
         var committed = new PathGeometry();
-        PathFigure? physicalFigure = null, commitFigure = null;
+        PointCollection? physicalPoints = null, commitPoints = null;
         var end = samples.Length == 0 ? DateTimeOffset.UtcNow : samples[^1].Time;
         DateTimeOffset? previous = null;
         foreach (var sample in samples)
@@ -27,14 +27,17 @@ public sealed partial class MainWindow
             var b = new Point(x, (1 - sample.Commit / 100) * HistoryPlot.ActualHeight);
             if (previous is null || sample.Time - previous.Value > TimeSpan.FromSeconds(5))
             {
-                physicalFigure = new PathFigure { StartPoint = a, IsClosed = false, IsFilled = false };
-                commitFigure = new PathFigure { StartPoint = b, IsClosed = false, IsFilled = false };
+                var physicalFigure = new PathFigure { StartPoint = a, IsClosed = false, IsFilled = false };
+                var commitFigure = new PathFigure { StartPoint = b, IsClosed = false, IsFilled = false };
+                var physicalLine = new PolyLineSegment(); var commitLine = new PolyLineSegment();
+                physicalPoints = physicalLine.Points; commitPoints = commitLine.Points;
+                physicalFigure.Segments.Add(physicalLine); commitFigure.Segments.Add(commitLine);
                 physical.Figures.Add(physicalFigure); committed.Figures.Add(commitFigure);
             }
             else
             {
-                physicalFigure!.Segments.Add(new LineSegment { Point = a });
-                commitFigure!.Segments.Add(new LineSegment { Point = b });
+                physicalPoints!.Add(a);
+                commitPoints!.Add(b);
             }
             previous = sample.Time;
         }
