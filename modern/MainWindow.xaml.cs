@@ -85,8 +85,9 @@ public sealed partial class MainWindow : Window
         {
             if (!_exitRequested && !_checking && _settings.CloseToTray && _tray?.IsVisible == true)
             { args.Cancel = true; AppWindow.Hide(); }
+            else PrepareToExit();
         };
-        Closed += (_, _) => { _timer?.Stop(); _animationTimer?.Stop(); _tray?.Dispose(); ((App)Application.Current).Finish(); };
+        Closed += (_, _) => { PrepareToExit(); _timer?.Stop(); _animationTimer?.Stop(); _tray?.Dispose(); ((App)Application.Current).Finish(); };
         Shell.Loaded += async (_, _) =>
         {
             foreach (var button in new[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab })
@@ -147,6 +148,7 @@ public sealed partial class MainWindow : Window
 
     private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
     {
+        if (_exitRequested) return;
         UpdateCornerRadii();
         UpdatePresenterConstraints(GetDpiForWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)) / 96.0);
     }
@@ -217,6 +219,7 @@ public sealed partial class MainWindow : Window
 
     internal void ReflowMetrics(double width, double textScale)
     {
+        if (_exitRequested) return;
         var sidebar = _settings.SidebarExpanded && textScale <= 1.25;
         NavigationColumn.Width = new GridLength(sidebar ? (double)Application.Current.Resources["SidebarWidth"] : 0);
         NavigationPane.Visibility = sidebar ? Visibility.Visible : Visibility.Collapsed;
@@ -349,7 +352,10 @@ public sealed partial class MainWindow : Window
     { value = Math.Round(value, 1); if (bar.Value != value) bar.Value = value; }
 
     private void ReportIssue(string title, string message)
-    { IssueBanner.Title = title; IssueBanner.Message = message; IssueBanner.Visibility = Visibility.Visible; IssueBanner.IsOpen = true; }
+    {
+        if (_exitRequested) return;
+        IssueBanner.Title = title; IssueBanner.Message = message; IssueBanner.Visibility = Visibility.Visible; IssueBanner.IsOpen = true;
+    }
 
     private void OverviewTab_Click(object sender, RoutedEventArgs args) => SelectPage(false);
     private void SettingsTab_Click(object sender, RoutedEventArgs args) => SelectPage(true);
@@ -414,6 +420,7 @@ public sealed partial class MainWindow : Window
         try
         {
             if (await CreateLanguageRestartDialog().ShowAsync() != ContentDialogResult.Primary) return;
+            if (_exitRequested) return;
             using var process = Process.Start(CreateRestartStartInfo());
             if (process is null) throw new InvalidOperationException(UiText.Get("RestartFailed"));
             ExitWindow();
@@ -674,6 +681,11 @@ public sealed partial class MainWindow : Window
         Activate(); Sample();
     }
     private void Exit_Click(object sender, RoutedEventArgs args) => ExitWindow();
-    internal void ExitWindow() { _exitRequested = true; _ready = false; _updateCancellation?.Cancel(); Close(); }
+    private void PrepareToExit()
+    {
+        if (_exitRequested) return;
+        _exitRequested = true; _ready = false; _updateCancellation?.Cancel();
+    }
+    internal void ExitWindow() { PrepareToExit(); Close(); }
     [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr window);
 }
