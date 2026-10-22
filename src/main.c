@@ -42,7 +42,8 @@ VOID _app_generate_array (
 {
 	PR_HASHTABLE hashtable;
 	ULONG_PTR enum_key = 0;
-	ULONG hash_code, index = 0;
+	ULONG_PTR hash_code;
+	ULONG index = 0;
 
 	RtlSecureZeroMemory (integers, sizeof (ULONG) * count);
 
@@ -187,17 +188,100 @@ FORCEINLINE LPCWSTR _app_getcleanupreason (
 	}
 }
 
+// Mount-manager declarations are supplied by the WDK, not the desktop SDK.
+typedef struct _APP_MOUNT_POINT
+{
+	ULONG SymbolicLinkNameOffset;
+	USHORT SymbolicLinkNameLength;
+	ULONG UniqueIdOffset;
+	USHORT UniqueIdLength;
+	ULONG DeviceNameOffset;
+	USHORT DeviceNameLength;
+} APP_MOUNT_POINT, *PAPP_MOUNT_POINT;
+
+typedef struct _APP_MOUNT_POINTS
+{
+	ULONG Size;
+	ULONG NumberOfMountPoints;
+	APP_MOUNT_POINT MountPoints[1];
+} APP_MOUNT_POINTS, *PAPP_MOUNT_POINTS;
+
+NTSTATUS _app_getvolumemountpoints (
+	_Out_ PAPP_MOUNT_POINTS *points,
+	_In_ HANDLE device
+)
+{
+	APP_MOUNT_POINT query = {0};
+	PAPP_MOUNT_POINTS buffer;
+	ULONG size = 0x1000;
+	ULONG next_size;
+	NTSTATUS status;
+
+	*points = NULL;
+
+	for (INT attempt = 0; attempt < 4; attempt++)
+	{
+		buffer = _r_mem_allocate (size);
+		status = _r_fs_deviceiocontrol (device, CTL_CODE ('m', 2, METHOD_BUFFERED, FILE_ANY_ACCESS), &query, sizeof (query), buffer, size, NULL);
+
+		if (NT_SUCCESS (status))
+		{
+			if (buffer->Size > size || buffer->Size < FIELD_OFFSET (APP_MOUNT_POINTS, MountPoints) ||
+				buffer->NumberOfMountPoints > (buffer->Size - FIELD_OFFSET (APP_MOUNT_POINTS, MountPoints)) / sizeof (APP_MOUNT_POINT))
+			{
+				_r_mem_free (buffer);
+				return STATUS_INVALID_BUFFER_SIZE;
+			}
+
+			*points = buffer;
+			return status;
+		}
+
+		if (status != STATUS_BUFFER_OVERFLOW && status != STATUS_BUFFER_TOO_SMALL)
+		{
+			_r_mem_free (buffer);
+			return status;
+		}
+
+		next_size = max (buffer->Size, size * 2);
+		_r_mem_free (buffer);
+
+		if (next_size > 0x1000000)
+			return STATUS_INSUFFICIENT_RESOURCES;
+
+		size = next_size;
+	}
+
+	return STATUS_BUFFER_TOO_SMALL;
+}
+
+BOOLEAN _app_cleanresultpopup (
+	_In_opt_ HWND hwnd,
+	_In_ ULONG flags,
+	_In_ LPCWSTR text
+)
+{
+	NOTIFYICONDATA nid;
+
+	_r_tray_initialize (&nid, hwnd, &GUID_TrayIcon, 0);
+	nid.uFlags |= NIF_INFO | NIF_REALTIME;
+	nid.dwInfoFlags = flags;
+	_r_str_copy (nid.szInfoTitle, RTL_NUMBER_OF (nid.szInfoTitle), _r_app_getname ());
+	_r_str_copy (nid.szInfo, RTL_NUMBER_OF (nid.szInfo), text);
+	return (BOOLEAN)Shell_NotifyIconW (NIM_MODIFY, &nid);
+}
+
 NTSTATUS _app_flushvolumecache ()
 {
-	PMOUNTMGR_MOUNT_POINTS object_mountpoints;
-	PMOUNTMGR_MOUNT_POINT mountpoint;
+	PAPP_MOUNT_POINTS object_mountpoints;
+	PAPP_MOUNT_POINT mountpoint;
 	OBJECT_ATTRIBUTES oa = {0};
 	IO_STATUS_BLOCK isb;
 	UNICODE_STRING us;
 	HANDLE hdevice, hvolume;
 	NTSTATUS status;
 
-	RtlInitUnicodeString (&us, MOUNTMGR_DEVICE_NAME);
+	RtlInitUnicodeString (&us, L"\\Device\\MountPointManager");
 
 	InitializeObjectAttributes (&oa, &us, OBJ_CASE_INSENSITIVE, NULL, NULL);
 
@@ -218,7 +302,7 @@ NTSTATUS _app_flushvolumecache ()
 	if (!NT_SUCCESS (status))
 		return status;
 
-	status = _r_fs_getvolumemountpoints (&object_mountpoints, hdevice);
+	status = _app_getvolumemountpoints (&object_mountpoints, hdevice);
 
 	if (!NT_SUCCESS (status))
 		goto CleanupExit;
@@ -227,11 +311,15 @@ NTSTATUS _app_flushvolumecache ()
 	{
 		mountpoint = &object_mountpoints->MountPoints[i];
 
+		if (mountpoint->SymbolicLinkNameOffset > object_mountpoints->Size ||
+			mountpoint->SymbolicLinkNameLength > object_mountpoints->Size - mountpoint->SymbolicLinkNameOffset)
+			continue;
+
 		us.Length = mountpoint->SymbolicLinkNameLength;
 		us.MaximumLength = mountpoint->SymbolicLinkNameLength + sizeof (UNICODE_NULL);
 		us.Buffer = PTR_ADD_OFFSET (object_mountpoints, mountpoint->SymbolicLinkNameOffset);
 
-		if (MOUNTMGR_IS_VOLUME_NAME (&us)) // \\??\\Volume{1111-2222}
+		if (us.Length == 96 && wcsncmp (us.Buffer, L"\\??\\Volume{", 11) == 0 && us.Buffer[47] == L'}')
 		{
 			InitializeObjectAttributes (&oa, &us, OBJ_CASE_INSENSITIVE, NULL, NULL);
 
@@ -395,7 +483,7 @@ VOID _app_memoryclean (
 		status = NtSetSystemInformation (SystemMemoryListInformation, &command, sizeof (SYSTEM_MEMORY_LIST_COMMAND));
 
 		if (!NT_SUCCESS (status))
-			_r_log (LOG_LEVEL_ERROR, NULL, L"NtSetSystemInformation", L"MemoryEmptyWorkingSets", status);
+			_r_log (LOG_LEVEL_ERROR, NULL, L"NtSetSystemInformation", status, L"MemoryEmptyWorkingSets");
 	}
 
 	// System file cache
@@ -407,7 +495,7 @@ VOID _app_memoryclean (
 		status = NtSetSystemInformation (SystemFileCacheInformationEx, &sfci, sizeof (SYSTEM_FILECACHE_INFORMATION));
 
 		if (!NT_SUCCESS (status))
-			_r_log (LOG_LEVEL_ERROR, NULL, L"NtSetSystemInformation", L"SystemFileCacheInformation", status);
+			_r_log (LOG_LEVEL_ERROR, NULL, L"NtSetSystemInformation", status, L"SystemFileCacheInformation");
 	}
 
 	// Flush volume cache
@@ -422,7 +510,7 @@ VOID _app_memoryclean (
 		status = NtSetSystemInformation (SystemMemoryListInformation, &command, sizeof (SYSTEM_MEMORY_LIST_COMMAND));
 
 		if (!NT_SUCCESS (status))
-			_r_log (LOG_LEVEL_ERROR, NULL, L"NtSetSystemInformation", L"MemoryFlushModifiedList", status);
+			_r_log (LOG_LEVEL_ERROR, NULL, L"NtSetSystemInformation", status, L"MemoryFlushModifiedList");
 	}
 
 	// Standby list (vista+)
@@ -433,7 +521,7 @@ VOID _app_memoryclean (
 		status = NtSetSystemInformation (SystemMemoryListInformation, &command, sizeof (SYSTEM_MEMORY_LIST_COMMAND));
 
 		if (!NT_SUCCESS (status))
-			_r_log (LOG_LEVEL_ERROR, NULL, L"NtSetSystemInformation", L"MemoryPurgeStandbyList", status);
+			_r_log (LOG_LEVEL_ERROR, NULL, L"NtSetSystemInformation", status, L"MemoryPurgeStandbyList");
 	}
 
 	// Standby priority-0 list (vista+)
@@ -444,7 +532,7 @@ VOID _app_memoryclean (
 		status = NtSetSystemInformation (SystemMemoryListInformation, &command, sizeof (SYSTEM_MEMORY_LIST_COMMAND));
 
 		if (!NT_SUCCESS (status))
-			_r_log (LOG_LEVEL_ERROR, NULL, L"NtSetSystemInformation", L"MemoryPurgeLowPriorityStandbyList", status);
+			_r_log (LOG_LEVEL_ERROR, NULL, L"NtSetSystemInformation", status, L"MemoryPurgeLowPriorityStandbyList");
 	}
 
 	// Flush registry cache (win8.1+)
@@ -453,7 +541,7 @@ VOID _app_memoryclean (
 		status = NtSetSystemInformation (SystemRegistryReconciliationInformation, NULL, 0);
 
 		if (!NT_SUCCESS (status))
-			_r_log (LOG_LEVEL_ERROR, NULL, L"NtSetSystemInformation", L"SystemRegistryReconciliationInformation", status);
+			_r_log (LOG_LEVEL_ERROR, NULL, L"NtSetSystemInformation", status, L"SystemRegistryReconciliationInformation");
 	}
 
 	// Combine memory lists (win10+)
@@ -462,7 +550,7 @@ VOID _app_memoryclean (
 		status = NtSetSystemInformation (SystemCombinePhysicalMemoryInformation, &combine_info_ex, sizeof (MEMORY_COMBINE_INFORMATION_EX));
 
 		if (!NT_SUCCESS (status))
-			_r_log (LOG_LEVEL_ERROR, NULL, L"NtSetSystemInformation", L"SystemCombinePhysicalMemoryInformation", status);
+			_r_log (LOG_LEVEL_ERROR, NULL, L"NtSetSystemInformation", status, L"SystemCombinePhysicalMemoryInformation");
 	}
 
 	SetCursor (LoadCursorW (NULL, IDC_ARROW));
@@ -484,7 +572,7 @@ VOID _app_memoryclean (
 	{
 		if (_r_config_getboolean_ex (L"BalloonCleanResults", TRUE, NULL))
 		{
-			if (!_r_tray_popup (hwnd, &GUID_TrayIcon, flags, _r_app_getname (), buffer_result))
+			if (!_app_cleanresultpopup (hwnd, flags, buffer_result))
 				_r_show_message (hwnd, MB_OK | MB_ICONINFORMATION, _r_locale_getstring (IDS_SETTINGS_MEMORY), buffer_result);
 		}
 		else
@@ -659,6 +747,7 @@ typedef struct _DASHBOARD_COLORS
 	COLORREF text;
 	COLORREF muted;
 	COLORREF accent;
+	COLORREF button_text;
 } DASHBOARD_COLORS;
 
 DASHBOARD_COLORS _app_dashboard_colors ()
@@ -673,6 +762,7 @@ DASHBOARD_COLORS _app_dashboard_colors ()
 	colors.text = is_dark ? RGB (245, 245, 245) : RGB (26, 29, 35);
 	colors.muted = is_dark ? RGB (187, 191, 198) : RGB (92, 101, 114);
 	colors.accent = is_dark ? RGB (96, 205, 255) : RGB (0, 103, 192);
+	colors.button_text = is_dark ? RGB (10, 32, 44) : RGB (255, 255, 255);
 
 	if (SystemParametersInfoW (SPI_GETHIGHCONTRAST, sizeof (high_contrast), &high_contrast, 0) && (high_contrast.dwFlags & HCF_HIGHCONTRASTON))
 	{
@@ -682,6 +772,7 @@ DASHBOARD_COLORS _app_dashboard_colors ()
 		colors.text = GetSysColor (COLOR_WINDOWTEXT);
 		colors.muted = GetSysColor (COLOR_WINDOWTEXT);
 		colors.accent = GetSysColor (COLOR_HIGHLIGHT);
+		colors.button_text = GetSysColor (COLOR_HIGHLIGHTTEXT);
 	}
 
 	return colors;
@@ -812,6 +903,80 @@ BOOLEAN _app_dashboard_drawitem (
 	DrawTextW (item->hDC, text, -1, &item->rcItem, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
 	RestoreDC (item->hDC, saved_dc);
 	return TRUE;
+}
+
+LONG_PTR _app_dashboard_drawbutton (
+	_In_ LPNMCUSTOMDRAW item
+)
+{
+	DASHBOARD_COLORS colors = _app_dashboard_colors ();
+	SHSTOCKICONINFO shield = {sizeof (SHSTOCKICONINFO)};
+	WCHAR text[0x100];
+	RECT rect = item->rc;
+	RECT text_rect = rect;
+	HWND button = item->hdr.hwndFrom;
+	BOOLEAN is_primary = item->hdr.idFrom == IDC_CLEAN;
+	BOOLEAN is_disabled = !IsWindowEnabled (button);
+	COLORREF background = is_primary ? colors.accent : colors.surface;
+	LONG dpi = _r_dc_getwindowdpi (button);
+	LONG radius = MulDiv (12, dpi, 96);
+	LONG split_width = MulDiv (22, dpi, 96);
+	INT saved_dc;
+
+	if (item->dwDrawStage != CDDS_PREPAINT)
+		return CDRF_DODEFAULT;
+
+	saved_dc = SaveDC (item->hdc);
+
+	if (is_disabled)
+		background = colors.border;
+	else if (item->uItemState & (CDIS_HOT | CDIS_SELECTED))
+		background = _r_dc_getcolorshade (background, (item->uItemState & CDIS_SELECTED) ? 86 : 95);
+
+	_r_dc_fillrect (item->hdc, &rect, colors.background);
+	SelectObject (item->hdc, GetStockObject (DC_BRUSH));
+	SelectObject (item->hdc, GetStockObject (DC_PEN));
+	SetDCBrushColor (item->hdc, background);
+	SetDCPenColor (item->hdc, is_primary ? background : colors.border);
+	RoundRect (item->hdc, rect.left, rect.top, rect.right, rect.bottom, radius, radius);
+	SetBkMode (item->hdc, TRANSPARENT);
+	SetTextColor (item->hdc, is_disabled ? colors.muted : (is_primary ? colors.button_text : colors.text));
+	SelectObject (item->hdc, (HFONT)SendMessageW (button, WM_GETFONT, 0, 0));
+	GetWindowTextW (button, text, RTL_NUMBER_OF (text));
+
+	if (is_primary)
+	{
+		POINT arrow[3];
+		LONG center_x = rect.right - split_width / 2;
+		LONG center_y = (rect.top + rect.bottom) / 2;
+		LONG size = MulDiv (3, dpi, 96);
+
+		text_rect.right -= split_width;
+		SetDCPenColor (item->hdc, colors.button_text);
+		arrow[0] = (POINT){center_x - size, center_y - size / 2};
+		arrow[1] = (POINT){center_x, center_y + size / 2};
+		arrow[2] = (POINT){center_x + size, center_y - size / 2};
+		Polyline (item->hdc, arrow, RTL_NUMBER_OF (arrow));
+
+		if (!_r_sys_iselevated () && SUCCEEDED (SHGetStockIconInfo (SIID_SHIELD, SHGSI_ICON | SHGSI_SMALLICON, &shield)))
+		{
+			LONG icon_size = _r_dc_getsystemmetrics (SM_CXSMICON, dpi);
+			DrawIconEx (item->hdc, MulDiv (10, dpi, 96), center_y - icon_size / 2, shield.hIcon, icon_size, icon_size, 0, NULL, DI_NORMAL);
+			DestroyIcon (shield.hIcon);
+			text_rect.left += icon_size;
+		}
+	}
+
+	DrawTextW (item->hdc, text, -1, &text_rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+
+	if (GetFocus () == button && !(SendMessageW (button, WM_QUERYUISTATE, 0, 0) & UISF_HIDEFOCUS))
+	{
+		InflateRect (&text_rect, -3, -3);
+		DrawFocusRect (item->hdc, &text_rect);
+	}
+
+	RestoreDC (item->hdc, saved_dc);
+	return CDRF_SKIPDEFAULT;
 }
 
 VOID CALLBACK _app_timercallback (
@@ -975,7 +1140,7 @@ VOID _app_hotkeyinit (
 		return;
 
 	if (!RegisterHotKey (hwnd, UID, (HIBYTE (hotkey) & 2) | ((HIBYTE (hotkey) & 4) >> 2) | ((HIBYTE (hotkey) & 1) << 2), LOBYTE (hotkey)))
-		_r_show_errormessage (hwnd, L"Could not register hotkey!", NULL, NtLastError (), ET_WINDOWS);
+		_r_show_errormessage (hwnd, L"Could not register hotkey!", NtLastError (), NULL, ET_WINDOWS);
 }
 
 FORCEINLINE VOID _app_setfontcontrol (
@@ -1827,7 +1992,7 @@ VOID _app_initialize (
 
 	if (_r_sys_iselevated ())
 	{
-		_r_sys_setprocessprivilege (hwnd, NtCurrentProcess (), privileges, RTL_NUMBER_OF (privileges), TRUE);
+		_r_sys_setprocessprivilege (NtCurrentProcess (), privileges, RTL_NUMBER_OF (privileges), TRUE);
 	}
 	else
 	{
@@ -1841,6 +2006,8 @@ VOID _app_initialize (
 	_r_ctrl_setbuttonmargins (hwnd, IDC_CLEAN, _r_dc_getwindowdpi (hwnd));
 
 	_app_dashboard_fonts (hwnd);
+	_r_wnd_setcontext (GetDlgItem (hwnd, IDC_CLEAN), SHORT_MAX, (PVOID)1);
+	_r_wnd_setcontext (GetDlgItem (hwnd, IDC_DASHBOARD_SETTINGS), SHORT_MAX, (PVOID)1);
 
 	// settings
 	_r_settings_addpage (IDD_SETTINGS_GENERAL, IDS_SETTINGS_GENERAL);
@@ -1888,6 +2055,7 @@ INT_PTR CALLBACK DlgProc (
 		{
 			HMENU hmenu;
 
+			_r_config_setboolean_ex (L"IsWindowCornerRound", TRUE, NULL);
 			_app_dashboard_theme (hwnd);
 
 			hmenu = GetMenu (hwnd);
@@ -2053,6 +2221,18 @@ INT_PTR CALLBACK DlgProc (
 
 			switch (nmlp->code)
 			{
+				case NM_CUSTOMDRAW:
+				{
+					if (nmlp->idFrom == IDC_CLEAN || nmlp->idFrom == IDC_DASHBOARD_SETTINGS)
+					{
+						LONG_PTR result = _app_dashboard_drawbutton ((LPNMCUSTOMDRAW)lparam);
+						SetWindowLongPtrW (hwnd, DWLP_MSGRESULT, result);
+						return TRUE;
+					}
+
+					break;
+				}
+
 				case BCN_DROPDOWN:
 				{
 					R_RECTANGLE rectangle;
@@ -2126,8 +2306,7 @@ INT_PTR CALLBACK DlgProc (
 				case WM_LBUTTONDOWN:
 				case WM_MBUTTONDOWN:
 				{
-					R_STRINGREF taskmgr_sr = PR_STRINGREF_INIT (L"taskmgr.exe");
-					LONG action;
+						LONG action;
 
 					if (LOWORD (lparam) == WM_MBUTTONDOWN)
 					{
@@ -2148,7 +2327,7 @@ INT_PTR CALLBACK DlgProc (
 
 						case 2:
 						{
-							_r_sys_createprocess (&taskmgr_sr, NULL, NULL, FALSE);
+							_r_sys_createprocess (L"taskmgr.exe", NULL, NULL, FALSE);
 							break;
 						}
 
