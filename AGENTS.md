@@ -5,6 +5,7 @@
 ## 开始工作
 
 - 本项目只在用户自己的仓库 `https://github.com/Duye0120/memreduct-winui` 维护，推送目标为 `origin`。不创建 PR，不向原作者仓库合并或推送；`upstream` 仅用于来源参考。用户已明确此长期约定，不重复询问。
+- 仓库已脱离 GitHub fork 网络，默认维护分支为 `master`。保留 README 的 Henry++ 来源说明和 GPL 许可；历史 UI 分支仍保留，不作为当前开发入口。
 
 1. 先看 `git status --short`、当前分支与用户的新需求；保留他人未提交修改，不自动切分支、重置或新建工作树。
 2. 读 [README.md](README.md)，再按任务读 [docs/development.md](docs/development.md) 对应部分。

@@ -17,17 +17,19 @@ internal static class StartupRegistration
 
     public static bool IsEnabled()
     {
-        if (Installation.IsInstalled)
-        {
-            using var com = new ComScope();
-            dynamic folder = Connect(com);
-            object? found = FindTask(com, folder, TaskName);
-            if (found is null) return false;
-            dynamic task = found;
-            return task.Enabled && MatchesTask((string)task.Xml, UserSid, Installation.ExecutablePath);
-        }
+        if (Installation.IsInstalled) return IsInstalledStartupEnabled();
         using var key = Registry.CurrentUser.OpenSubKey(KeyPath);
         return string.Equals(key?.GetValue(ValueName) as string, Command, StringComparison.OrdinalIgnoreCase);
+    }
+
+    internal static bool IsInstalledStartupEnabled()
+    {
+        using var com = new ComScope();
+        dynamic folder = Connect(com);
+        object? found = FindTask(com, folder, TaskName);
+        if (found is null) return false;
+        dynamic task = found;
+        return task.Enabled && MatchesTask((string)task.Xml, UserSid, Installation.ExecutablePath);
     }
     public static async Task SetEnabledAsync(bool enabled)
     {
@@ -127,7 +129,8 @@ internal static class StartupRegistration
     private static dynamic? FindTask(ComScope com, dynamic folder, string name)
     {
         try { return com.Keep(folder.GetTask(name)); }
-        catch (COMException error) when (error.HResult == unchecked((int)0x80070002)) { return null; }
+        // COM interop can map ERROR_FILE_NOT_FOUND to FileNotFoundException, not COMException.
+        catch (Exception error) when (error.HResult == unchecked((int)0x80070002)) { return null; }
     }
     private sealed class ComScope : IDisposable
     {

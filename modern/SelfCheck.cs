@@ -394,6 +394,21 @@ public sealed partial class MainWindow
                 Layout(width, settings ? 3200 : 1600, scale);
                 if (settings)
                 {
+                    foreach (var row in new[] { AboutUpdateRow, AboutLinksRow, AboutLicenseRow })
+                    {
+                        var first = (FrameworkElement)row.Children[0];
+                        var second = (FrameworkElement)row.Children[1];
+                        var a = first.TransformToVisual(row).TransformPoint(new Point());
+                        var b = second.TransformToVisual(row).TransformPoint(new Point());
+                        Require(a.X >= row.Padding.Left - 1 && b.X >= row.Padding.Left - 1
+                            && a.X + first.ActualWidth <= row.ActualWidth - row.Padding.Right + 1
+                            && b.X + second.ActualWidth <= row.ActualWidth - row.Padding.Right + 1,
+                            $"About controls stay within their row: {row.Name}, width={width}, scale={scale}");
+                        Require(Grid.GetRow(second) == 1
+                            ? Math.Abs(a.X - b.X) <= 1 && b.Y >= a.Y + first.ActualHeight + row.RowSpacing - 1
+                            : b.X >= a.X + first.ActualWidth + row.ColumnSpacing - 1,
+                            $"About row columns do not overlap and stacked controls align: {row.Name}");
+                    }
                     foreach (var (upper, lower) in new (FrameworkElement, FrameworkElement)[]
                         { (ThresholdNumber, IntervalNumber), (ThresholdUnit, IntervalUnit), (ThresholdSwitch, IntervalSwitch) })
                     {

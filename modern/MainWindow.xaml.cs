@@ -214,6 +214,18 @@ public sealed partial class MainWindow : Window
         LanguageChoice.MinWidth = ThemeChoice.MinWidth = 144 * textScale;
         var pageInset = (Thickness)Application.Current.Resources["PageInset"];
         var inset = (double)Application.Current.Resources["Space16"];
+        var compactAbout = width - pageInset.Left - pageInset.Right - NavigationColumn.Width.Value < 500 * textScale;
+        foreach (var control in new FrameworkElement[] { UpdateButton, ReleasesLink, ExitButton })
+        {
+            Grid.SetRow(control, compactAbout ? 1 : 0);
+            Grid.SetColumn(control, compactAbout ? 0 : 1);
+            Grid.SetColumnSpan(control, compactAbout ? 2 : 1);
+        }
+        foreach (var row in new[] { AboutUpdateRow, AboutLinksRow, AboutLicenseRow })
+        {
+            Grid.SetColumnSpan((FrameworkElement)row.Children[0], compactAbout ? 2 : 1);
+            row.RowSpacing = compactAbout ? (double)Application.Current.Resources["Space12"] : 0;
+        }
         var stacked = width - pageInset.Left - pageInset.Right - NavigationColumn.Width.Value < 3 * 140 * textScale;
         if (stacked == _statsStacked) return;
         _statsStacked = stacked;

@@ -327,4 +327,5 @@
   <data name="ThresholdRetryDeferred" xml:space="preserve">
     <value> · Still above threshold; threshold retry deferred for 5 minutes</value>
   </data>
+  <data name="UpdateStatus.Text" xml:space="preserve"><value>Check GitHub for a new version.</value></data>
 </root>

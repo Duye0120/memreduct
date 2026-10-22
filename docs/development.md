@@ -7,6 +7,14 @@
 
 ## 当前待办与已知问题
 
+### 1.0.2 安装版自启状态与关于布局
+
+- 首次安装未创建本产品登录任务时，`ITaskFolder.GetTask` 返回 `0x80070002`。在实际 WinUI 进程中，.NET 将它映射成 `FileNotFoundException`，旧代码只捕获 `COMException`，导致黄色“无法读取开机启动状态”提示（显示的异常消息可能是 ClassFactory）。按准确 HRESULT 处理“任务不存在”为关闭状态，其他错误继续向上传递。参见 [.NET COM 异常映射](https://learn.microsoft.com/en-us/dotnet/standard/exceptions/handling-com-interop-exceptions)。
+- 从安装分支提取只读 `IsInstalledStartupEnabled`，让便携自检也调用真实任务查询；修复前 `startup-repro/self-check.json` 失败，修复后中英文均通过。只读现有任务，不注册、删除或运行任务。
+- 关于卡片按版本/更新、项目链接、署名/退出分行；窄窗口和放大字体改为纵向排列。现有 48 组布局检查新增行边界、重叠和堆叠对齐断言，中英文通过，并输出 `update-settings.png`。
+- 证据：仓库同级 `MemReduct-Fluent-验证/startup-fix-zh-CN`、`startup-fix-en-US`。每个语言 15 组检查、48 组布局；真实 UAC 注册、重新登录自启和覆盖安装仍需验收。
+- 个人仓库已脱离 fork，`master` 从原分支快进并设为默认；源码入口链接指向仓库首页。历史分支、1.0.1 Release 和作者署名保留。
+
 原版公开问题、本改版适用性与本次自动清理修复见 [问题核查记录](bug-audit.md)。自动清理完成后若仍超阈值，阈值重试退避 5 分钟；回落后恢复，独立定时与手动清理不受该退避影响。
 
 **输入框高度问题已定位并修复（2026-10-22），等用户在实际窗口验收。**

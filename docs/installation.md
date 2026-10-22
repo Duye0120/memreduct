@@ -73,3 +73,11 @@ SHA-256 用于检查下载完整性，信任根是 GitHub 仓库/Release；它�
 后续在隔离 Windows 环境验证首次安装/导入、UAC 取消、同用户授权、退出后重新登录自动管理员运行、更新保留设置及任务、降级拦截、卸载任务移除且设置保留。确认后再对用户本机安装和正式发布。
 
 参考：[Windows 任务安全上下文](https://learn.microsoft.com/en-us/windows/win32/taskschd/security-contexts-for-running-tasks)、[GitHub Release API](https://docs.github.com/en/rest/releases/releases)、[Inno Setup 文档](https://jrsoftware.org/ishelp/)。
+
+### 1.0.2 修复包验证
+
+修复首次安装没有登录任务时的读取误报，整理关于页；原因与回归证据见 [开发指南](development.md#102-安装版自启状态与关于布局)。中英文各 15 组自检、48 组布局通过，包含真实 COM 只读查询。旧版 1.0.1 安装问题由用户截图反馈；本次未执行覆盖安装、UAC 注册或注销登录验收。
+
+`MemReductFluent-1.0.2-win-x64-setup.exe` 已经 Inno Setup 7.1.0 实编译，大小 47,137,366 字节，SHA-256 为 `2fc7d8b4ae7dfe1a6814dac6311eec311a84fde31c15303d1dc385374ed7a02c`。构建前后安装版与便携版设置文件哈希均一致，未修改用户登录任务或原版安装目录。
+
+仓库已脱离 GitHub fork 网络，默认分支和当前本地维护分支均为 `master`。原有分支、标签和 1.0.1 Release 仍可访问，README 保留 Henry++ 来源署名。

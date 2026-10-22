@@ -327,4 +327,5 @@
   <data name="ThresholdRetryDeferred" xml:space="preserve">
     <value> · 清理后仍超阈值，阈值重试暂缓 5 分钟</value>
   </data>
+  <data name="UpdateStatus.Text" xml:space="preserve"><value>从 GitHub 检查新版本。</value></data>
 </root>

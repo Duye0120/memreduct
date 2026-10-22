@@ -10,6 +10,9 @@ public sealed partial class MainWindow
 {
     private static void CheckInstallationAndUpdates(string directory)
     {
+        // Exercise the installed COM path inside WinUI even when this check runs from a portable build.
+        var startupEnabled = StartupRegistration.IsInstalledStartupEnabled();
+        File.WriteAllText(Path.Combine(directory, "startup-read.json"), JsonSerializer.Serialize(new { startupEnabled }));
         Require(Installation.IsInstalledPath(Installation.ExecutablePath), "The fixed installed path is recognized");
         Require(!Installation.IsInstalledPath(Path.Combine(Path.GetTempPath(), "MemReduct.Fluent.exe")), "Portable paths cannot request persistent elevation");
         Require(!Installation.IsInstalledPath(Path.Combine(Installation.DirectoryPath + "-other", "MemReduct.Fluent.exe")), "Sibling paths are not trusted installations");
