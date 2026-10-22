@@ -86,7 +86,8 @@ DPI 的 `SM_CXSMICON`。布局、间距、字体仍是 DIP（设计如此），�
 | --- | --- |
 | [App.xaml](../modern/App.xaml) | 浅深色资源、黑白强调色、字体、圆角与共享间距 |
 | [App.xaml.cs](../modern/App.xaml.cs) | 参数、单实例互斥、加载设置与语言、自检启动 |
-| [MainWindow.xaml](../modern/MainWindow.xaml) | 主窗口、顶部/侧栏导航、概览、全部设置控件 |
+| [MainWindow.xaml](../modern/MainWindow.xaml) | 主窗口、顶部/侧栏导航、概览与设置页宿主 |
+| [SettingsView.xaml](../modern/SettingsView.xaml) | 首次进入设置时才创建的设置控件；由主窗口绑定现有事件 |
 | [MainWindow.xaml.cs](../modern/MainWindow.xaml.cs) | 1 秒采样、增量刷新、布局、设置事件、清理/UAC/语言重启 |
 | [AppSettings.cs](../modern/AppSettings.cs) | 默认值、数值范围、选中区域、自动计划、原子替换保存 |
 | [MemoryEngine.cs](../modern/MemoryEngine.cs) | 只读采样、原生清理、权限与逐项错误收集 |

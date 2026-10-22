@@ -25,6 +25,31 @@ public sealed partial class MainWindow
             AppWindow.Show(false);
             await Task.Delay(250);
             var english = UiText.LanguageTag == "en-US";
+            Require(SettingsPage is null,
+                "Startup leaves the settings control tree uncreated");
+            var initialGameMode = _settings.GameMode;
+            var initialConfirmation = _settings.ConfirmCleanup;
+            SetGameMode(!initialGameMode);
+            SaveCleanupConfirmation(!initialConfirmation);
+            RefreshOptions(); ReflowMetrics(700, 1);
+            Require(SettingsPage is null && _settings.GameMode != initialGameMode && _settings.ConfirmCleanup != initialConfirmation,
+                "Tray preferences work without materializing settings");
+            var loadWatch = System.Diagnostics.Stopwatch.StartNew();
+            EnsureSettingsLoaded();
+            loadWatch.Stop();
+            ArgumentNullException.ThrowIfNull(SettingsPage);
+            ArgumentNullException.ThrowIfNull(SettingsPage.ThemeChoice);
+            ArgumentNullException.ThrowIfNull(SettingsPage.ThresholdNumber);
+            Require(SettingsPage.GameModeSwitch.IsOn == _settings.GameMode
+                && SettingsPage.ConfirmSwitch.IsOn == _settings.ConfirmCleanup && SettingsPage.ThresholdNumber.Value == _settings.Threshold,
+                "Deferred settings initialize from the current preferences rather than startup defaults");
+            var settingsTree = SettingsPage;
+            EnsureSettingsLoaded();
+            Require(ReferenceEquals(settingsTree, SettingsPage), "Settings controls are created once and retained for later visits");
+            SetGameMode(initialGameMode);
+            SaveCleanupConfirmation(initialConfirmation);
+            File.WriteAllText(Path.Combine(directory, "deferred-settings.json"), JsonSerializer.Serialize(new { loadMilliseconds = loadWatch.Elapsed.TotalMilliseconds }));
+            checks.Add("Settings controls are deferred until first use; tray preferences stay functional before loading and initialize the retained page correctly.");
             CheckInstallationAndUpdates(directory);
             await CheckUserDataAccessAsync(directory);
             checks.Add("User-data access keeps the same ordinary-permission identity across await; atomic settings replacement preserves the original on failure and succeeds on retry.");
@@ -45,27 +70,27 @@ public sealed partial class MainWindow
             Sample();
             await CheckUpdateAsync();
             var initialIssue = IssueBanner.Title;
-            var initialInputWidth = ThresholdNumber.Width;
+            var initialInputWidth = SettingsPage.ThresholdNumber.Width;
             ReflowMetrics(560, 2);
             ReportIssue("Late failure", "Must not replace the closed window's banner");
             Require(_history.Samples.Count == initialSamples && !_updateBusy && IssueBanner.Title == initialIssue
-                && ThresholdNumber.Width == initialInputWidth,
+                && SettingsPage.ThresholdNumber.Width == initialInputWidth,
                 "Closing windows do not enqueue new sampling or update work");
             _updateCancellation.Dispose();
             _updateCancellation = null;
             _exitRequested = false;
             _ready = initialReady;
             checks.Add("Canceled release checks and closing-window guards stop late work; developer checks cannot invoke native cleanup.");
-            Require(UpdateButton.Content?.ToString() == (english ? "Check for updates" : "检查更新"), "Update controls are translated");
+            Require(SettingsPage.UpdateButton.Content?.ToString() == (english ? "Check for updates" : "检查更新"), "Update controls are translated");
             checks.Add("Installed-path/ACL boundaries, task XML, non-overwriting settings import, release filtering, download-source and SHA-256 checks passed without creating tasks, downloading or installing anything.");
             Require(SettingsTab.Content?.ToString() == (english ? "Settings" : "设置"), "XAML loads the selected language");
-            Require(WorkingSetCheck.Content?.ToString() == (english ? "Process working sets" : "进程工作集"), "Settings controls are translated");
-            Require(Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(PinSwitch) == (english ? "Always on top" : "窗口始终置顶"),
+            Require(SettingsPage.WorkingSetCheck.Content?.ToString() == (english ? "Process working sets" : "进程工作集"), "Settings controls are translated");
+            Require(Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(SettingsPage.PinSwitch) == (english ? "Always on top" : "窗口始终置顶"),
                 "Accessibility labels are translated");
             Require(UiText.Get("TrayOpen") == (english ? "Open Mem Reduct" : "打开 Mem Reduct"), "Tray resources are translated");
             Require(UiText.Get("PermissionRequired") == (english ? "Cleaning memory requires administrator permission." : "清理内存需要管理员权限。"),
                 "Permission messages are translated");
-            Require(LanguageChoice.Items.Count == 3, "Only supported languages and the system option are listed");
+            Require(SettingsPage.LanguageChoice.Items.Count == 3, "Only supported languages and the system option are listed");
             Require(Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(PaneToggleButton)
                 == (english ? "Toggle navigation layout" : "切换导航布局"), "Navigation layout control has a translated accessible name");
             var savedAreas = _settings.Areas;
@@ -76,14 +101,14 @@ public sealed partial class MainWindow
             Require(!_settings.SidebarExpanded && NavigationPanel.Visibility == Visibility.Visible && _settings.Areas == savedAreas,
                 "The layout button restores top navigation without changing cleanup settings");
             Require(!JsonSerializer.Deserialize<AppSettings>("{}")!.SidebarExpanded, "Existing settings default to top navigation");
-            var selectedLanguage = LanguageChoice.SelectedIndex;
-            LanguageChoice.SelectedIndex = selectedLanguage == 2 ? 1 : 2;
+            var selectedLanguage = SettingsPage.LanguageChoice.SelectedIndex;
+            SettingsPage.LanguageChoice.SelectedIndex = selectedLanguage == 2 ? 1 : 2;
             var chosenLanguage = selectedLanguage == 2 ? "zh-CN" : "en-US";
             Require(_settings.Language == chosenLanguage, "Language selection reaches settings");
             var roundTrip = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(_settings))!;
             Require(roundTrip.Language == chosenLanguage && roundTrip.Areas == _settings.Areas, "Language survives serialization without changing cleaning areas");
             Require(UiText.LanguageTag == (english ? "en-US" : "zh-CN"), "Pending language changes do not leave a partly translated current window");
-            LanguageChoice.SelectedIndex = selectedLanguage;
+            SettingsPage.LanguageChoice.SelectedIndex = selectedLanguage;
             Require(JsonSerializer.Deserialize<AppSettings>("{}")!.Language == "System", "Existing settings default to the system language");
             var invalidLanguage = new AppSettings { Language = "unsupported" };
             invalidLanguage.Normalize();
@@ -112,10 +137,10 @@ public sealed partial class MainWindow
             var buttonRadiusPixels = CleanButton.CornerRadius.TopLeft * displayScale;
             Require(Math.Abs(buttonRadiusPixels - 10) < 0.01,
                 $"Button radius must be 10 screen pixels; actual={buttonRadiusPixels}, scale={displayScale}");
-            foreach (var card in new[] { MetricsCard, HistoryCard, CleanupHistoryCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
+            foreach (var card in new[] { MetricsCard, HistoryCard, CleanupHistoryCard, CleanCard, SettingsPage.AppearanceCard, SettingsPage.CleanupSettingsCard, SettingsPage.AutoSettingsCard, SettingsPage.AboutCard })
                 Require(Math.Abs(card.CornerRadius.TopLeft * displayScale - 12) < 0.01, "All grouping cards have 12 screen-pixel radii");
             foreach (var control in new Control[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab, PaneToggleButton,
-                ElevateButton, ThemeChoice, LanguageChoice, ThresholdNumber, IntervalNumber, SourceLink, ExitButton, UpdateButton, ReleasesLink })
+                ElevateButton, SettingsPage.ThemeChoice, SettingsPage.LanguageChoice, SettingsPage.ThresholdNumber, SettingsPage.IntervalNumber, SettingsPage.SourceLink, SettingsPage.ExitButton, SettingsPage.UpdateButton, SettingsPage.ReleasesLink })
                 Require(Math.Abs(control.CornerRadius.TopLeft * displayScale - 10) < 0.01,
                     $"Every custom control has 10 screen-pixel radii: {control.Name} at scale {displayScale}");
             var presenter = AppWindow.Presenter as Microsoft.UI.Windowing.OverlappedPresenter;
@@ -166,9 +191,9 @@ public sealed partial class MainWindow
             options.GameMode = true;
             var savedAttempt = _lastAttempt;
             var savedGameAreas = _settings.Areas;
-            GameModeSwitch.IsOn = false;
+            SettingsPage.GameModeSwitch.IsOn = false;
             Require(!_settings.GameMode, "Game switch reaches settings");
-            GameModeSwitch.IsOn = true;
+            SettingsPage.GameModeSwitch.IsOn = true;
             Require(JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(_settings))!.GameMode, "Game mode survives restart");
             UpdateGameProtection(true, now);
             Require(_gameActive && !AdminBanner.IsOpen && AutoStatusText.Text == UiText.Get("GameModeActive"), "Active full-screen protection is visible");
@@ -214,10 +239,10 @@ public sealed partial class MainWindow
             _ = GameModeMonitor.IsFullscreenApp(); // Read-only ABI smoke check; does not claim a real game was tested.
             Require(JsonSerializer.Deserialize<AppSettings>("{}")!.GameMode && !JsonSerializer.Deserialize<AppSettings>("{}")!.NotifyAfterCleanup,
                 "Legacy settings gain game protection with optional notifications off");
-            NotifyCleanupSwitch.IsOn = true;
+            SettingsPage.NotifyCleanupSwitch.IsOn = true;
             Require(_settings.NotifyAfterCleanup && JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(_settings))!.NotifyAfterCleanup,
                 "Notification preference is wired and persisted");
-            NotifyCleanupSwitch.IsOn = false;
+            SettingsPage.NotifyCleanupSwitch.IsOn = false;
             Require(ShouldNotifyCleanup(true, 0, true, false) && !ShouldNotifyCleanup(false, 0, true, false)
                 && !ShouldNotifyCleanup(true, 1, true, false) && !ShouldNotifyCleanup(true, 0, false, true),
                 "Only enabled, successful cleanups notify; automatic game-mode notifications are suppressed");
@@ -270,17 +295,17 @@ public sealed partial class MainWindow
             var defaults = JsonSerializer.Deserialize<AppSettings>("{}")!;
             Require(defaults.Areas == (CleanAreas.WorkingSets | CleanAreas.SystemCache | CleanAreas.LowPriorityStandby),
                 "New and legacy settings keep all five added cleanup areas off");
-            var addedChecks = new[] { ModifiedFileCheck, ModifiedPagesCheck, FullStandbyCheck, RegistryCheck, CombineCheck };
+            var addedChecks = new[] { SettingsPage.ModifiedFileCheck, SettingsPage.ModifiedPagesCheck, SettingsPage.FullStandbyCheck, SettingsPage.RegistryCheck, SettingsPage.CombineCheck };
             Require(addedChecks.All(x => x.IsChecked == false), "All five added checkboxes are initially unchecked");
-            Require(!AdvancedCleanup.IsExpanded && AdvancedCleanupCount() == 0, "Additional cleanup areas start collapsed when none are selected");
+            Require(!SettingsPage.AdvancedCleanup.IsExpanded && AdvancedCleanupCount() == 0, "Additional cleanup areas start collapsed when none are selected");
             foreach (var box in addedChecks) box.IsChecked = true;
-            CleanupOption_Click(CombineCheck, new RoutedEventArgs());
+            CleanupOption_Click(SettingsPage.CombineCheck, new RoutedEventArgs());
             Require(_settings.Areas == (CleanAreas)255 && JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(_settings))!.Areas == (CleanAreas)255,
                 "Every added checkbox reaches settings and survives serialization");
-            Require(AdvancedCleanupCount() == 5 && AdvancedCleanupSummary.Text == UiText.Get("AdvancedCleanupSummary", 5),
+            Require(AdvancedCleanupCount() == 5 && SettingsPage.AdvancedCleanupSummary.Text == UiText.Get("AdvancedCleanupSummary", 5),
                 "The collapsed group exposes its enabled option count");
             foreach (var box in addedChecks) box.IsChecked = false;
-            CleanupOption_Click(CombineCheck, new RoutedEventArgs());
+            CleanupOption_Click(SettingsPage.CombineCheck, new RoutedEventArgs());
             Require(_settings.Areas == savedAreas, "Checking added options does not alter the existing selection");
             foreach (var key in new[] { "WorkingSet", "SystemCache", "ModifiedFile", "ModifiedPages", "FullStandby", "Standby", "Registry", "Combine" })
                 Require(UiText.Get(key + "Description.Text").Length > 20, "Every cleaning area has an explanation");
@@ -319,7 +344,7 @@ public sealed partial class MainWindow
             BodyScroll.ChangeView(null, BodyScroll.ScrollableHeight, null, true);
             await Task.Delay(100);
             var inputChecks = new List<object>();
-            foreach (var (box, text) in new[] { (ThresholdNumber, "75"), (IntervalNumber, "1440") })
+            foreach (var (box, text) in new[] { (SettingsPage.ThresholdNumber, "75"), (SettingsPage.IntervalNumber, "1440") })
             {
                 var editor = Descendants(box).OfType<TextBox>().First();
                 Require(editor.Focus(FocusState.Programmatic), "The enabled input can receive focus");
@@ -333,7 +358,7 @@ public sealed partial class MainWindow
                     await Task.Delay(20);
                 }
                 Shell.UpdateLayout();
-                await WritePreview(directory, box == ThresholdNumber ? "threshold-editing.png" : "interval-editing.png", AutoSettingsCard);
+                await WritePreview(directory, box == SettingsPage.ThresholdNumber ? "threshold-editing.png" : "interval-editing.png", SettingsPage.AutoSettingsCard);
                 Require(editor.Text == text, "Multiple digits survive editing and memory refreshes until commit");
                 Require(VisualTreeHelper.GetOpenPopupsForXamlRoot(Shell.XamlRoot).Count == 0,
                     "Typing does not open an overlapping spin popup");
@@ -342,16 +367,16 @@ public sealed partial class MainWindow
                 glyphs.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 var textWidth = content.ActualWidth - content.Padding.Left - content.Padding.Right;
                 Require(textWidth >= glyphs.DesiredSize.Width + 2, "The focused input has enough visible space for all digits and the caret");
-                var upper = Descendants(ThresholdNumber).OfType<Border>().First(x => x.Name == "BorderElement");
-                var lower = Descendants(IntervalNumber).OfType<Border>().First(x => x.Name == "BorderElement");
-                Require(Math.Abs(upper.TransformToVisual(AutoSettingsCard).TransformPoint(new Point()).X
-                    - lower.TransformToVisual(AutoSettingsCard).TransformPoint(new Point()).X) < 0.5
+                var upper = Descendants(SettingsPage.ThresholdNumber).OfType<Border>().First(x => x.Name == "BorderElement");
+                var lower = Descendants(SettingsPage.IntervalNumber).OfType<Border>().First(x => x.Name == "BorderElement");
+                Require(Math.Abs(upper.TransformToVisual(SettingsPage.AutoSettingsCard).TransformPoint(new Point()).X
+                    - lower.TransformToVisual(SettingsPage.AutoSettingsCard).TransformPoint(new Point()).X) < 0.5
                     && Math.Abs(upper.ActualWidth - lower.ActualWidth) < 0.5, "Focused and unfocused input borders align");
                 // Moving focus uses NumberBox's real validation and the app's LostFocus handler.
-                var other = Descendants(box == ThresholdNumber ? IntervalNumber : ThresholdNumber).OfType<TextBox>().First();
+                var other = Descendants(box == SettingsPage.ThresholdNumber ? SettingsPage.IntervalNumber : SettingsPage.ThresholdNumber).OfType<TextBox>().First();
                 Require(other.Focus(FocusState.Programmatic), "Focus can move to the next input");
                 await Task.Delay(50);
-                var committed = box == ThresholdNumber ? _settings.Threshold : _settings.IntervalMinutes;
+                var committed = box == SettingsPage.ThresholdNumber ? _settings.Threshold : _settings.IntervalMinutes;
                 Require(committed == int.Parse(text) && editor.Text == text, "Leaving an input commits the completed number");
                 Require(editor.Focus(FocusState.Programmatic), "An input can be edited again");
                 editor.Text = "";
@@ -376,13 +401,13 @@ public sealed partial class MainWindow
                 var content = Descendants(editor).OfType<ScrollViewer>().First(x => x.Name == "ContentElement");
                 var glyphs = new TextBlock { Text = "0", FontSize = editor.FontSize, FontFamily = editor.FontFamily };
                 glyphs.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                var top = border.TransformToVisual(AutoSettingsCard).TransformPoint(new Point()).Y;
-                var contentTop = content.TransformToVisual(AutoSettingsCard).TransformPoint(new Point()).Y;
+                var top = border.TransformToVisual(SettingsPage.AutoSettingsCard).TransformPoint(new Point()).Y;
+                var contentTop = content.TransformToVisual(SettingsPage.AutoSettingsCard).TransformPoint(new Point()).Y;
                 return (box.ActualHeight, top, top + border.ActualHeight,
                     contentTop + content.Padding.Top + glyphs.DesiredSize.Height / 2 - (top + border.ActualHeight / 2));
             }
             var heightSamples = new List<(string Name, (double Height, double Top, double Bottom, double TextCenterDelta) Unfocused, (double Height, double Top, double Bottom, double TextCenterDelta) Focused)>();
-            foreach (var (box, other) in new[] { (ThresholdNumber, IntervalNumber), (IntervalNumber, ThresholdNumber) })
+            foreach (var (box, other) in new[] { (SettingsPage.ThresholdNumber, SettingsPage.IntervalNumber), (SettingsPage.IntervalNumber, SettingsPage.ThresholdNumber) })
             {
                 var editor = Descendants(box).OfType<TextBox>().First();
                 var otherEditor = Descendants(other).OfType<TextBox>().First();
@@ -390,12 +415,12 @@ public sealed partial class MainWindow
                 Shell.UpdateLayout();
                 await Task.Delay(50);
                 var unfocused = MeasureInput(box);
-                if (box == ThresholdNumber) await WritePreview(directory, "threshold-unfocused.png", AutoSettingsCard);
+                if (box == SettingsPage.ThresholdNumber) await WritePreview(directory, "threshold-unfocused.png", SettingsPage.AutoSettingsCard);
                 Require(editor.Focus(FocusState.Programmatic), "The input can take focus for the focused height sample");
                 Shell.UpdateLayout();
                 await Task.Delay(50);
                 var focused = MeasureInput(box);
-                if (box == ThresholdNumber) await WritePreview(directory, "threshold-focused.png", AutoSettingsCard);
+                if (box == SettingsPage.ThresholdNumber) await WritePreview(directory, "threshold-focused.png", SettingsPage.AutoSettingsCard);
                 heightSamples.Add((box.Name, unfocused, focused));
                 File.WriteAllText(Path.Combine(directory, "input-heights.json"), JsonSerializer.Serialize(new
                 {
@@ -423,8 +448,8 @@ public sealed partial class MainWindow
             checks.Add($"Focus-state input height and centering: {string.Join("; ", heightSamples.Select(x => $"{x.Name} height {x.Unfocused.Height}->{x.Focused.Height}, text delta {x.Unfocused.TextCenterDelta:F1}/{x.Focused.TextCenterDelta:F1}"))}.");
             _settings.AutoThreshold = savedAutoThreshold;
             _settings.AutoInterval = savedAutoInterval;
-            ThresholdNumber.Value = _settings.Threshold = savedThreshold;
-            IntervalNumber.Value = _settings.IntervalMinutes = savedInterval;
+            SettingsPage.ThresholdNumber.Value = _settings.Threshold = savedThreshold;
+            SettingsPage.IntervalNumber.Value = _settings.IntervalMinutes = savedInterval;
             CleanButton.Focus(FocusState.Programmatic);
             RefreshOptions();
 
@@ -440,9 +465,9 @@ public sealed partial class MainWindow
             Require(_cleanupHistory[0].Outcome == UiText.Get("CleanupFailed") && _cleanupHistory[0].Details == "Self-check fixture: access denied",
                 "Failed cleanup records preserve the error without inventing reclaimed memory");
             checks.Add("Session-only cleanup history is bounded to five attempts and preserves manual/automatic, partial and failed results without invoking cleanup.");
-            var originalStartupNote = StartupNote.Text;
+            var originalStartupNote = SettingsPage.StartupNote.Text;
             var originalCleanDescription = CleanDescription.Text;
-            StartupNote.Text = UiText.Get("InstalledStartupNote");
+            SettingsPage.StartupNote.Text = UiText.Get("InstalledStartupNote");
             CleanDescription.Text = UiText.Get("AuthorizeSessionDescription");
             Shell.RequestedTheme = ElementTheme.Light;
             SelectPage(false);
@@ -472,15 +497,15 @@ public sealed partial class MainWindow
             var fonts = Descendants(Shell).OfType<TextBlock>().ToDictionary(x => x, x => x.FontSize);
             var controlFonts = Descendants(OverviewPage).OfType<Control>().ToDictionary(x => x, x => x.FontSize);
             SelectPage(true); Layout(680, 3200, 1);
-            AdvancedCleanup.IsExpanded = true;
+            SettingsPage.AdvancedCleanup.IsExpanded = true;
             await Task.Delay(250);
             Shell.UpdateLayout();
             foreach (var block in Descendants(Shell).OfType<TextBlock>()) fonts.TryAdd(block, block.FontSize);
             foreach (var control in Descendants(SettingsPage).OfType<Control>()) controlFonts.TryAdd(control, control.FontSize);
             foreach (var control in new[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab }) controlFonts.TryAdd(control, control.FontSize);
             var layouts = new List<object>();
-            UpdateButton.Content = UiText.Get("UpdateInstall");
-            UpdateStatus.Text = UiText.Get("UpdateReady");
+            SettingsPage.UpdateButton.Content = UiText.Get("UpdateInstall");
+            SettingsPage.UpdateStatus.Text = UiText.Get("UpdateReady");
             foreach (var sidebar in new[] { false, true })
             foreach (var scale in new[] { 1.0, 1.5, 2.0 })
             foreach (var width in new[] { 560.0, 680.0, 760.0, 880.0 })
@@ -493,7 +518,7 @@ public sealed partial class MainWindow
                 Layout(width, settings ? 3200 : 1600, scale);
                 if (settings)
                 {
-                    foreach (var row in new[] { AboutUpdateRow, AboutLinksRow, AboutLicenseRow })
+                    foreach (var row in new[] { SettingsPage.AboutUpdateRow, SettingsPage.AboutLinksRow, SettingsPage.AboutLicenseRow })
                     {
                         var first = (FrameworkElement)row.Children[0];
                         var second = (FrameworkElement)row.Children[1];
@@ -509,10 +534,10 @@ public sealed partial class MainWindow
                             $"About row columns do not overlap and stacked controls align: {row.Name}");
                     }
                     foreach (var (upper, lower) in new (FrameworkElement, FrameworkElement)[]
-                        { (ThresholdNumber, IntervalNumber), (ThresholdUnit, IntervalUnit), (ThresholdSwitch, IntervalSwitch) })
+                        { (SettingsPage.ThresholdNumber, SettingsPage.IntervalNumber), (SettingsPage.ThresholdUnit, SettingsPage.IntervalUnit), (SettingsPage.ThresholdSwitch, SettingsPage.IntervalSwitch) })
                     {
-                        var upperX = upper.TransformToVisual(AutoSettingsCard).TransformPoint(new Point()).X;
-                        var lowerX = lower.TransformToVisual(AutoSettingsCard).TransformPoint(new Point()).X;
+                        var upperX = upper.TransformToVisual(SettingsPage.AutoSettingsCard).TransformPoint(new Point()).X;
+                        var lowerX = lower.TransformToVisual(SettingsPage.AutoSettingsCard).TransformPoint(new Point()).X;
                         Require(Math.Abs(upperX - lowerX) < 0.5
                             && (upper is TextBlock || Math.Abs(upper.ActualWidth - lower.ActualWidth) < 0.5),
                             $"Automatic-cleaning columns: {upper.Name}/{lower.Name}; x={upperX}/{lowerX}, widths={upper.ActualWidth}/{lower.ActualWidth}, width={width}, textScale={scale}, sidebar={sidebar}");
@@ -562,7 +587,7 @@ public sealed partial class MainWindow
             checks.Add("Automatic-cleaning inputs, units and switches align in all settings layout cases.");
             foreach (var (control, size) in controlFonts) control.FontSize = size;
             foreach (var (block, size) in fonts) block.FontSize = size;
-            StartupNote.Text = originalStartupNote;
+            SettingsPage.StartupNote.Text = originalStartupNote;
             CleanDescription.Text = originalCleanDescription;
             _cleanupHistory.Clear();
             CleanupHistoryCard.Visibility = Visibility.Collapsed;
@@ -640,27 +665,27 @@ public sealed partial class MainWindow
             await WritePreview(directory, "history-fixture.png", HistoryCard);
             SelectPage(true); Layout(700, 1600, 1);
             await WritePreview(directory, "settings-expanded.png");
-            AdvancedCleanup.IsExpanded = false;
+            SettingsPage.AdvancedCleanup.IsExpanded = false;
             await Task.Delay(250);
             await WritePreview(directory, "settings-light.png");
-            await WritePreview(directory, "automatic-settings.png", AutoSettingsCard);
-            await WritePreview(directory, "update-settings.png", AboutCard);
-            UpdateButton.Content = UiText.Get("UpdateCancelDownload");
-            UpdateProgress.Visibility = Visibility.Visible;
-            UpdateProgress.Value = 42;
-            UpdateStatus.Text = UiText.Get("UpdateDownloadProgress", 42, "21 MB", "50 MB");
-            await WritePreview(directory, "update-download-fixture.png", AboutCard);
+            await WritePreview(directory, "automatic-settings.png", SettingsPage.AutoSettingsCard);
+            await WritePreview(directory, "update-settings.png", SettingsPage.AboutCard);
+            SettingsPage.UpdateButton.Content = UiText.Get("UpdateCancelDownload");
+            SettingsPage.UpdateProgress.Visibility = Visibility.Visible;
+            SettingsPage.UpdateProgress.Value = 42;
+            SettingsPage.UpdateStatus.Text = UiText.Get("UpdateDownloadProgress", 42, "21 MB", "50 MB");
+            await WritePreview(directory, "update-download-fixture.png", SettingsPage.AboutCard);
             using (var cancellation = new CancellationTokenSource())
             {
                 _updateCancellation = cancellation;
-                Update_Click(UpdateButton, new RoutedEventArgs());
-                Require(cancellation.IsCancellationRequested && !UpdateButton.IsEnabled, "The update button cancels an active download instead of starting another check");
+                Update_Click(SettingsPage.UpdateButton, new RoutedEventArgs());
+                Require(cancellation.IsCancellationRequested && !SettingsPage.UpdateButton.IsEnabled, "The update button cancels an active download instead of starting another check");
                 _updateCancellation = null;
             }
-            UpdateButton.IsEnabled = true;
-            UpdateButton.Content = UiText.Get("UpdateInstall");
-            UpdateStatus.Text = UiText.Get("UpdateReady");
-            UpdateProgress.Visibility = Visibility.Collapsed;
+            SettingsPage.UpdateButton.IsEnabled = true;
+            SettingsPage.UpdateButton.Content = UiText.Get("UpdateInstall");
+            SettingsPage.UpdateStatus.Text = UiText.Get("UpdateReady");
+            SettingsPage.UpdateProgress.Visibility = Visibility.Collapsed;
             Layout(700, 660, 1);
             await WritePreview(directory, "language-settings.png");
             var restartDialog = CreateLanguageRestartDialog();
@@ -684,12 +709,12 @@ public sealed partial class MainWindow
             trayDialog.Hide();
             Require(await trayPrompt == ContentDialogResult.None && !_settings.TrayCleanupHintShown && _settings.ConfirmCleanup,
                 "Canceling the first tray prompt changes neither confirmation nor onboarding state");
-            Require(SaveCleanupConfirmation(false, hintShown: true) && !ConfirmSwitch.IsOn && !_settings.ConfirmCleanup,
+            Require(SaveCleanupConfirmation(false, hintShown: true) && !SettingsPage.ConfirmSwitch.IsOn && !_settings.ConfirmCleanup,
                 "Accepting the first tray preference synchronizes the settings switch");
             var persistedConfirmation = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(_settings))!;
             Require(persistedConfirmation.TrayCleanupHintShown && !persistedConfirmation.ConfirmCleanup,
                 "The introduction and confirmation choice survive a settings round trip");
-            ConfirmSwitch.IsOn = true;
+            SettingsPage.ConfirmSwitch.IsOn = true;
             Require(_settings.ConfirmCleanup && _settings.TrayCleanupHintShown,
                 "Settings and tray toggle callbacks share the same persisted confirmation preference");
             _ = CreateCleanupDialog(false, out var repeatChoice);

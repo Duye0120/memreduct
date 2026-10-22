@@ -18,6 +18,9 @@ public sealed partial class MainWindow : Window
     private int _animationFrame;
     private readonly TrayIcon? _tray;
     private bool _ready, _cleaning, _exitRequested, _sampleFailed, _restartPromptOpen;
+    private bool _startupEnabled;
+    private SettingsView SettingsPage { get; set; } = null!;
+    private bool _startupReadable = true;
     private bool _statsStacked;
     private double _cornerScale;
     private DateTimeOffset _lastAttempt;
@@ -49,8 +52,10 @@ public sealed partial class MainWindow : Window
         AppWindow.Resize(new SizeInt32((int)(700 * scale), (int)(560 * scale)));
         UpdatePresenterConstraints(scale);
         UpdateCornerRadii();
-        LoadSettings();
-        VersionText.Text = "Mem Reduct Fluent · " + UpdateService.DisplayVersion;
+        ResultText.Text = _settings.LastCleanUtc is { } lastClean
+            ? UiText.Get("LastClean", lastClean.ToLocalTime()) : UiText.Get("NeverCleaned");
+        ApplyTheme();
+        SelectPage(false);
         if (!checking)
         {
             Shell.SizeChanged += (_, _) => ReflowMetrics(Shell.ActualWidth, _uiSettings.TextScaleFactor);
@@ -58,13 +63,13 @@ public sealed partial class MainWindow : Window
             try
             {
                 _tray = new TrayIcon(handle, ShowWindow, ExitWindow, CleanFromTray,
-                    () => GameModeSwitch.IsOn = !GameModeSwitch.IsOn, () => _settings.GameMode,
-                    () => ConfirmSwitch.IsOn = !ConfirmSwitch.IsOn, () => _settings.ConfirmCleanup);
+                    () => SetGameMode(!_settings.GameMode), () => _settings.GameMode,
+                    () => SaveCleanupConfirmation(!_settings.ConfirmCleanup), () => _settings.ConfirmCleanup);
                 if (!_tray.IsVisible) ReportIssue(UiText.Get("TrayUnavailable"), UiText.Get("ExitOnClose"));
             }
             catch (Exception error) { ReportIssue(UiText.Get("TrayUnavailable"), error.Message + " " + UiText.Get("ExitOnClose")); }
-            try { StartupSwitch.IsOn = StartupRegistration.IsEnabled(); }
-            catch (Exception error) { ReportIssue(UiText.Get("StartupReadFailed"), error.Message); StartupSwitch.IsEnabled = false; }
+            try { _startupEnabled = StartupRegistration.IsEnabled(); }
+            catch (Exception error) { ReportIssue(UiText.Get("StartupReadFailed"), error.Message); _startupReadable = false; }
             _timer = DispatcherQueue.CreateTimer();
             _timer.Interval = TimeSpan.FromSeconds(1);
             _timer.Tick += (_, _) => Sample();
@@ -103,32 +108,73 @@ public sealed partial class MainWindow : Window
         };
     }
 
+    private void EnsureSettingsLoaded()
+    {
+        if (SettingsPage is not null) return;
+        var ready = _ready;
+        _ready = false;
+        try
+        {
+            SettingsPage = new SettingsView();
+            SettingsHost.Content = SettingsPage;
+            SettingsPage.LanguageChoice.SelectionChanged += LanguageChoice_SelectionChanged;
+            SettingsPage.ThemeChoice.SelectionChanged += ThemeChoice_SelectionChanged;
+            SettingsPage.PinSwitch.Toggled += Preference_Toggled;
+            SettingsPage.TraySwitch.Toggled += Preference_Toggled;
+            SettingsPage.StartupSwitch.Toggled += StartupSwitch_Toggled;
+            SettingsPage.WorkingSetCheck.Click += CleanupOption_Click;
+            SettingsPage.SystemCacheCheck.Click += CleanupOption_Click;
+            SettingsPage.StandbyCheck.Click += CleanupOption_Click;
+            SettingsPage.ModifiedFileCheck.Click += CleanupOption_Click;
+            SettingsPage.ModifiedPagesCheck.Click += CleanupOption_Click;
+            SettingsPage.FullStandbyCheck.Click += CleanupOption_Click;
+            SettingsPage.RegistryCheck.Click += CleanupOption_Click;
+            SettingsPage.CombineCheck.Click += CleanupOption_Click;
+            SettingsPage.ConfirmSwitch.Toggled += ConfirmSwitch_Toggled;
+            SettingsPage.NotifyCleanupSwitch.Toggled += Preference_Toggled;
+            SettingsPage.GameModeSwitch.Toggled += GameModeSwitch_Toggled;
+            SettingsPage.ThresholdNumber.ValueChanged += AutoNumber_ValueChanged;
+            SettingsPage.ThresholdNumber.LostFocus += AutoNumber_LostFocus;
+            SettingsPage.ThresholdSwitch.Toggled += Preference_Toggled;
+            SettingsPage.IntervalNumber.ValueChanged += AutoNumber_ValueChanged;
+            SettingsPage.IntervalNumber.LostFocus += AutoNumber_LostFocus;
+            SettingsPage.IntervalSwitch.Toggled += Preference_Toggled;
+            SettingsPage.UpdateButton.Click += Update_Click;
+            SettingsPage.ExitButton.Click += Exit_Click;
+            LoadSettings();
+            _cornerScale = 0;
+            UpdateCornerRadii();
+            ReflowMetrics(Shell.ActualWidth, _uiSettings.TextScaleFactor);
+        }
+        finally { _ready = ready; }
+        RefreshOptions();
+    }
+
     private void LoadSettings()
     {
-        ThemeChoice.SelectedIndex = _settings.Theme == "Light" ? 1 : _settings.Theme == "Dark" ? 2 : 0;
-        LanguageChoice.SelectedIndex = _settings.Language == "zh-CN" ? 1 : _settings.Language == "en-US" ? 2 : 0;
-        PinSwitch.IsOn = _settings.AlwaysOnTop;
-        TraySwitch.IsOn = _settings.CloseToTray;
-        ConfirmSwitch.IsOn = _settings.ConfirmCleanup;
-        NotifyCleanupSwitch.IsOn = _settings.NotifyAfterCleanup;
-        WorkingSetCheck.IsChecked = _settings.CleanWorkingSets;
-        SystemCacheCheck.IsChecked = _settings.CleanSystemCache;
-        StandbyCheck.IsChecked = _settings.CleanLowPriorityStandby;
-        ModifiedFileCheck.IsChecked = _settings.CleanModifiedFileCache;
-        ModifiedPagesCheck.IsChecked = _settings.CleanModifiedPages;
-        FullStandbyCheck.IsChecked = _settings.CleanStandby;
-        RegistryCheck.IsChecked = _settings.CleanRegistryCache;
-        CombineCheck.IsChecked = _settings.CombineMemoryPages;
-        AdvancedCleanup.IsExpanded = AdvancedCleanupCount() > 0;
-        ThresholdSwitch.IsOn = _settings.AutoThreshold;
-        IntervalSwitch.IsOn = _settings.AutoInterval;
-        GameModeSwitch.IsOn = _settings.GameMode;
-        ThresholdNumber.Value = _settings.Threshold;
-        IntervalNumber.Value = _settings.IntervalMinutes;
-        ResultText.Text = _settings.LastCleanUtc is { } last
-            ? UiText.Get("LastClean", last.ToLocalTime()) : UiText.Get("NeverCleaned");
-        ApplyTheme();
-        SelectPage(false);
+        SettingsPage.VersionText.Text = "Mem Reduct Fluent · " + UpdateService.DisplayVersion;
+        SettingsPage.StartupSwitch.IsOn = _startupEnabled;
+        SettingsPage.StartupSwitch.IsEnabled = _startupReadable;
+        SettingsPage.ThemeChoice.SelectedIndex = _settings.Theme == "Light" ? 1 : _settings.Theme == "Dark" ? 2 : 0;
+        SettingsPage.LanguageChoice.SelectedIndex = _settings.Language == "zh-CN" ? 1 : _settings.Language == "en-US" ? 2 : 0;
+        SettingsPage.PinSwitch.IsOn = _settings.AlwaysOnTop;
+        SettingsPage.TraySwitch.IsOn = _settings.CloseToTray;
+        SettingsPage.ConfirmSwitch.IsOn = _settings.ConfirmCleanup;
+        SettingsPage.NotifyCleanupSwitch.IsOn = _settings.NotifyAfterCleanup;
+        SettingsPage.WorkingSetCheck.IsChecked = _settings.CleanWorkingSets;
+        SettingsPage.SystemCacheCheck.IsChecked = _settings.CleanSystemCache;
+        SettingsPage.StandbyCheck.IsChecked = _settings.CleanLowPriorityStandby;
+        SettingsPage.ModifiedFileCheck.IsChecked = _settings.CleanModifiedFileCache;
+        SettingsPage.ModifiedPagesCheck.IsChecked = _settings.CleanModifiedPages;
+        SettingsPage.FullStandbyCheck.IsChecked = _settings.CleanStandby;
+        SettingsPage.RegistryCheck.IsChecked = _settings.CleanRegistryCache;
+        SettingsPage.CombineCheck.IsChecked = _settings.CombineMemoryPages;
+        SettingsPage.AdvancedCleanup.IsExpanded = AdvancedCleanupCount() > 0;
+        SettingsPage.ThresholdSwitch.IsOn = _settings.AutoThreshold;
+        SettingsPage.IntervalSwitch.IsOn = _settings.AutoInterval;
+        SettingsPage.GameModeSwitch.IsOn = _settings.GameMode;
+        SettingsPage.ThresholdNumber.Value = _settings.Threshold;
+        SettingsPage.IntervalNumber.Value = _settings.IntervalMinutes;
     }
 
     private bool SaveSettings()
@@ -171,32 +217,37 @@ public sealed partial class MainWindow : Window
         // The requested radii are screen pixels, while WinUI measures CornerRadius in DIPs.
         var cardRadius = new CornerRadius(12 / scale);
         var controlRadius = new CornerRadius(10 / scale);
-        foreach (var card in new[] { MetricsCard, HistoryCard, CleanupHistoryCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
-            card.CornerRadius = cardRadius;
+        foreach (var card in new[] { MetricsCard, HistoryCard, CleanupHistoryCard, CleanCard, SettingsPage?.AppearanceCard, SettingsPage?.CleanupSettingsCard, SettingsPage?.AutoSettingsCard, SettingsPage?.AboutCard })
+            if (card is not null) card.CornerRadius = cardRadius;
         PressureBadge.CornerRadius = controlRadius;
-        foreach (var control in new Control[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab, PaneToggleButton,
-            CleanButton, ElevateButton, ThemeChoice, LanguageChoice,
-            ThresholdNumber, IntervalNumber, SourceLink, ExitButton, UpdateButton, ReleasesLink, AdvancedCleanup,
+        foreach (var control in new Control?[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab, PaneToggleButton,
+            CleanButton, ElevateButton, SettingsPage?.ThemeChoice, SettingsPage?.LanguageChoice,
+            SettingsPage?.ThresholdNumber, SettingsPage?.IntervalNumber, SettingsPage?.SourceLink, SettingsPage?.ExitButton, SettingsPage?.UpdateButton, SettingsPage?.ReleasesLink, SettingsPage?.AdvancedCleanup,
             ProcessesExpander, ProcessRefreshButton })
-            control.CornerRadius = controlRadius;
+            if (control is not null) control.CornerRadius = controlRadius;
         _cornerScale = scale;
     }
 
     private void RefreshOptions()
     {
         if (_exitRequested) return;
-        SetText(AdvancedCleanupSummary, UiText.Get("AdvancedCleanupSummary", AdvancedCleanupCount()));
         if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.IsAlwaysOnTop = _settings.AlwaysOnTop;
-        ThresholdNumber.IsEnabled = _settings.AutoThreshold;
-        IntervalNumber.IsEnabled = _settings.AutoInterval;
+        if (SettingsPage is not null)
+        {
+            SetText(SettingsPage.AdvancedCleanupSummary, UiText.Get("AdvancedCleanupSummary", AdvancedCleanupCount()));
+            SettingsPage.ThresholdNumber.IsEnabled = _settings.AutoThreshold;
+            SettingsPage.IntervalNumber.IsEnabled = _settings.AutoInterval;
+            SettingsPage.LanguageChoice.IsEnabled = !_cleaning && !_restartPromptOpen;
+            if (Installation.IsInstalled) SettingsPage.StartupNote.Text = UiText.Get(SettingsPage.StartupSwitch.IsOn ? "InstalledStartupOn" : "InstalledStartupNote");
+            SettingsPage.GameModeStatus.Text = UiText.Get(_gameActive ? "GameModeActive" : _settings.GameMode ? "GameModeWatching" : "GameModeOff");
+        }
         CleanButton.IsEnabled = !_cleaning && !_restartPromptOpen && _settings.Areas != CleanAreas.None;
-        LanguageChoice.IsEnabled = !_cleaning && !_restartPromptOpen;
         if (!_cleaning) CleanButton.Content = UiText.Get(MemoryEngine.IsAdministrator ? "CleanMemory" : "AuthorizeClean");
         CleanDescription.Text = UiText.Get(MemoryEngine.IsAdministrator ? "CleanDescription" : "AuthorizeDescription");
         if (Installation.IsInstalled)
         {
-            StartupNote.Text = UiText.Get(StartupSwitch.IsOn ? "InstalledStartupOn" : "InstalledStartupNote");
-            if (!MemoryEngine.IsAdministrator && !StartupSwitch.IsOn) CleanDescription.Text = UiText.Get("AuthorizeSessionDescription");
+            if (!MemoryEngine.IsAdministrator && !(SettingsPage is null ? _startupEnabled : SettingsPage.StartupSwitch.IsOn))
+                CleanDescription.Text = UiText.Get("AuthorizeSessionDescription");
         }
         AdminBanner.IsOpen = !_gameActive && (_settings.AutoThreshold || _settings.AutoInterval)
             && _settings.AutomaticAreas != CleanAreas.None && !MemoryEngine.IsAdministrator;
@@ -211,7 +262,6 @@ public sealed partial class MainWindow : Window
         else if (_settings.AutoThreshold && _thresholdRetryAfter > DateTimeOffset.UtcNow)
             AutoStatusText.Text += UiText.Get("ThresholdRetryDeferred");
         if (_gameActive) AutoStatusText.Text = UiText.Get("GameModeActive");
-        GameModeStatus.Text = UiText.Get(_gameActive ? "GameModeActive" : _settings.GameMode ? "GameModeWatching" : "GameModeOff");
     }
 
     private int AdvancedCleanupCount() => System.Numerics.BitOperations.PopCount((uint)(_settings.Areas
@@ -226,22 +276,25 @@ public sealed partial class MainWindow : Window
         NavigationPanel.Visibility = sidebar ? Visibility.Collapsed : Visibility.Visible;
         HeaderBreadcrumb.Visibility = sidebar ? Visibility.Visible : Visibility.Collapsed;
         PaneToggleButton.IsEnabled = textScale <= 1.25;
-        ThresholdNumber.Width = IntervalNumber.Width = 112 * textScale;
-        ThresholdUnit.Width = IntervalUnit.Width = 32 * textScale;
-        LanguageChoice.MinWidth = ThemeChoice.MinWidth = 144 * textScale;
         var pageInset = (Thickness)Application.Current.Resources["PageInset"];
         var inset = (double)Application.Current.Resources["Space16"];
-        var compactAbout = width - pageInset.Left - pageInset.Right - NavigationColumn.Width.Value < 500 * textScale;
-        foreach (var control in new FrameworkElement[] { UpdateButton, ReleasesLink, ExitButton })
+        if (SettingsPage is not null)
         {
-            Grid.SetRow(control, compactAbout ? 1 : 0);
-            Grid.SetColumn(control, compactAbout ? 0 : 1);
-            Grid.SetColumnSpan(control, compactAbout ? 2 : 1);
-        }
-        foreach (var row in new[] { AboutUpdateRow, AboutLinksRow, AboutLicenseRow })
-        {
-            Grid.SetColumnSpan((FrameworkElement)row.Children[0], compactAbout ? 2 : 1);
-            row.RowSpacing = compactAbout ? (double)Application.Current.Resources["Space12"] : 0;
+            SettingsPage.ThresholdNumber.Width = SettingsPage.IntervalNumber.Width = 112 * textScale;
+            SettingsPage.ThresholdUnit.Width = SettingsPage.IntervalUnit.Width = 32 * textScale;
+            SettingsPage.LanguageChoice.MinWidth = SettingsPage.ThemeChoice.MinWidth = 144 * textScale;
+            var compactAbout = width - pageInset.Left - pageInset.Right - NavigationColumn.Width.Value < 500 * textScale;
+            foreach (var control in new FrameworkElement[] { SettingsPage.UpdateButton, SettingsPage.ReleasesLink, SettingsPage.ExitButton })
+            {
+                Grid.SetRow(control, compactAbout ? 1 : 0);
+                Grid.SetColumn(control, compactAbout ? 0 : 1);
+                Grid.SetColumnSpan(control, compactAbout ? 2 : 1);
+            }
+            foreach (var row in new[] { SettingsPage.AboutUpdateRow, SettingsPage.AboutLinksRow, SettingsPage.AboutLicenseRow })
+            {
+                Grid.SetColumnSpan((FrameworkElement)row.Children[0], compactAbout ? 2 : 1);
+                row.RowSpacing = compactAbout ? (double)Application.Current.Resources["Space12"] : 0;
+            }
         }
         var stacked = width - pageInset.Left - pageInset.Right - NavigationColumn.Width.Value < 3 * 140 * textScale;
         if (stacked == _statsStacked) return;
@@ -367,6 +420,7 @@ public sealed partial class MainWindow : Window
     }
     internal void SelectPage(bool settings)
     {
+        if (settings) EnsureSettingsLoaded();
         foreach (var button in new[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab })
         {
             var selected = settings == (button == SettingsTab || button == SidebarSettingsTab);
@@ -376,7 +430,8 @@ public sealed partial class MainWindow : Window
         }
         PageCaption.Text = UiText.Get(settings ? "SettingsTab.Content" : "OverviewTab.Content");
         OverviewPage.Visibility = settings ? Visibility.Collapsed : Visibility.Visible;
-        SettingsPage.Visibility = settings ? Visibility.Visible : Visibility.Collapsed;
+        SettingsHost.Visibility = settings ? Visibility.Visible : Visibility.Collapsed;
+        if (SettingsPage is not null) SettingsPage.Visibility = SettingsHost.Visibility;
         var selectedTab = NavigationPane.Visibility == Visibility.Visible
             ? (settings ? SidebarSettingsTab : SidebarOverviewTab) : (settings ? SettingsTab : OverviewTab);
         selectedTab.Focus(FocusState.Programmatic);
@@ -388,7 +443,7 @@ public sealed partial class MainWindow : Window
         {
             if (!_exitRequested)
             {
-                var page = SettingsPage.Visibility == Visibility.Visible ? SettingsPage : OverviewPage;
+                FrameworkElement page = SettingsPage?.Visibility == Visibility.Visible ? SettingsPage : OverviewPage;
                 page.StartBringIntoView(new BringIntoViewOptions { AnimationDesired = false, VerticalAlignmentRatio = 0 });
             }
         });
@@ -397,7 +452,7 @@ public sealed partial class MainWindow : Window
     private void ThemeChoice_SelectionChanged(object sender, SelectionChangedEventArgs args)
     {
         if (!_ready) return;
-        _settings.Theme = (ThemeChoice.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "System";
+        _settings.Theme = (SettingsPage.ThemeChoice.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "System";
         ApplyTheme(); SaveSettings();
     }
 
@@ -405,12 +460,12 @@ public sealed partial class MainWindow : Window
     {
         if (!_ready) return;
         var previous = _settings.Language;
-        _settings.Language = (LanguageChoice.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "System";
+        _settings.Language = (SettingsPage.LanguageChoice.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "System";
         if (!SaveSettings())
         {
             _settings.Language = previous;
             _ready = false;
-            LanguageChoice.SelectedIndex = previous == "zh-CN" ? 1 : previous == "en-US" ? 2 : 0;
+            SettingsPage.LanguageChoice.SelectedIndex = previous == "zh-CN" ? 1 : previous == "en-US" ? 2 : 0;
             _ready = true;
             return;
         }
@@ -450,19 +505,28 @@ public sealed partial class MainWindow : Window
     private void Preference_Toggled(object sender, RoutedEventArgs args)
     {
         if (!_ready) return;
-        _settings.AlwaysOnTop = PinSwitch.IsOn;
-        _settings.CloseToTray = TraySwitch.IsOn;
-        _settings.NotifyAfterCleanup = NotifyCleanupSwitch.IsOn;
-        if (_settings.AutoThreshold != ThresholdSwitch.IsOn) _thresholdRetryAfter = default;
-        _settings.AutoThreshold = ThresholdSwitch.IsOn;
-        _settings.AutoInterval = IntervalSwitch.IsOn;
+        _settings.AlwaysOnTop = SettingsPage.PinSwitch.IsOn;
+        _settings.CloseToTray = SettingsPage.TraySwitch.IsOn;
+        _settings.NotifyAfterCleanup = SettingsPage.NotifyCleanupSwitch.IsOn;
+        if (_settings.AutoThreshold != SettingsPage.ThresholdSwitch.IsOn) _thresholdRetryAfter = default;
+        _settings.AutoThreshold = SettingsPage.ThresholdSwitch.IsOn;
+        _settings.AutoInterval = SettingsPage.IntervalSwitch.IsOn;
         RefreshOptions(); SaveSettings();
     }
 
     private void GameModeSwitch_Toggled(object sender, RoutedEventArgs args)
     {
+        if (_ready) SetGameMode(SettingsPage.GameModeSwitch.IsOn);
+    }
+
+    private void SetGameMode(bool enabled)
+    {
         if (!_ready) return;
-        _settings.GameMode = GameModeSwitch.IsOn;
+        _settings.GameMode = enabled;
+        if (SettingsPage is not null)
+        {
+            _ready = false; SettingsPage.GameModeSwitch.IsOn = enabled; _ready = true;
+        }
         if (!_settings.GameMode) UpdateGameProtection(false, DateTimeOffset.UtcNow);
         RefreshOptions(); SaveSettings();
         if (!_checking) Sample();
@@ -470,24 +534,24 @@ public sealed partial class MainWindow : Window
 
     private void CleanupOption_Click(object sender, RoutedEventArgs args)
     {
-        _settings.CleanWorkingSets = WorkingSetCheck.IsChecked == true;
-        _settings.CleanSystemCache = SystemCacheCheck.IsChecked == true;
-        _settings.CleanLowPriorityStandby = StandbyCheck.IsChecked == true;
-        _settings.CleanModifiedFileCache = ModifiedFileCheck.IsChecked == true;
-        _settings.CleanModifiedPages = ModifiedPagesCheck.IsChecked == true;
-        _settings.CleanStandby = FullStandbyCheck.IsChecked == true;
-        _settings.CleanRegistryCache = RegistryCheck.IsChecked == true;
-        _settings.CombineMemoryPages = CombineCheck.IsChecked == true;
+        _settings.CleanWorkingSets = SettingsPage.WorkingSetCheck.IsChecked == true;
+        _settings.CleanSystemCache = SettingsPage.SystemCacheCheck.IsChecked == true;
+        _settings.CleanLowPriorityStandby = SettingsPage.StandbyCheck.IsChecked == true;
+        _settings.CleanModifiedFileCache = SettingsPage.ModifiedFileCheck.IsChecked == true;
+        _settings.CleanModifiedPages = SettingsPage.ModifiedPagesCheck.IsChecked == true;
+        _settings.CleanStandby = SettingsPage.FullStandbyCheck.IsChecked == true;
+        _settings.CleanRegistryCache = SettingsPage.RegistryCheck.IsChecked == true;
+        _settings.CombineMemoryPages = SettingsPage.CombineCheck.IsChecked == true;
         RefreshOptions(); SaveSettings();
     }
 
     private void AutoNumber_ValueChanged(NumberBox sender, NumberBoxValueChangedEventArgs args)
     {
         if (!_ready || !double.IsFinite(args.NewValue)) return;
-        if (sender == ThresholdNumber) { _settings.Threshold = (int)Math.Round(args.NewValue); _thresholdRetryAfter = default; }
+        if (sender == SettingsPage.ThresholdNumber) { _settings.Threshold = (int)Math.Round(args.NewValue); _thresholdRetryAfter = default; }
         else _settings.IntervalMinutes = (int)Math.Round(args.NewValue);
         _settings.Normalize();
-        var committed = sender == ThresholdNumber ? _settings.Threshold : _settings.IntervalMinutes;
+        var committed = sender == SettingsPage.ThresholdNumber ? _settings.Threshold : _settings.IntervalMinutes;
         if (sender.Value != committed) { _ready = false; sender.Value = committed; _ready = true; }
         RefreshOptions(); SaveSettings();
     }
@@ -496,14 +560,14 @@ public sealed partial class MainWindow : Window
     {
         if (!_ready) return;
         if (sender is NumberBox box && !double.IsFinite(box.Value))
-            box.Value = box == ThresholdNumber ? _settings.Threshold : _settings.IntervalMinutes;
+            box.Value = box == SettingsPage.ThresholdNumber ? _settings.Threshold : _settings.IntervalMinutes;
     }
 
     private async void StartupSwitch_Toggled(object sender, RoutedEventArgs args)
     {
         if (!_ready || _checking) return;
-        var desired = StartupSwitch.IsOn;
-        StartupSwitch.IsEnabled = false;
+        var desired = SettingsPage.StartupSwitch.IsOn;
+        SettingsPage.StartupSwitch.IsEnabled = false;
         try
         {
             await StartupRegistration.SetEnabledAsync(desired);
@@ -515,19 +579,19 @@ public sealed partial class MainWindow : Window
         {
             if (_exitRequested) return;
             _ready = false;
-            try { StartupSwitch.IsOn = StartupRegistration.IsEnabled(); }
-            catch { StartupSwitch.IsOn = !desired; }
+            try { SettingsPage.StartupSwitch.IsOn = StartupRegistration.IsEnabled(); }
+            catch { SettingsPage.StartupSwitch.IsOn = !desired; }
             _ready = true;
             ReportIssue(UiText.Get("StartupFailed"), error.Message);
         }
-        finally { if (!_exitRequested) { StartupSwitch.IsEnabled = true; RefreshOptions(); } }
+        finally { if (!_exitRequested) { SettingsPage.StartupSwitch.IsEnabled = true; RefreshOptions(); } }
     }
 
     private async void CleanButton_Click(object sender, RoutedEventArgs args) => await CleanAsync(true);
     internal void ReportStartupResumeFailure(string detail) => ReportIssue(UiText.Get("StartupResumeFailed"), detail);
     private void ConfirmSwitch_Toggled(object sender, RoutedEventArgs args)
     {
-        if (_ready) SaveCleanupConfirmation(ConfirmSwitch.IsOn);
+        if (_ready) SaveCleanupConfirmation(SettingsPage.ConfirmSwitch.IsOn);
     }
 
     private bool SaveCleanupConfirmation(bool confirm, bool hintShown = false)
@@ -539,7 +603,7 @@ public sealed partial class MainWindow : Window
         if (!saved) (_settings.ConfirmCleanup, _settings.TrayCleanupHintShown) = previous;
         var ready = _ready;
         _ready = false;
-        ConfirmSwitch.IsOn = _settings.ConfirmCleanup;
+        if (SettingsPage is not null) SettingsPage.ConfirmSwitch.IsOn = _settings.ConfirmCleanup;
         _ready = ready;
         return saved;
     }

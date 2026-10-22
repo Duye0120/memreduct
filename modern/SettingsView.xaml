@@ -1,0 +1,218 @@
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="MemReduct.Fluent.SettingsView">
+    <StackPanel Spacing="{StaticResource Space20}">
+        <StackPanel Spacing="{StaticResource Space8}">
+            <TextBlock x:Uid="AppearanceHeading" Style="{StaticResource Muted}" Text="外观与窗口" />
+            <Border x:Name="AppearanceCard" x:FieldModifier="public" Style="{StaticResource Card}">
+                <StackPanel>
+                    <Grid Style="{StaticResource SettingRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="4" VerticalAlignment="Center">
+                            <TextBlock Text="语言 / Language" Style="{StaticResource Body}" VerticalAlignment="Center" />
+                            <TextBlock x:Uid="LanguageRestartHint" x:Name="LanguageRestartHint" x:FieldModifier="public" Text="更改后可选择立即或稍后重启程序。" Style="{StaticResource Muted}" />
+                        </StackPanel>
+                        <ComboBox x:Name="LanguageChoice" x:FieldModifier="public" Grid.Column="1" MinWidth="144" CornerRadius="{StaticResource AppControlCornerRadius}" AutomationProperties.Name="语言 / Language" FontSize="13">
+                            <ComboBoxItem x:Uid="FollowSystem" Content="跟随系统" Tag="System" />
+                            <ComboBoxItem Content="简体中文" Tag="zh-CN" />
+                            <ComboBoxItem Content="English" Tag="en-US" />
+                        </ComboBox>
+                    </Grid>
+                    <Grid Style="{StaticResource SettingRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Uid="ThemeLabel" Style="{StaticResource Body}" Text="主题" VerticalAlignment="Center" />
+                        <ComboBox x:Uid="ThemeChoice" x:Name="ThemeChoice" x:FieldModifier="public" Grid.Column="1" MinWidth="144" CornerRadius="{StaticResource AppControlCornerRadius}" AutomationProperties.Name="主题" FontSize="13">
+                            <ComboBoxItem x:Uid="FollowSystem" Content="跟随系统" Tag="System" />
+                            <ComboBoxItem x:Uid="LightTheme" Content="浅色" Tag="Light" />
+                            <ComboBoxItem x:Uid="DarkTheme" Content="深色" Tag="Dark" />
+                        </ComboBox>
+                    </Grid>
+                    <Grid Style="{StaticResource SettingRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Uid="TopmostLabel" Style="{StaticResource Body}" Text="窗口始终置顶" VerticalAlignment="Center" />
+                        <ToggleSwitch x:Uid="PinSwitch" x:Name="PinSwitch" x:FieldModifier="public" Grid.Column="1" MinWidth="0" OnContent="" OffContent="" AutomationProperties.Name="窗口始终置顶" />
+                    </Grid>
+                    <Grid Style="{StaticResource SettingRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Uid="CloseToTrayLabel" Style="{StaticResource Body}" Text="关闭窗口后留在托盘" VerticalAlignment="Center" />
+                        <ToggleSwitch x:Uid="TraySwitch" x:Name="TraySwitch" x:FieldModifier="public" Grid.Column="1" MinWidth="0" OnContent="" OffContent="" AutomationProperties.Name="关闭窗口后留在托盘" />
+                    </Grid>
+                    <Grid Style="{StaticResource SettingRow}" BorderThickness="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="4" VerticalAlignment="Center">
+                            <TextBlock x:Uid="StartupLabel" Style="{StaticResource Body}" Text="开机启动" />
+                            <TextBlock x:Uid="StartupNote" x:Name="StartupNote" x:FieldModifier="public" Text="登录后在托盘运行；自动清理需重新授权。" Style="{StaticResource Muted}" />
+                        </StackPanel>
+                        <ToggleSwitch x:Uid="StartupSwitch" x:Name="StartupSwitch" x:FieldModifier="public" Grid.Column="1" MinWidth="0" OnContent="" OffContent="" AutomationProperties.Name="开机启动" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+        <StackPanel Spacing="{StaticResource Space8}">
+            <TextBlock x:Uid="CleanupHeading" Style="{StaticResource Muted}" Text="内存清理" />
+            <Border x:Name="CleanupSettingsCard" x:FieldModifier="public" Style="{StaticResource Card}">
+                <StackPanel>
+                    <Grid Style="{StaticResource SettingRow}">
+                        <StackPanel Spacing="4">
+                            <CheckBox x:Uid="WorkingSetCheck" x:Name="WorkingSetCheck" x:FieldModifier="public" Content="进程工作集" FontSize="13" MinHeight="0" />
+                            <TextBlock x:Uid="WorkingSetDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid Style="{StaticResource SettingRow}">
+                        <StackPanel Spacing="4">
+                            <CheckBox x:Uid="SystemCacheCheck" x:Name="SystemCacheCheck" x:FieldModifier="public" Content="系统文件缓存" FontSize="13" MinHeight="0" />
+                            <TextBlock x:Uid="SystemCacheDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid Style="{StaticResource SettingRow}">
+                        <StackPanel Spacing="4">
+                            <CheckBox x:Uid="StandbyCheck" x:Name="StandbyCheck" x:FieldModifier="public" Content="低优先级备用列表" FontSize="13" MinHeight="0" />
+                            <TextBlock x:Uid="StandbyDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                        </StackPanel>
+                    </Grid>
+                    <Expander x:Name="AdvancedCleanup" x:FieldModifier="public" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" MinWidth="0" Padding="0" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource OutlineBrush}" Background="Transparent" CornerRadius="{StaticResource AppControlCornerRadius}">
+                        <Expander.Header>
+                            <TextBlock x:Name="AdvancedCleanupSummary" x:FieldModifier="public" Style="{StaticResource Body}" Text="更多清理区域" />
+                        </Expander.Header>
+                        <StackPanel>
+                            <Grid Style="{StaticResource SettingRow}">
+                                <StackPanel Spacing="4">
+                                    <CheckBox x:Uid="ModifiedFileCheck" x:Name="ModifiedFileCheck" x:FieldModifier="public" Content="已修改文件缓存" FontSize="13" MinHeight="0" />
+                                    <TextBlock x:Uid="ModifiedFileDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                                </StackPanel>
+                            </Grid>
+                            <Grid Style="{StaticResource SettingRow}">
+                                <StackPanel Spacing="4">
+                                    <CheckBox x:Uid="ModifiedPagesCheck" x:Name="ModifiedPagesCheck" x:FieldModifier="public" Content="已修改页面列表 *" FontSize="13" MinHeight="0" />
+                                    <TextBlock x:Uid="ModifiedPagesDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                                </StackPanel>
+                            </Grid>
+                            <Grid Style="{StaticResource SettingRow}">
+                                <StackPanel Spacing="4">
+                                    <CheckBox x:Uid="FullStandbyCheck" x:Name="FullStandbyCheck" x:FieldModifier="public" Content="全部备用列表 *" FontSize="13" MinHeight="0" />
+                                    <TextBlock x:Uid="FullStandbyDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                                </StackPanel>
+                            </Grid>
+                            <Grid Style="{StaticResource SettingRow}">
+                                <StackPanel Spacing="4">
+                                    <CheckBox x:Uid="RegistryCheck" x:Name="RegistryCheck" x:FieldModifier="public" Content="注册表缓存" FontSize="13" MinHeight="0" />
+                                    <TextBlock x:Uid="RegistryDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                                </StackPanel>
+                            </Grid>
+                            <Grid Style="{StaticResource SettingRow}">
+                                <StackPanel Spacing="4">
+                                    <CheckBox x:Uid="CombineCheck" x:Name="CombineCheck" x:FieldModifier="public" Content="合并重复内存页" FontSize="13" MinHeight="0" />
+                                    <TextBlock x:Uid="CombineDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                                </StackPanel>
+                            </Grid>
+                                </StackPanel>
+                    </Expander>
+                    <Grid Style="{StaticResource SettingRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Uid="ConfirmLabel" Style="{StaticResource Body}" Text="手动清理前确认" VerticalAlignment="Center" />
+                        <ToggleSwitch x:Uid="ConfirmSwitch" x:Name="ConfirmSwitch" x:FieldModifier="public" Grid.Column="1" MinWidth="0" OnContent="" OffContent="" AutomationProperties.Name="手动清理前确认" />
+                    </Grid>
+                    <Grid Style="{StaticResource SettingRow}" BorderThickness="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Uid="NotifyCleanupLabel" Style="{StaticResource Body}" Text="清理成功后显示气泡通知" VerticalAlignment="Center" />
+                        <ToggleSwitch x:Uid="NotifyCleanupSwitch" x:Name="NotifyCleanupSwitch" x:FieldModifier="public" Grid.Column="1" VerticalAlignment="Center" MinWidth="0" OnContent="" OffContent="" AutomationProperties.Name="清理成功后显示气泡通知" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+            <TextBlock x:Uid="AreasNote" Text="至少选择一项。带 * 的选项仅供手动清理，自动清理始终跳过。" Style="{StaticResource Muted}" Margin="2,0" />
+        </StackPanel>
+        <StackPanel Spacing="{StaticResource Space8}">
+            <TextBlock x:Uid="AutomaticHeading" Style="{StaticResource Muted}" Text="自动清理" />
+            <Border x:Name="AutoSettingsCard" x:FieldModifier="public" Style="{StaticResource Card}">
+                <StackPanel>
+                    <Grid Style="{StaticResource SettingRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="4" VerticalAlignment="Center">
+                            <TextBlock x:Uid="GameModeLabel" Style="{StaticResource Body}" Text="游戏模式" />
+                            <TextBlock x:Uid="GameModeDescription" Style="{StaticResource Muted}" Text="全屏时暂停自动清理，退出后缓冲 30 秒。" />
+                        </StackPanel>
+                        <ToggleSwitch x:Uid="GameModeSwitch" x:Name="GameModeSwitch" x:FieldModifier="public" Grid.Column="1" VerticalAlignment="Center" MinWidth="0" OnContent="" OffContent="" AutomationProperties.Name="自动识别全屏并暂停清理" />
+                    </Grid>
+                    <Grid Style="{StaticResource SettingRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Uid="ThresholdLabel" Style="{StaticResource Body}" Text="内存达到阈值时清理" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <NumberBox x:Uid="ThresholdNumber" x:Name="ThresholdNumber" x:FieldModifier="public" Minimum="50" Maximum="99" SmallChange="1" CornerRadius="{StaticResource AppControlCornerRadius}" SpinButtonPlacementMode="Hidden" Width="112" Padding="8,6" FontSize="13" VerticalAlignment="Center" />
+                            <TextBlock x:Name="ThresholdUnit" x:FieldModifier="public" Text="%" Style="{StaticResource Muted}" Width="32" VerticalAlignment="Center" />
+                            <ToggleSwitch x:Uid="ThresholdSwitch" x:Name="ThresholdSwitch" x:FieldModifier="public" MinWidth="0" OnContent="" OffContent="" AutomationProperties.Name="内存达到阈值时清理" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid Style="{StaticResource SettingRow}" BorderThickness="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Uid="IntervalLabel" Style="{StaticResource Body}" Text="按时间间隔清理" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <NumberBox x:Uid="IntervalNumber" x:Name="IntervalNumber" x:FieldModifier="public" Minimum="1" Maximum="1440" SmallChange="1" CornerRadius="{StaticResource AppControlCornerRadius}" SpinButtonPlacementMode="Hidden" Width="112" Padding="8,6" FontSize="13" VerticalAlignment="Center" />
+                            <TextBlock x:Name="IntervalUnit" x:FieldModifier="public" Text="分钟" Style="{StaticResource Muted}" x:Uid="MinutesUnit" Width="32" VerticalAlignment="Center" />
+                            <ToggleSwitch x:Uid="IntervalSwitch" x:Name="IntervalSwitch" x:FieldModifier="public" MinWidth="0" OnContent="" OffContent="" AutomationProperties.Name="按时间间隔清理" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+            <TextBlock x:Uid="CooldownNote" Text="连续两次自动清理至少间隔 30 秒。" Style="{StaticResource Muted}" Margin="2,0" />
+            <TextBlock x:Name="GameModeStatus" x:FieldModifier="public" Style="{StaticResource Muted}" Margin="2,0" />
+            <TextBlock x:Uid="TrayBehaviorNote" Text="托盘：左键清理，右键菜单。70% 橙色预警，90% 红色告警。" Style="{StaticResource Muted}" Margin="2,0" />
+        </StackPanel>
+        <StackPanel Spacing="{StaticResource Space8}">
+            <TextBlock x:Uid="AboutHeading" Style="{StaticResource Muted}" Text="关于" />
+            <Border x:Name="AboutCard" x:FieldModifier="public" Style="{StaticResource Card}">
+                <StackPanel>
+                    <Grid x:Name="AboutUpdateRow" x:FieldModifier="public" Style="{StaticResource SettingRow}" RowSpacing="{StaticResource Space12}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <StackPanel Spacing="{StaticResource Space8}" VerticalAlignment="Center">
+                            <TextBlock x:Name="VersionText" x:FieldModifier="public" Style="{StaticResource Body}" Text="Mem Reduct Fluent" />
+                            <TextBlock x:Uid="UpdateStatus" x:Name="UpdateStatus" x:FieldModifier="public" Text="从 GitHub 检查新版本。" Style="{StaticResource Muted}" />
+                            <ProgressBar x:Name="UpdateProgress" x:FieldModifier="public" x:Uid="UpdateProgress" Maximum="100" Height="3" Margin="0,4,0,0" Visibility="Collapsed" Foreground="{ThemeResource AccentBrush}" AutomationProperties.Name="更新下载进度" />
+                        </StackPanel>
+                        <Button x:Uid="UpdateButton" x:Name="UpdateButton" x:FieldModifier="public" Grid.Column="1" Content="检查更新" CornerRadius="{StaticResource AppControlCornerRadius}" VerticalAlignment="Center" />
+                    </Grid>
+                    <Grid x:Name="AboutLinksRow" x:FieldModifier="public" Style="{StaticResource SettingRow}" RowSpacing="{StaticResource Space8}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <HyperlinkButton x:Uid="SourceLink" x:Name="SourceLink" x:FieldModifier="public" Content="项目源码" Padding="0,6" FontSize="13" HorizontalAlignment="Left" CornerRadius="{StaticResource AppControlCornerRadius}" NavigateUri="https://github.com/Duye0120/memreduct-winui" />
+                        <HyperlinkButton x:Uid="ReleasesLink" x:Name="ReleasesLink" x:FieldModifier="public" Grid.Column="1" Content="下载与发行说明" Padding="0,6" FontSize="13" HorizontalAlignment="Left" CornerRadius="{StaticResource AppControlCornerRadius}" NavigateUri="https://github.com/Duye0120/memreduct-winui/releases" />
+                    </Grid>
+                    <Grid x:Name="AboutLicenseRow" x:FieldModifier="public" Style="{StaticResource SettingRow}" BorderThickness="0" RowSpacing="{StaticResource Space12}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <TextBlock x:Uid="LicenseNote" Text="基于 Henry++ 的 Mem Reduct，遵循 GPL 许可。" Style="{StaticResource Muted}" VerticalAlignment="Center" />
+                        <Button x:Uid="ExitButton" x:Name="ExitButton" x:FieldModifier="public" Grid.Column="1" Content="退出程序" CornerRadius="{StaticResource AppControlCornerRadius}" VerticalAlignment="Center" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </StackPanel>
+</UserControl>
