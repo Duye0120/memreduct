@@ -1,63 +1,231 @@
-# Mem Reduct Fluent
+# Mem Reduct Fluent 开发与交接指南
 
-基于 Microsoft WinUI 3 / Windows App SDK 的精简版。沿用原项目 GPL 许可和
-Windows 内存清理方式，独立重写界面。旧 C 版本保留在 `src/`。
+当前应用为 C# / WinUI 3 桌面程序，项目文件是 [MemReduct.Fluent.csproj](MemReduct.Fluent.csproj)。
+请先读仓库 [README](../README.md) 和 [AGENTS.md](../AGENTS.md)。
+本文中的本机路径是 2026-10-22 的交接快照，执行前检查存在性和当前 Git 状态；
+在其他机器上使用通用构建命令，不要照搬本机绝对路径。
 
-## 首版范围
+## 当前待办与已知问题
 
-- 实时显示物理内存、已提交内存、系统文件缓存。“已提交”对应系统 CommitTotal / CommitLimit，并非分页文件已用空间。
-- 八项清理：进程工作集、系统文件缓存、已修改文件缓存、已修改页面列表 *、全部备用列表 *、低优先级备用列表、注册表缓存、合并重复内存页。每项下方有说明。
-- 新增的五项默认关闭，旧配置保持原有选择；带 * 的两项仅供手动清理，在计划判断与底层执行入口均强制排除自动清理。
-- 内存阈值与定时自动清理；两次自动清理至少间隔 30 秒。
-- 托盘、置顶、关闭到托盘、开机启动、跟随系统的深浅色。
-- 托盘图标直接显示物理内存占用整数，悬停显示一位小数；每秒采样，数字变化时才重绘，适配任务栏深浅色和显示缩放。
-- 内存页和设置页使用同一套 WinUI 控件；不再嵌入旧设置窗口与多级菜单。
+**输入框高度问题已定位并修复（2026-10-22），等用户在实际窗口验收。**
 
-界面参照 magpie：浅灰背景、白色分组卡片、细分隔线、带轻阴影的白色导航选中项，
-输入控件使用浅灰填充。默认顶部导航；左上角布局按钮可切换为侧栏，设置入口固定在
-侧栏底部。选择自动保存，大字号下暂时使用顶部导航，保留侧栏偏好。
+![输入框高度问题](../images/winui-numberbox-height-known-issue.png)
 
-常用间距集中在 `App.xaml`：`Space8/12/16/20`、`PageInset`、`RowInset`、`MetricInset`；
-设置使用紧凑分组行，自动清理的输入框和开关排列在同一行，后续内容调整沿用这些资源。
+- 用户指出的是高度，不是黑色焦点下划线。黑色底边是 WinUI 原生聚焦样式
+  （`TextControlBorderThemeThicknessFocused = 1,1,1,2` + 黑白强调色），本次保留未动。
+- 根因（自检实测确认）：`ThresholdNumber` / `IntervalNumber` 在水平 `StackPanel` 里默认
+  `VerticalAlignment=Stretch`，被行内更高的 `ToggleSwitch` 拉到 40 DIP；TextBox 文字顶对齐渲染，
+  文字贴顶、框底留白约 8 DIP，聚焦黑边画在留白之下、看起来脱离文字。与 DPI、文字缩放、模板无关。
+- 修复：两个 `NumberBox` 加 `VerticalAlignment="Center"`（`MainWindow.xaml`），高度回到内容自撑的
+  32 DIP；`ReflowMetrics` 仍只管宽度，清理逻辑与用户设置不变。
+- 自检（`SelfCheck.cs`）新增断言：聚焦/失焦高度一致（≤1.2 DIP）、上下边缘不动（≤0.5 DIP）、
+  文字中心偏差 ≤1 DIP、两行等高，并在 100/150/200% 文字缩放的布局循环中复检。
+  中英文自检通过：高度 32、中心偏差 0.33 DIP、聚焦前后边缘完全一致。
+- 证据：`..\MemReduct-Fluent-验证\height-before-zh-CN`（修复前，40 DIP、偏差 -3.67、断言失败）
+  与 `height-zh-CN` / `height-en-US`（修复后，含 `threshold-focused.png` 等截图）。
+- 自检在隐藏窗口的 150% DPI 下进行；实体键盘输入、其他 DPI 与缩放组合仍需用户实际验收。
 
-分组卡片圆角为 12 个屏幕像素，按钮和输入控件为 10 个屏幕像素；根据当前显示缩放换算
-WinUI 的逻辑单位，跨显示器缩放改变时同步更新。复选框与开关保留系统控件形状。
+**DPI 一致性加固（2026-10-22）**：窗口最小尺寸改为随当前显示器 DPI 重算（`UpdatePresenterConstraints`，
+挂入 `XamlRoot.Changed`，此前只在启动时按启动 DPI 设置一次）；`UpdateCornerRadii` 增加 `XamlRoot` 判空并在
+构造函数提前应用（消除首帧使用 App.xaml 内 DIP 圆角的窗口期）；托盘初始图标不再硬编码 32px，改用任务栏
+DPI 的 `SM_CXSMICON`。布局、间距、字体仍是 DIP（设计如此），对话框圆角在创建时读取当前 scale，均未改动。
+自检新增：全部 12 个自定义控件 10 屏幕像素圆角断言与最小尺寸随 DPI 断言（双语言在 150% 通过，
+证据 `..\MemReduct-Fluent-验证\dpi-zh-CN` / `dpi-en-US`）。跨显示器拖动的实际 DPI 切换无法在隐藏窗口自检中
+模拟，需用户多显示器验收。
 
-“设置 → 外观与窗口 → 语言 / Language”提供跟随系统、简体中文和 English，
-选择自动保存；有效语言改变时弹窗提供“稍后重启 / 立即重启”，默认稍后，重启仅针对程序。
-当前窗口保持完整的原语言，避免局部切换；重启不重放先前的清理请求。旧配置默认跟随系统；中文系统使用简体中文，其他系统
-使用英文。主界面、设置、托盘、确认和应用错误提示使用同一套 `.resw` 翻译资源。
-便携包只保留中英文的 WinUI 语言资源；SDK 只引用界面、窗口交互与文字渲染组件，
-不附带未使用的 AI、机器学习、搜索或小组件模块。字体统一使用系统 Segoe UI Variable，中文由系统字体回退。
+`TrayIcon.ShowExistingWindow()` 查找的原生窗口标题 `Mem Reduct Fluent` 与 `MainWindow.xaml` 的
+`Window.Title` 一致；自定义标题栏显示 `Mem Reduct`。重复启动唤回窗口仍需实际运行验证。
 
-暂不移植全局快捷键、托盘字体和颜色定制。保留清理前确认、权限检查、重入保护和逐项错误报告。
-文件缓存刷盘不锁定、卸载磁盘卷或写入原始扇区；注册表缓存与合并重复页面沿用原版的 Windows 原生调用。
+## 源码地图
 
-## 状态与权限
+### 托盘交互与游戏保护
 
-`settings.json` 存在程序旁；不读取、覆盖安装版 INI，也不接管其开机任务。
-默认监测不要求管理员权限。清理时可以请求以管理员权限重新运行。
-自动清理在权限不足时暂停，并在界面中明确提示。
+- `TrayIcon` 左键/键盘激活进入现有手动清理入口，右键保留三项菜单。按成功协商的托盘版本分发消息，避免 `WM_LBUTTONUP` 与 `NIN_SELECT` 重复清理；短时间连点也被合并。
+- 手动确认开启时先显示主窗口再弹确认；关闭确认可直接执行。仍沿用管理员授权、重入保护和错误处理。
+- 正常用量绿色、70% 橙色、90% 红色；清理中使用 12 帧、100ms/帧的旋转弧线，数字仍表示用量而非进度。完成或异常时停动画，结果色保留 5 秒；高对比度使用系统前景色并保留文字状态。
+- `GameModeMonitor` 用 Direct3D 全屏状态和前台窗口/显示器边界检测全屏，排除自身窗口、桌面与任务栏。每秒检查，不注入游戏、不扫描进程名单、不修改系统游戏模式。
+- `GameMode` 默认 true；全屏视频、自动隐藏任务栏时占满屏幕的应用也可能触发保护。普通窗口化游戏不识别；多显示器只判断前台应用。切出全屏重置自动清理计时，至少 30 秒缓冲，间隔模式从此重新计时；已开始的原生清理不会被强行中断。
+- `NotifyAfterCleanup` 默认 false，通过设置页保存。成功且开关开启才请求静音气泡通知；自动任务在全屏保护期间不发。Windows 通知策略可能抑制实际展示，应用不延迟排队过期通知。
+- 内置自检覆盖颜色阈值、点击消息去重规则、动画帧变化与句柄释放、通知条件、游戏保护开关/配置兼容/退出缓冲，以及负坐标显示器几何判断。自检不创建真实托盘、不清理内存、不发送通知；真实游戏、鼠标点击及系统通知显示仍需交互验收。
 
-新程序只有在用户打开“开机启动”时，才设置当前用户自己的 `Run` 项
-`MemReduct.Fluent`，运行当前这份可执行文件。安装版的 `Mem Reduct - Logon` 任务不变。
-便携版登录启动使用普通权限；自动清理需要用户重新授予管理员权限。
-不为用户可写的便携程序创建静默提权任务。移动目录后需要重新开启启动项。
+| 文件 | 职责与入口 |
+| --- | --- |
+| [App.xaml](App.xaml) | 浅深色资源、黑白强调色、字体、圆角与共享间距 |
+| [App.xaml.cs](App.xaml.cs) | 参数、单实例互斥、加载设置与语言、自检启动 |
+| [MainWindow.xaml](MainWindow.xaml) | 主窗口、顶部/侧栏导航、概览、全部设置控件 |
+| [MainWindow.xaml.cs](MainWindow.xaml.cs) | 1 秒采样、增量刷新、布局、设置事件、清理/UAC/语言重启 |
+| [AppSettings.cs](AppSettings.cs) | 默认值、数值范围、选中区域、自动计划、原子替换保存 |
+| [MemoryEngine.cs](MemoryEngine.cs) | 只读采样、原生清理、权限与逐项错误收集 |
+| [TrayIcon.cs](TrayIcon.cs) / [TrayGlyph.cs](TrayGlyph.cs) | 托盘消息、百分比数字图标、DPI/颜色、句柄释放 |
+| [StartupRegistration.cs](StartupRegistration.cs) | 当前用户 Run 注册表启动项 |
+| [UiText.cs](UiText.cs) / [Strings/](Strings/) | 启动时语言选择、ResourceLoader、简体中文与英文 `.resw` |
+| [SelfCheck.cs](SelfCheck.cs) | 内置开发者自检、隐藏窗口布局测量、PNG/JSON 导出 |
+| [app.manifest](app.manifest) | Windows 兼容声明、PerMonitorV2 DPI |
 
-## 构建
+## 依赖与系统
 
-需要 .NET 10 SDK。无需安装 Visual Studio 或开启 Windows 开发者模式。
+以项目文件和 `packages.lock.json` 为准，以下为当前锁定配置：
+
+| 项目 | 配置 |
+| --- | --- |
+| SDK / 目标框架 | .NET 10；`net10.0-windows10.0.26100.0` |
+| 声明的最低 Windows | `10.0.19041.0`；目前只在本机 Windows 11 验证过 |
+| 架构 | 仅 `x64` / `win-x64` |
+| WinUI 包 | `Microsoft.WindowsAppSDK.WinUI` 2.3.9 |
+| 窗口交互包 | `Microsoft.WindowsAppSDK.InteractiveExperiences` 2.1.9 |
+| 文字渲染包 | `Microsoft.WindowsAppSDK.DWrite` 2.1.0 |
+| SDK 构建工具 | `Microsoft.Windows.SDK.BuildTools` 10.0.26100.9169 |
+| 发布方式 | 非 MSIX；自包含 .NET 与 Windows App SDK；未启用裁剪 |
+
+构建不需要 Visual Studio，也不依赖旧 C 项目的兄弟目录 `routine` / `builder`。
+不要为了修界面重装全套 SDK、引入 WebView 或更换 UI 框架。包升级应是独立任务。
+
+## 本机位置
+
+| 用途 | 当前路径 |
+| --- | --- |
+| Git 仓库 / Claude Code 工作目录 | `C:\Users\user\Documents\Codex\2026-10-22\c-users-user-appdata-roaming-mihomo\outputs\memreduct` |
+| 正在使用的便携预览 | 仓库同级 `..\MemReduct-WinUI3-多语言预览\MemReduct.Fluent.exe` |
+| 历史验证证据 | 仓库同级 `..\MemReduct-Fluent-验证\`，最新输入检查在 `editing-*` |
+| SDK / 依赖 / 编译缓存 | `D:\tmp\memreduct-tray-build\` 下的 `dotnet`、`nuget`、`cli`、`obj` |
+| 固定编译输出 | 同上面的便携预览目录；开发时不再生成 `bin` 和 `publish` 两份运行副本 |
+
+本机 SDK 为 10.0.402，可直接调用 `D:\tmp\memreduct-tray-build\dotnet\dotnet.exe`。
+C 盘空间有限，优先复用 D 盘环境；不要在 C 盘重复下载工具链、创建多份预览或 ZIP。
+上述目录是本机文件，不包含在 Git 克隆中。
+
+## 构建与运行
+
+日常只使用 [build-dev.ps1](build-dev.ps1)，从仓库根目录执行：
 
 ```powershell
-dotnet build modern/MemReduct.Fluent.csproj -c Release -p:Platform=x64
-dotnet publish modern/MemReduct.Fluent.csproj -c Release -p:Platform=x64 -o publish
+pwsh -File .\modern\build-dev.ps1
 ```
 
-输出包含 .NET 和 Windows App SDK 运行时；完整保留输出目录，运行
-`MemReduct.Fluent.exe`。不需要手动安装运行时或商店 MSIX 包。
+脚本默认复用 D 盘工具链与 `obj`，固定 Release/x64、固定输出到仓库同级的
+`MemReduct-WinUI3-多语言预览`；使用 `dotnet build --no-restore`，不执行 publish、Clean 或 Rebuild。
+EXE、DLL、PRI 未变化时不会重写，设置文件在构建前后校验哈希，不自动启动程序。
+运行中的实例（含无法读取路径的管理员实例）会使脚本在改文件前停止；请从托盘退出后重试。
 
-## 验证边界
+有意修改依赖时才显式还原；缺少还原资产会自动执行锁定还原：
 
-编译、只读内存采样、配置边界、清理计划与 UI 布局验证分别记录。
-`--self-check <目录>` 只进行自动检查并导出布局，不执行真实清理或创建开机任务。
-真实清理、UAC、托盘交互和登录自启需要在用户桌面单独验证。
+```powershell
+pwsh -File .\modern\build-dev.ps1 -Restore
+```
+
+其他机器用 `-BuildRoot` 指定工具链根目录，该目录下应已有 `dotnet\dotnet.exe`：
+
+```powershell
+pwsh -File .\modern\build-dev.ps1 -BuildRoot 'E:\dev\memreduct-build'
+```
+
+编译成功后按需运行固定目录中的 EXE：
+
+```powershell
+& '..\MemReduct-WinUI3-多语言预览\MemReduct.Fluent.exe'
+```
+
+直接打开 GUI EXE 会创建托盘并读取该目录旁的设置。不要用 `dotnet MemReduct.Fluent.dll`
+替代 EXE 验证 WinUI 激活。启动其他副本前检查现有实例；全目录运行，不要只拷贝 EXE。
+现有 `.github/workflows/windows-ui.yml` 构建的是旧 Win32 版本，不是这份项目。
+
+仅需正式交付给其他机器时再单独 `dotnet publish`，交付目录不要与开发输出混用；不要每次改 UI 都发布。
+SDK、NuGet 与 obj 是下一次增量构建所需缓存，不属于重复安装包，不能每次清空。
+
+`--minimized` 用于登录后留在托盘；`--restart` 用于语言重启并等待旧实例退出。
+`--elevated` / `--clean` 是内部提权流程参数，普通 UI 验证不要传 `--clean`，它会请求真实手动清理。
+
+## 功能、配置与原生行为
+
+每秒采样一次；只在文本或进度变化时更新现有控件，避免刷新时替换控件或整页重绘。
+“已提交内存”来自 `GetPerformanceInfo.CommitTotal / CommitLimit`，不等于分页文件已用空间。
+系统文件缓存采样失败时可显示不可用值，不应编造数字。
+
+| 设置 / 清理项 | 默认值 | 行为或原生入口 |
+| --- | --- | --- |
+| `CleanWorkingSets` / 进程工作集 | 开 | NT 内存列表命令 2 |
+| `CleanSystemCache` / 系统文件缓存 | 开 | `SetSystemFileCacheSize` |
+| `CleanLowPriorityStandby` / 低优先级备用列表 | 开 | NT 内存列表命令 5 |
+| `CleanModifiedFileCache` / 已修改文件缓存 | 关 | 枚举磁盘卷并 `FlushFileBuffers`，不锁卷、不卸载、不写原始扇区 |
+| `CleanModifiedPages` / 已修改页面列表 * | 关 | NT 内存列表命令 3；仅手动 |
+| `CleanStandby` / 全部备用列表 * | 关 | NT 内存列表命令 4；仅手动 |
+| `CleanRegistryCache` / 注册表缓存 | 关 | NT 信息类 155 |
+| `CombineMemoryPages` / 合并重复内存页 | 关 | NT 信息类 130；x64 结构 24 字节 |
+| `AutoThreshold` / `Threshold` | 关 / 90 | 允许范围 50–99% |
+| `AutoInterval` / `IntervalMinutes` | 关 / 30 | 允许范围 1–1440 分钟 |
+| `ConfirmCleanup` / `CloseToTray` | 开 / 开 | 手动清理确认；关闭窗口默认隐藏到托盘 |
+| `AlwaysOnTop` / `SidebarExpanded` | 关 / 关 | 默认不置顶、顶部导航；可切换侧栏 |
+| `Theme` / `Language` | `System` / `System` | 主题可实时切换；语言通过重启完整生效 |
+
+星号过滤同时存在于 `AppSettings.AutomaticAreas` / 计划判断和 `MemoryEngine.GetOperations(automatic: true)`，
+不得仅在 UI 隐藏。自动清理还受管理员权限、30 秒冷却、重入保护和语言重启弹窗状态控制。
+不允许自动任务偷偷提权；原生失败保留逐项错误，释放量只报告观测到的可用内存增加。
+
+`settings.json` 在 EXE 旁，`SettingsStore.Save` 先写 `.tmp` 再替换；旧配置缺少新字段时使用默认值。
+解析损坏配置时应保留原文件，不用默认设置静默覆盖。新增设置不应改变已有用户选择。
+不读取安装版 INI，不修改其 `Mem Reduct - Logon` 任务。
+新版开机启动只使用当前用户 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` 的
+`MemReduct.Fluent` 项，命令为当前 EXE 加 `--minimized`；移动目录后需重新设置。
+
+尚未移植全局快捷键和托盘字体/颜色手动定制；当前数字托盘按内存阈值及清理状态变色，并适配任务栏主题和高对比度。
+
+## 界面约定
+
+- 参照 magpie：浅灰背景、白色分组、细分隔线、克制的黑白强调色；避免重新使用用户拒绝的蓝色按钮与旧多级菜单。
+- 卡片圆角 12 **屏幕像素**、按钮与输入框 10 **屏幕像素**；`UpdateCornerRadii` 按 `RasterizationScale` 换算 DIP，不能直接把逻辑值当屏幕像素。
+- 间距集中在 `App.xaml` 的 `Space8/12/16/20`、`PageInset`、`RowInset`、`MetricInset`；优先复用。
+- 字体资源为 `Segoe UI Variable`，中文由系统回退。不要单独给某一页换字体。
+- 导航偏好持久化；文字缩放超过 125% 时暂用顶部导航，保留侧栏偏好。
+- 主题使用 WinUI 资源；焦点、悬停、禁用和高对比度需要分别检查，不只看静态白底截图。
+- 文本和可访问名称同时维护 `Strings/zh-CN/Resources.resw`、`Strings/en-US/Resources.resw`；保留 `x:Uid` 映射。
+- 语言在启动前设置覆盖值。当前采用保存后弹窗“稍后重启 / 立即重启”，默认稍后；重启参数只带 `--restart`，不能重放 `--clean`。
+
+跟随系统语言时，`zh-*` 使用简体中文，其余使用英文；发布只保留中英文 WinUI 运行库语言资源。
+
+## 验证与自检
+
+文档修改不需要构建。代码修改按风险使用现有检查，不新增测试框架或例行执行整套构建。
+需要验证 WinUI 渲染时，在增量构建后执行现有自检：
+
+```powershell
+$ErrorActionPreference = 'Stop'
+$exe = (Resolve-Path '..\MemReduct-WinUI3-多语言预览\MemReduct.Fluent.exe').Path
+foreach ($language in @('zh-CN', 'en-US')) {
+    $proofPath = [IO.Path]::GetFullPath("..\MemReduct-Fluent-验证\dev-$language")
+    $run = Start-Process -FilePath $exe -ArgumentList @('--self-check', ('"' + $proofPath + '"'), '--check-language', $language) -WindowStyle Hidden -PassThru -Wait
+    $report = Get-Content -LiteralPath (Join-Path $proofPath 'self-check.json') -Raw | ConvertFrom-Json
+    if ($run.ExitCode -ne 0 -or !$report.passed) { throw "Self-check failed: $language" }
+    $report | Select-Object passed, language, @{Name='LayoutCases';Expression={$_.layouts.Count}}
+}
+```
+
+自检不读取真实用户设置，不创建托盘或启动项，不启动自动清理计时器，不执行真实原生清理。
+它会读取内存、在屏幕外创建自己的 WinUI 窗口，并导出 PNG 与 `self-check.json` / `input-editing.json`。
+
+既有检查覆盖：中英文资源/可访问名称、配置兼容、星号过滤、时间计划与冷却、原生 ABI、
+数字托盘句柄、重复采样不重写文本、中英文各 48 个宽度/字号/导航/页面组合，
+以及通过程序化设置真实 `TextBox.Text`、移动焦点检查输入和失焦保存。
+**已断言输入框焦点前后等高、文字居中及两行对齐；不覆盖实体键盘按键注入和跨显示器 DPI 切换，实际外观仍需用户验收。**
+
+交付时分开报告：编译通过、只读采样、自检、程序化输入、真实桌面观感、用户键盘操作、
+UAC/真实清理、语言实际重启、登录自启。不能相互替代；本次新增清理、实际语言重启与登录自启尚无完整验收。
+
+## 更新现有便携预览
+
+固定预览目录就是编译输出，不再经过 D 盘发布暂存或人工复制步骤。
+明确区分 Git 源码、D 盘缓存、用户正在用的预览、原版安装目录。
+
+1. 检查运行进程的准确 `ExecutablePath`。管理员实例可能读不到路径、也无法从普通权限结束；此时请用户从托盘“退出”，不要把查不到路径当作没有进程。
+2. 预览只有窗口 × 时通常只是隐藏。不要覆盖仍占用的 DLL；不要同时运行多个普通实例进行对比。
+3. 执行 `modern/build-dev.ps1`；脚本对设置做前后哈希校验，MSBuild 只更新需要更新的编译输出。
+4. 根据改动风险执行现有检查；检查失败时先修复，不启动尚未通过检查的版本。
+5. 保留设置和不明文件，不回滚用户设置；不再每次复制整个发布目录或新建逐次备份。
+6. 预览根目录曾有外部目录句柄，整目录改名/交换失败过；优先原地更新，不创建一堆重复目录。
+
+必要发布载荷约 170 MiB；当前本机预览还有约 56 MiB 旧 SDK 残留，先前删除被自动审批拦截。
+**不要为了本次接手重试删除、改名绕过或删除整个预览目录。** 旧 `work/` 脚本不属于本仓库，不能假设可用或直接重跑。
+
+## 许可与历史说明
+
+保留 [LICENSE](../LICENSE) 与 Henry++ 署名。`src/`、根 `.sln`、`UI-NOTES.md` 属于早期 Win32 路线，
+其中旧设置、多级菜单、紫色按钮和 Windows 7 支持等说明不适用于本 WinUI 实现。
