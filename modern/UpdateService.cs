@@ -63,8 +63,12 @@ internal static class UpdateService
         return new(version, new Uri(expected), digest[7..], size);
     }
 
-    internal static async Task<string> DownloadAsync(AppRelease release, IProgress<long>? progress = null, CancellationToken cancellationToken = default)
+    internal static Task<string> DownloadAsync(AppRelease release, IProgress<long>? progress = null, CancellationToken cancellationToken = default) =>
+        UserDataAccess.RunAsync(() => DownloadCoreAsync(release, progress, cancellationToken));
+
+    private static async Task<string> DownloadCoreAsync(AppRelease release, IProgress<long>? progress, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var directory = Path.GetDirectoryName(DownloadPath)!;
         Directory.CreateDirectory(directory);
         foreach (var folder in new[] { Installation.UserDirectory, directory })

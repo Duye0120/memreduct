@@ -3,11 +3,64 @@ using System.Security.AccessControl;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Security.Principal;
 
 namespace MemReduct.Fluent;
 
 public sealed partial class MainWindow
 {
+    private static async Task CheckUserDataAccessAsync(string directory)
+    {
+        static (string? Sid, bool Administrator, bool Impersonating) Identity()
+        {
+            using var identity = WindowsIdentity.GetCurrent();
+            using var thread = WindowsIdentity.GetCurrent(true);
+            return (identity.User?.Value, new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator), thread is not null);
+        }
+        var original = Identity();
+        var synchronous = UserDataAccess.Run(Identity);
+        var asynchronous = await UserDataAccess.RunAsync(async () =>
+        {
+            await Task.Delay(10).ConfigureAwait(false);
+            return Identity();
+        });
+        Require(synchronous.Sid == original.Sid && !synchronous.Administrator
+            && asynchronous.Sid == original.Sid && !asynchronous.Administrator && synchronous.Impersonating && asynchronous.Impersonating,
+            "User-data callbacks retain the same account with ordinary permissions across await");
+        var failed = false;
+        try { await UserDataAccess.RunAsync<int>(async () => { await Task.Yield(); throw new InvalidOperationException("fixture"); }); }
+        catch (InvalidOperationException error) when (error.Message == "fixture") { failed = true; }
+        Require(failed && Identity() == original, "User-data failures restore the original caller identity");
+        File.WriteAllText(Path.Combine(directory, "user-data-token-check.json"), JsonSerializer.Serialize(new
+        { callerElevated = original.Administrator, synchronousElevated = synchronous.Administrator, asynchronousElevated = asynchronous.Administrator }));
+
+        var target = Path.Combine(directory, "atomic-settings-check.json");
+        var settings = new AppSettings { Threshold = 72, Language = "en-US" };
+        File.WriteAllText(target + ".tmp", "Existing file must survive");
+        SettingsStore.Save(settings, target);
+        Require(JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(target))!.Threshold == 72
+            && File.ReadAllText(target + ".tmp") == "Existing file must survive", "Settings use a fresh temporary file and preserve unrelated existing files");
+        var originalJson = File.ReadAllText(target);
+        settings.Threshold = 83;
+        using (var locked = new FileStream(target, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            var rejected = false;
+            try { SettingsStore.Save(settings, target); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException) { rejected = true; }
+            Require(rejected && File.ReadAllText(target) == originalJson, "A failed atomic replace leaves the previous settings intact");
+        }
+        SettingsStore.Save(settings, target);
+        Require(JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(target))!.Threshold == 83
+            && Directory.GetFiles(directory, "atomic-settings-check.json.*.tmp").Length == 0,
+            "Settings save succeeds after retry and removes only its own temporary files");
+        Require(SettingsStore.Load(target).Threshold == 83, "Normal settings load uses the same bounded user-data path");
+        var oversized = Path.Combine(directory, "oversized-settings.json");
+        File.WriteAllText(oversized, new string(' ', 65537));
+        var oversizedRejected = false;
+        try { _ = SettingsStore.Load(oversized); } catch (InvalidDataException) { oversizedRejected = true; }
+        Require(oversizedRejected && new FileInfo(oversized).Length == 65537, "Oversized settings are rejected before JSON allocation without modifying the file");
+    }
+
     private static async Task CheckUpdateCopyAsync(string directory)
     {
         using (var canceled = new CancellationTokenSource())

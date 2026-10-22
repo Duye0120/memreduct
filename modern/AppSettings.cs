@@ -63,35 +63,57 @@ internal static class SettingsStore
 {
     private static string FilePath => Installation.SettingsPath;
 
-    internal static void ImportIfMissing(string source, string destination)
+    internal static void ImportIfMissing(string source, string destination) => UserDataAccess.Run(() =>
     {
         if (File.Exists(destination)) return;
-        var file = new FileInfo(source);
-        if (file.Length > 65536) throw new InvalidDataException("Settings file is too large.");
-        var json = File.ReadAllText(source);
+        var json = ReadSettings(source);
         _ = JsonSerializer.Deserialize<AppSettings>(json) ?? throw new InvalidDataException(UiText.Get("EmptySettings"));
-        Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
         // Preserve the source and never replace an existing installed profile, including on upgrade.
-        using var target = new FileStream(destination, FileMode.CreateNew, FileAccess.Write);
-        using var writer = new StreamWriter(target);
-        writer.Write(json);
-    }
+        WriteSettings(destination, json, overwrite: false);
+    });
 
-    public static AppSettings Load()
+    public static AppSettings Load() => Load(FilePath);
+
+    internal static AppSettings Load(string path) => UserDataAccess.Run(() =>
     {
-        if (!File.Exists(FilePath)) return new();
-        var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath))
+        if (!File.Exists(path)) return new AppSettings();
+        var settings = JsonSerializer.Deserialize<AppSettings>(ReadSettings(path))
             ?? throw new InvalidDataException(UiText.Get("EmptySettings"));
         settings.Normalize();
         return settings;
+    });
+
+    private static string ReadSettings(string path)
+    {
+        using var stream = File.OpenRead(path);
+        if (stream.Length > 65536) throw new InvalidDataException(UiText.Get("SettingsTooLarge"));
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 
-    public static void Save(AppSettings settings)
+    public static void Save(AppSettings settings) => Save(settings, FilePath);
+
+    internal static void Save(AppSettings settings, string path) => UserDataAccess.Run(() =>
     {
         settings.Normalize();
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        var temporary = FilePath + ".tmp";
-        File.WriteAllText(temporary, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
-        File.Move(temporary, FilePath, overwrite: true);
+        WriteSettings(path, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }), overwrite: true);
+    });
+
+    private static void WriteSettings(string path, string json, bool overwrite)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        var created = false;
+        try
+        {
+            using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                created = true;
+                using var writer = new StreamWriter(stream);
+                writer.Write(json);
+            }
+            File.Move(temporary, path, overwrite);
+        }
+        finally { if (created && File.Exists(temporary)) File.Delete(temporary); }
     }
 }

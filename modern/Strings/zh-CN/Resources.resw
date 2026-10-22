@@ -371,4 +371,6 @@
   <data name="ProcessesUpdated" xml:space="preserve"><value>更新于 {0:HH:mm:ss} · 显示前 {1} 项</value></data>
   <data name="ProcessesUnavailable" xml:space="preserve"><value> · {0} 个进程已退出或无法读取</value></data>
   <data name="ProcessesFailed" xml:space="preserve"><value>无法刷新进程，已有结果保留。</value></data>
+  <data name="UserAccessUnavailable" xml:space="preserve"><value>无法使用当前账户的普通权限访问设置或下载缓存。请保持 Windows UAC 开启，并使用正常登录的账户运行。</value></data>
+  <data name="SettingsTooLarge" xml:space="preserve"><value>设置文件超过 64 KiB，无法读取。原文件未修改。</value></data>
 </root>

@@ -371,4 +371,6 @@
   <data name="ProcessesUpdated" xml:space="preserve"><value>Updated {0:HH:mm:ss} · Top {1} processes</value></data>
   <data name="ProcessesUnavailable" xml:space="preserve"><value> · {0} exited or unavailable</value></data>
   <data name="ProcessesFailed" xml:space="preserve"><value>Could not refresh processes. Previous results are retained.</value></data>
+  <data name="UserAccessUnavailable" xml:space="preserve"><value>Could not access settings or the download cache with this account's ordinary permissions. Keep Windows UAC enabled and run from a normal signed-in account.</value></data>
+  <data name="SettingsTooLarge" xml:space="preserve"><value>The settings file exceeds 64 KiB and cannot be read. The original file was not modified.</value></data>
 </root>

@@ -26,6 +26,8 @@ public sealed partial class MainWindow
             await Task.Delay(250);
             var english = UiText.LanguageTag == "en-US";
             CheckInstallationAndUpdates(directory);
+            await CheckUserDataAccessAsync(directory);
+            checks.Add("User-data access keeps the same ordinary-permission identity across await; atomic settings replacement preserves the original on failure and succeeds on retry.");
             await CheckUpdateCopyAsync(directory);
             checks.Add("Background-update copy accepts the exact release payload and rejects tampering, truncation, oversized data and cancellation without executing setup.");
             var initialCleanupTime = _settings.LastCleanUtc;
