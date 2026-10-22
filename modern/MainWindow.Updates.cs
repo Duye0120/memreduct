@@ -37,6 +37,12 @@ public sealed partial class MainWindow
                 UpdateStatus.Text += " " + UiText.Get("UpdatePortable");
                 return;
             }
+            try { Installation.RequireProtectedInstall(); }
+            catch (UnauthorizedAccessException)
+            {
+                UpdateStatus.Text += " " + UiText.Get("UpdateUnprotected");
+                return;
+            }
             _restartPromptOpen = true;
             RefreshOptions();
             try

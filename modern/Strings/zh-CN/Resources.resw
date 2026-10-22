@@ -314,8 +314,8 @@
   <data name="NotifyCleanupSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>清理成功后显示气泡通知</value></data>
   <data name="CleanupSucceeded" xml:space="preserve"><value>内存清理完成</value></data>
   <data name="CleanupNotification" xml:space="preserve"><value>可用内存增加 {0}。</value></data>
-  <data name="InstalledOnly" xml:space="preserve"><value>请先安装到默认安装目录，再启用管理员开机启动或安装更新。</value></data>
-  <data name="InstalledStartupNote" xml:space="preserve"><value>开启时授权一次，之后登录自动以管理员权限在托盘运行。</value></data>
+  <data name="InstalledOnly" xml:space="preserve"><value>请先使用安装包安装程序，再启用管理员开机启动或安装更新。</value></data>
+  <data name="InstalledStartupNote" xml:space="preserve"><value>安装目录受管理员保护时，开启并授权一次，之后登录自动以管理员权限在托盘运行。</value></data>
   <data name="StartupAdminFailed" xml:space="preserve"><value>未完成启动设置。请使用当前登录的管理员账户授权，不要切换到其他账户。</value></data>
   <data name="UpdateButton.Content" xml:space="preserve"><value>检查更新</value></data>
   <data name="ReleasesLink.Content" xml:space="preserve"><value>下载与发行说明</value></data>
@@ -339,4 +339,5 @@
     <value> · 清理后仍超阈值，阈值重试暂缓 5 分钟</value>
   </data>
   <data name="UpdateStatus.Text" xml:space="preserve"><value>从 GitHub 检查新版本。</value></data>
+  <data name="UpdateUnprotected" xml:space="preserve"><value>当前安装目录可被普通用户修改，请通过“下载与发行说明”手动下载安装包更新。</value></data>
 </root>

@@ -55,12 +55,30 @@ public sealed partial class MainWindow
         // Exercise the installed COM path inside WinUI even when this check runs from a portable build.
         var startupEnabled = StartupRegistration.IsInstalledStartupEnabled();
         File.WriteAllText(Path.Combine(directory, "startup-read.json"), JsonSerializer.Serialize(new { startupEnabled }));
-        Require(Installation.IsInstalledPath(Installation.ExecutablePath), "The fixed installed path is recognized");
+        Require(Installation.IsInstalledPath(Installation.ExecutablePath), "The registered installed path is recognized");
+        var customDirectory = Installation.ResolveDirectory(@"D:\Apps\内存工具\");
+        Require(customDirectory == @"D:\Apps\内存工具"
+            && Installation.MatchesExecutable(@"d:\apps\内存工具\MemReduct.Fluent.exe", customDirectory),
+            "Custom installation paths support another drive, Unicode and case-insensitive matching");
+        Require(!Installation.MatchesExecutable(@"D:\Apps\内存工具-other\MemReduct.Fluent.exe", customDirectory)
+            && !Installation.MatchesExecutable(@"D:\Apps\内存工具\other.exe", customDirectory), "Only the exact registered executable is installed");
+        foreach (var invalidDirectory in new[] { @"relative\folder", @"\\server\share\app" })
+        {
+            var invalidRejected = false;
+            try { Installation.ResolveDirectory(invalidDirectory); } catch (InvalidDataException) { invalidRejected = true; }
+            Require(invalidRejected, "Relative and network installation paths are rejected");
+        }
+        Require(Installation.ResolveDirectory(null) == Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "MemReduct Fluent"),
+            "Existing default installations retain their path");
         Require(!Installation.IsInstalledPath(Path.Combine(Path.GetTempPath(), "MemReduct.Fluent.exe")), "Portable paths cannot request persistent elevation");
         Require(!Installation.IsInstalledPath(Path.Combine(Installation.DirectoryPath + "-other", "MemReduct.Fluent.exe")), "Sibling paths are not trusted installations");
         Require(Installation.GrantsUntrustedWrite("S-1-5-32-545", FileSystemRights.WriteData), "Users may not modify elevated binaries");
         Require(!Installation.GrantsUntrustedWrite("S-1-5-32-545", FileSystemRights.ReadAndExecute), "Read/execute ACLs remain allowed");
         Require(!Installation.GrantsUntrustedWrite("S-1-5-32-544", FileSystemRights.FullControl), "Administrators can maintain the installation");
+        Require(Installation.GrantsUntrustedReplacement("S-1-5-32-545", FileSystemRights.DeleteSubdirectoriesAndFiles)
+            && Installation.GrantsUntrustedReplacement("S-1-5-32-545", FileSystemRights.ChangePermissions), "Writable ancestors cannot replace elevated installations");
+        Require(!Installation.GrantsUntrustedReplacement("S-1-5-32-545", FileSystemRights.CreateDirectories | FileSystemRights.ReadAndExecute),
+            "Creating sibling directories does not grant replacement of the installation");
 
         const string sid = "S-1-5-21-111-222-333-1001";
         var xml = StartupRegistration.CreateTaskXml(sid, Installation.ExecutablePath);

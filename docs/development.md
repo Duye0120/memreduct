@@ -76,7 +76,7 @@ DPI 的 `SM_CXSMICON`。布局、间距、字体仍是 DIP（设计如此），�
 | [MemoryEngine.cs](../modern/MemoryEngine.cs) | 只读采样、原生清理、权限与逐项错误收集 |
 | [TrayIcon.cs](../modern/TrayIcon.cs) / [TrayGlyph.cs](../modern/TrayGlyph.cs) | 托盘消息、百分比数字图标、DPI/颜色、句柄释放 |
 | [StartupRegistration.cs](../modern/StartupRegistration.cs) | 便携版 Run 项；安装版同用户最高权限交互式登录任务 |
-| [Installation.cs](../modern/Installation.cs) / [UpdateService.cs](../modern/UpdateService.cs) | 固定安装路径及 ACL 校验、个人设置路径、本人仓库的 Release 检查与验证下载 |
+| [Installation.cs](../modern/Installation.cs) / [UpdateService.cs](../modern/UpdateService.cs) | 已登记安装路径及 ACL 校验、个人设置路径、本人仓库的 Release 检查与验证下载 |
 | [安装与发布指南](installation.md) | Inno Setup 安装、升级、卸载及发布流程与验证边界 |
 | [UiText.cs](../modern/UiText.cs) / [Strings/](../modern/Strings/) | 启动时语言选择、ResourceLoader、简体中文与英文 `.resw` |
 | [SelfCheck.cs](../modern/SelfCheck.cs) | 内置开发者自检、隐藏窗口布局测量、PNG/JSON 导出 |

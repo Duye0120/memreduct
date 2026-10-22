@@ -314,8 +314,8 @@
   <data name="NotifyCleanupSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Notify after successful cleanup</value></data>
   <data name="CleanupSucceeded" xml:space="preserve"><value>Memory cleanup complete</value></data>
   <data name="CleanupNotification" xml:space="preserve"><value>Available memory increased by {0}.</value></data>
-  <data name="InstalledOnly" xml:space="preserve"><value>Install to the default application folder before enabling elevated startup or installing updates.</value></data>
-  <data name="InstalledStartupNote" xml:space="preserve"><value>Authorize once when enabling; future sign-ins start the elevated tray app automatically.</value></data>
+  <data name="InstalledOnly" xml:space="preserve"><value>Install the app using its installer before enabling elevated startup or installing updates.</value></data>
+  <data name="InstalledStartupNote" xml:space="preserve"><value>An administrator-protected installation folder is required. Authorize once to start the elevated tray app at future sign-ins.</value></data>
   <data name="StartupAdminFailed" xml:space="preserve"><value>Startup setup did not finish. Authorize with the currently signed-in administrator account, not another account.</value></data>
   <data name="UpdateButton.Content" xml:space="preserve"><value>Check for updates</value></data>
   <data name="ReleasesLink.Content" xml:space="preserve"><value>Downloads and release notes</value></data>
@@ -339,4 +339,5 @@
     <value> · Still above threshold; threshold retry deferred for 5 minutes</value>
   </data>
   <data name="UpdateStatus.Text" xml:space="preserve"><value>Check GitHub for a new version.</value></data>
+  <data name="UpdateUnprotected" xml:space="preserve"><value>This installation folder is user-writable. Use Downloads and release notes to download and run the installer manually.</value></data>
 </root>

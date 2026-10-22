@@ -167,6 +167,7 @@ internal static class UpdateService
         Installation.RequireProtectedPath(new FileInfo(target));
         var start = new ProcessStartInfo(target) { UseShellExecute = true, WorkingDirectory = Installation.DirectoryPath };
         start.ArgumentList.Add("/FROMAPP=1");
+        start.ArgumentList.Add("/DIR=" + Installation.DirectoryPath);
         using var process = Process.Start(start) ?? throw new InvalidOperationException(UiText.Get("UpdateFailed"));
     }
 }

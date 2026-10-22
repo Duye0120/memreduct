@@ -12,8 +12,9 @@ AppPublisherURL=https://github.com/Duye0120/memreduct-winui
 AppSupportURL=https://github.com/Duye0120/memreduct-winui/issues
 AppUpdatesURL=https://github.com/Duye0120/memreduct-winui/releases
 DefaultDirName={autopf}\MemReduct Fluent
-UsePreviousAppDir=no
-DisableDirPage=yes
+UsePreviousAppDir=yes
+DisableDirPage=no
+AlwaysShowDirOnReadyPage=yes
 DisableProgramGroupPage=yes
 PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
@@ -59,7 +60,8 @@ zhcn.ImportTitle=导入便携版设置（可选）
 zhcn.ImportDescription=选择原便携版目录中的 settings.json，留空则跳过。
 zhcn.ImportNote=首次打开时复制设置；原文件不删除，已有安装版设置不覆盖。管理员开机启动请在安装后到设置中开启并授权一次。
 zhcn.ImportLabel=设置文件：
-zhcn.FixedDirectory=安装目录必须为 Program Files 下的 MemReduct Fluent，不能包含符号链接。
+zhcn.InvalidDirectory=请选择独立的本地程序目录，不能使用磁盘根目录或包含符号链接的路径。
+zhcn.MoveInstallation=升级需沿用原安装目录。如需迁移，请先卸载旧版本再选择新目录；个人设置会保留。
 zhcn.OlderInstaller=已安装的版本更新，请使用最新安装包。
 zhcn.CloseFirst=请先从 Mem Reduct 的托盘菜单退出，再继续安装或卸载。
 zhcn.InvalidSettings=请选择一个不大于 64 KB 的 settings.json 文件，或留空跳过。
@@ -67,7 +69,8 @@ en.ImportTitle=Import portable settings (optional)
 en.ImportDescription=Select settings.json from your portable app folder, or leave this blank.
 en.ImportNote=Settings are copied on first launch. The source and existing installed settings are preserved. Enable administrator startup in the app settings after installation and authorize once.
 en.ImportLabel=Settings file:
-en.FixedDirectory=Install to MemReduct Fluent under Program Files, without symbolic links.
+en.InvalidDirectory=Choose a dedicated local application folder, not a drive root or a path containing symbolic links.
+en.MoveInstallation=Upgrade in the existing folder. To move the app, uninstall it first, then select a new folder. Your settings are preserved.
 en.OlderInstaller=A newer version is already installed. Use the latest installer.
 en.CloseFirst=Exit Mem Reduct from its tray menu before installing or uninstalling.
 en.InvalidSettings=Choose a settings.json file no larger than 64 KB, or leave the field blank.
@@ -75,6 +78,7 @@ en.InvalidSettings=Choose a settings.json file no larger than 64 KB, or leave th
 [Code]
 var
   ImportPage: TInputFileWizardPage;
+  PreviousDirectory: String;
 
 function GetFileAttributesW(const FileName: String): Cardinal;
   external 'GetFileAttributesW@kernel32.dll stdcall';
@@ -123,13 +127,14 @@ end;
 
 procedure InitializeWizard;
 begin
+  RegQueryStringValue(HKLM64, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{5B9D5C89-F01C-4AB6-A593-DA69B3835832}_is1', 'InstallLocation', PreviousDirectory);
   ImportPage := CreateInputFilePage(wpSelectDir, CustomMessage('ImportTitle'), CustomMessage('ImportDescription'), CustomMessage('ImportNote'));
   ImportPage.Add(CustomMessage('ImportLabel'), 'JSON (*.json)|*.json', '.json');
 end;
 
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
-  Result := (PageID = ImportPage.ID) and FileExists(ExpandConstant('{autopf}\MemReduct Fluent\MemReduct.Fluent.exe'));
+  Result := (PageID = ImportPage.ID) and (PreviousDirectory <> '');
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
@@ -152,11 +157,21 @@ end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var VersionMS, VersionLS: Cardinal;
+    SelectedDirectory, ParentDirectory: String;
 begin
   Result := '';
-  if (CompareText(RemoveBackslashUnlessRoot(ExpandConstant('{app}')), ExpandConstant('{autopf}\MemReduct Fluent')) <> 0) or
-    ((GetFileAttributesW(ExpandConstant('{autopf}')) and $400) <> 0) or HasLink(ExpandConstant('{app}')) then
-  begin Result := CustomMessage('FixedDirectory'); exit; end;
+  SelectedDirectory := RemoveBackslashUnlessRoot(ExpandConstant('{app}'));
+  if (Length(SelectedDirectory) <= 3) or (Copy(SelectedDirectory, 2, 2) <> ':\') or HasLink(SelectedDirectory) then
+  begin Result := CustomMessage('InvalidDirectory'); exit; end;
+  ParentDirectory := SelectedDirectory;
+  repeat
+    if DirExists(ParentDirectory) and ((GetFileAttributesW(ParentDirectory) and $400) <> 0) then
+    begin Result := CustomMessage('InvalidDirectory'); exit; end;
+    ParentDirectory := ExtractFileDir(ParentDirectory);
+  until Length(ParentDirectory) <= 3;
+  if (PreviousDirectory <> '') and
+    (CompareText(SelectedDirectory, RemoveBackslashUnlessRoot(PreviousDirectory)) <> 0) then
+  begin Result := CustomMessage('MoveInstallation'); exit; end;
   if CheckForMutexes('Local\MemReduct.Fluent.Running') then
   begin Result := CustomMessage('CloseFirst'); exit; end;
   if GetVersionNumbers(ExpandConstant('{app}\MemReduct.Fluent.exe'), VersionMS, VersionLS) then
