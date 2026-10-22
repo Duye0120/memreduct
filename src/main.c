@@ -65,7 +65,7 @@ VOID _app_generate_array (
 	while (_r_obj_enumhashtable (hashtable, NULL, &hash_code, &enum_key))
 	{
 		if (hash_code <= max_value)
-			integers[index] = hash_code;
+			integers[index] = (ULONG)hash_code;
 
 		if (++index >= count)
 			break;
@@ -226,7 +226,7 @@ NTSTATUS _app_getvolumemountpoints (
 
 		if (NT_SUCCESS (status))
 		{
-			if (buffer->Size > size || buffer->Size < FIELD_OFFSET (APP_MOUNT_POINTS, MountPoints) ||
+			if (buffer->Size > size || buffer->Size < (ULONG)FIELD_OFFSET (APP_MOUNT_POINTS, MountPoints) ||
 				buffer->NumberOfMountPoints > (buffer->Size - FIELD_OFFSET (APP_MOUNT_POINTS, MountPoints)) / sizeof (APP_MOUNT_POINT))
 			{
 				_r_mem_free (buffer);
