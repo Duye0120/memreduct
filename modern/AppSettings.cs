@@ -11,6 +11,7 @@ public sealed class AppSettings
     public bool AlwaysOnTop { get; set; }
     public bool CloseToTray { get; set; } = true;
     public bool ConfirmCleanup { get; set; } = true;
+    public bool NotifyAfterCleanup { get; set; }
     public bool CleanWorkingSets { get; set; } = true;
     public bool CleanSystemCache { get; set; } = true;
     public bool CleanLowPriorityStandby { get; set; } = true;
@@ -20,6 +21,7 @@ public sealed class AppSettings
     public bool CleanRegistryCache { get; set; }
     public bool CombineMemoryPages { get; set; }
     public bool AutoThreshold { get; set; }
+    public bool GameMode { get; set; } = true;
     public int Threshold { get; set; } = 90;
     public bool AutoInterval { get; set; }
     public int IntervalMinutes { get; set; } = 30;
@@ -47,9 +49,9 @@ public sealed class AppSettings
         if (Language is not ("System" or "zh-CN" or "en-US")) Language = "System";
     }
 
-    public bool IsAutoDue(double physicalPercent, DateTimeOffset now, DateTimeOffset lastAttempt)
+    public bool IsAutoDue(double physicalPercent, DateTimeOffset now, DateTimeOffset lastAttempt, bool gameActive = false)
     {
-        if (AutomaticAreas == CleanAreas.None || now - lastAttempt < TimeSpan.FromSeconds(30)) return false;
+        if ((GameMode && gameActive) || AutomaticAreas == CleanAreas.None || now - lastAttempt < TimeSpan.FromSeconds(30)) return false;
         return (AutoThreshold && physicalPercent >= Threshold) ||
             (AutoInterval && now - lastAttempt >= TimeSpan.FromMinutes(IntervalMinutes));
     }

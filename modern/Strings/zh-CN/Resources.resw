@@ -290,4 +290,22 @@
   <data name="RestartNow" xml:space="preserve"><value>立即重启</value></data>
   <data name="RestartLater" xml:space="preserve"><value>稍后重启</value></data>
   <data name="RestartFailed" xml:space="preserve"><value>程序重启失败，请稍后手动重新打开。</value></data>
+  <data name="GameModeLabel.Text" xml:space="preserve"><value>游戏模式</value></data>
+  <data name="GameModeDescription.Text" xml:space="preserve"><value>全屏时暂停自动清理，退出后缓冲 30 秒。</value></data>
+  <data name="GameModeSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>自动识别全屏并暂停清理</value></data>
+  <data name="GameModeMenu" xml:space="preserve"><value>游戏模式（自动识别全屏）</value></data>
+  <data name="GameModeActive" xml:space="preserve"><value>游戏模式 · 自动清理已暂停</value></data>
+  <data name="GameModeWatching" xml:space="preserve"><value>游戏模式 · 正在检测全屏应用（含视频）</value></data>
+  <data name="GameModeOff" xml:space="preserve"><value>游戏模式已关闭</value></data>
+  <data name="MemoryNormal" xml:space="preserve"><value>内存用量正常</value></data>
+  <data name="MemoryWarning" xml:space="preserve"><value>内存用量偏高</value></data>
+  <data name="MemoryCritical" xml:space="preserve"><value>内存用量很高</value></data>
+  <data name="CleanupCanceled" xml:space="preserve"><value>已取消清理</value></data>
+  <data name="CleanupHasErrors" xml:space="preserve"><value>清理有错误 · 右键打开查看详情</value></data>
+  <data name="TrayClickHint" xml:space="preserve"><value>左键清理 · 右键菜单</value></data>
+  <data name="TrayBehaviorNote.Text" xml:space="preserve"><value>托盘：左键清理，右键菜单。70% 橙色预警，90% 红色告警。清理中紫色旋转，成功绿色，错误橙色或红色。</value></data>
+  <data name="NotifyCleanupLabel.Text" xml:space="preserve"><value>清理成功后显示气泡通知</value></data>
+  <data name="NotifyCleanupSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>清理成功后显示气泡通知</value></data>
+  <data name="CleanupSucceeded" xml:space="preserve"><value>内存清理完成</value></data>
+  <data name="CleanupNotification" xml:space="preserve"><value>可用内存增加 {0}。</value></data>
 </root>

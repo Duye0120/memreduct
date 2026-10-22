@@ -81,7 +81,15 @@ public sealed partial class MainWindow
                 $"Button radius must be 10 screen pixels; actual={buttonRadiusPixels}, scale={displayScale}");
             foreach (var card in new[] { MetricsCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
                 Require(Math.Abs(card.CornerRadius.TopLeft * displayScale - 12) < 0.01, "All grouping cards have 12 screen-pixel radii");
-            checks.Add($"Light/dark/system caption themes and physical 12px card / 10px button radii passed at scale {displayScale}.");
+            foreach (var control in new Control[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab, PaneToggleButton,
+                ElevateButton, ThemeChoice, LanguageChoice, ThresholdNumber, IntervalNumber, SourceLink, ExitButton })
+                Require(Math.Abs(control.CornerRadius.TopLeft * displayScale - 10) < 0.01,
+                    $"Every custom control has 10 screen-pixel radii: {control.Name} at scale {displayScale}");
+            var presenter = AppWindow.Presenter as Microsoft.UI.Windowing.OverlappedPresenter;
+            Require(presenter is not null && Math.Abs(presenter.PreferredMinimumWidth.GetValueOrDefault() - 560 * displayScale) <= 1
+                && Math.Abs(presenter.PreferredMinimumHeight.GetValueOrDefault() - 440 * displayScale) <= 1,
+                $"Minimum window size tracks the monitor DPI: {presenter?.PreferredMinimumWidth}x{presenter?.PreferredMinimumHeight} at scale {displayScale}");
+            checks.Add($"Light/dark/system caption themes, physical 12px card / 10px control radii and DPI-tracked minimum window size passed at scale {displayScale}.");
             checks.Add("Black/white controls, pale gray canvas and compact white grouping cards use the reference palette.");
             await CheckTrayGlyphs(directory);
             checks.Add("Tray digits 0/9/99/100 rendered at 16/20/24/32px on light/dark backgrounds; 200 refreshes leaked no GDI or USER handles.");
@@ -103,6 +111,65 @@ public sealed partial class MainWindow
             options.AutoThreshold = false; options.AutoInterval = true; options.IntervalMinutes = 30;
             Require(!options.IsAutoDue(0, now, now.AddMinutes(-29)), "Interval before deadline");
             Require(options.IsAutoDue(0, now, now.AddMinutes(-30)), "Interval deadline");
+            Require(!options.IsAutoDue(100, now, now.AddDays(-1), gameActive: true), "Full-screen protection pauses interval cleaning");
+            options.AutoThreshold = true;
+            Require(!options.IsAutoDue(100, now, now.AddDays(-1), gameActive: true), "Full-screen protection also pauses threshold cleaning");
+            options.GameMode = false;
+            Require(options.IsAutoDue(100, now, now.AddDays(-1), gameActive: true), "Disabling game mode restores the existing automatic policy");
+            options.GameMode = true;
+            var savedAttempt = _lastAttempt;
+            var savedGameAreas = _settings.Areas;
+            GameModeSwitch.IsOn = false;
+            Require(!_settings.GameMode, "Game switch reaches settings");
+            GameModeSwitch.IsOn = true;
+            Require(JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(_settings))!.GameMode, "Game mode survives restart");
+            UpdateGameProtection(true, now);
+            Require(_gameActive && !AdminBanner.IsOpen && AutoStatusText.Text == UiText.Get("GameModeActive"), "Active full-screen protection is visible");
+            UpdateGameProtection(false, now);
+            Require(!_gameActive && _lastAttempt == now && _settings.Areas == savedGameAreas,
+                "Leaving full screen starts the cooldown without changing cleanup selections");
+            Require(!options.IsAutoDue(100, now.AddSeconds(29), _lastAttempt)
+                && options.IsAutoDue(100, now.AddSeconds(30), _lastAttempt), "Alt-Tab has a 30-second grace period");
+            _lastAttempt = savedAttempt;
+            var screen = new GameModeMonitor.Rect { Left = -1920, Top = 0, Right = 0, Bottom = 1080 };
+            Require(GameModeMonitor.CoversMonitor(screen, screen), "Borderless full screen works on monitors with negative coordinates");
+            Require(!GameModeMonitor.CoversMonitor(new() { Left = -1920, Top = 0, Right = 0, Bottom = 1040 }, screen),
+                "Ordinary maximized windows below the taskbar are not full screen");
+            Require(!GameModeMonitor.CoversMonitor(default, default) && GameModeMonitor.IsShellClass("WorkerW")
+                && !GameModeMonitor.IsShellClass("GameWindow"), "Desktop surfaces and invalid bounds are excluded");
+            _ = GameModeMonitor.IsFullscreenApp(); // Read-only ABI smoke check; does not claim a real game was tested.
+            Require(JsonSerializer.Deserialize<AppSettings>("{}")!.GameMode && !JsonSerializer.Deserialize<AppSettings>("{}")!.NotifyAfterCleanup,
+                "Legacy settings gain game protection with optional notifications off");
+            NotifyCleanupSwitch.IsOn = true;
+            Require(_settings.NotifyAfterCleanup && JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(_settings))!.NotifyAfterCleanup,
+                "Notification preference is wired and persisted");
+            NotifyCleanupSwitch.IsOn = false;
+            Require(ShouldNotifyCleanup(true, 0, true, false) && !ShouldNotifyCleanup(false, 0, true, false)
+                && !ShouldNotifyCleanup(true, 1, true, false) && !ShouldNotifyCleanup(true, 0, false, true),
+                "Only enabled, successful cleanups notify; automatic game-mode notifications are suppressed");
+            var activationEvents = new uint[] { 0x201, 0x202, 0x400 };
+            Require(activationEvents.Count(x => TrayIcon.IsActivation(x, true)) == 1
+                && activationEvents.Count(x => TrayIcon.IsActivation(x, false)) == 1
+                && TrayIcon.IsActivation(0x401, true) && !TrayIcon.IsActivation(0x7b, true),
+                "Mouse-up and NIN_SELECT cannot clean twice; keyboard activation remains supported");
+            Require(TrayIcon.IsContextMenu(0x7b, true) && !TrayIcon.IsContextMenu(0x205, true)
+                && TrayIcon.IsContextMenu(0x205, false), "Right-click dispatch follows the negotiated tray protocol");
+            foreach (var dark in new[] { false, true })
+            {
+                var normal = TrayIcon.StatusColor(69.9, CleanupFeedback.None, false, dark);
+                var warning = TrayIcon.StatusColor(70, CleanupFeedback.None, false, dark);
+                var danger = TrayIcon.StatusColor(90, CleanupFeedback.None, false, dark);
+                Require(normal != warning && warning != danger && TrayIcon.StatusColor(89.9, CleanupFeedback.None, false, dark) == warning,
+                    "Tray warning/danger boundaries are 70 and 90 percent in both themes");
+                Require(TrayIcon.StatusColor(99, CleanupFeedback.Cleaning, false, dark) != danger
+                    && TrayIcon.StatusColor(99, CleanupFeedback.Success, false, dark) == normal,
+                    "Cleanup feedback overrides usage colors briefly");
+            }
+            SetFeedback(CleanupFeedback.Success, "self-check");
+            _feedbackUntil = Environment.TickCount64 - 1;
+            UpdateTray();
+            Require(_feedback == CleanupFeedback.None, "Result feedback expires back to live usage");
+            checks.Add("Tray event routing, warning boundaries, success-notification gating, full-screen geometry and game-mode scheduling passed without real cleaning or notifications.");
             options.CleanWorkingSets = options.CleanSystemCache = options.CleanLowPriorityStandby = false;
             Require(!options.IsAutoDue(100, now, now.AddDays(-1)), "Empty cleanup selection");
             options.CleanModifiedPages = options.CleanStandby = true;
@@ -213,6 +280,60 @@ public sealed partial class MainWindow
             }
             File.WriteAllText(Path.Combine(directory, "input-editing.json"), JsonSerializer.Serialize(inputChecks, new JsonSerializerOptions { WriteIndented = true }));
             checks.Add("Real input controls retained cleared/multi-digit drafts, kept digits visible without popups, aligned focused borders, committed on blur and recovered empty/invalid input; no user settings were written.");
+
+            // Reported height issue: measure both inputs focused and unfocused before asserting, so a failed run still leaves evidence.
+            (double Height, double Top, double Bottom, double TextCenterDelta) MeasureInput(NumberBox box)
+            {
+                var border = Descendants(box).OfType<Border>().First(x => x.Name == "BorderElement");
+                var editor = Descendants(box).OfType<TextBox>().First();
+                var content = Descendants(editor).OfType<ScrollViewer>().First(x => x.Name == "ContentElement");
+                var glyphs = new TextBlock { Text = "0", FontSize = editor.FontSize, FontFamily = editor.FontFamily };
+                glyphs.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                var top = border.TransformToVisual(AutoSettingsCard).TransformPoint(new Point()).Y;
+                var contentTop = content.TransformToVisual(AutoSettingsCard).TransformPoint(new Point()).Y;
+                return (box.ActualHeight, top, top + border.ActualHeight,
+                    contentTop + content.Padding.Top + glyphs.DesiredSize.Height / 2 - (top + border.ActualHeight / 2));
+            }
+            var heightSamples = new List<(string Name, (double Height, double Top, double Bottom, double TextCenterDelta) Unfocused, (double Height, double Top, double Bottom, double TextCenterDelta) Focused)>();
+            foreach (var (box, other) in new[] { (ThresholdNumber, IntervalNumber), (IntervalNumber, ThresholdNumber) })
+            {
+                var editor = Descendants(box).OfType<TextBox>().First();
+                var otherEditor = Descendants(other).OfType<TextBox>().First();
+                Require(otherEditor.Focus(FocusState.Programmatic), "The sibling input can take focus for the unfocused height sample");
+                Shell.UpdateLayout();
+                await Task.Delay(50);
+                var unfocused = MeasureInput(box);
+                if (box == ThresholdNumber) await WritePreview(directory, "threshold-unfocused.png", AutoSettingsCard);
+                Require(editor.Focus(FocusState.Programmatic), "The input can take focus for the focused height sample");
+                Shell.UpdateLayout();
+                await Task.Delay(50);
+                var focused = MeasureInput(box);
+                if (box == ThresholdNumber) await WritePreview(directory, "threshold-focused.png", AutoSettingsCard);
+                heightSamples.Add((box.Name, unfocused, focused));
+                File.WriteAllText(Path.Combine(directory, "input-heights.json"), JsonSerializer.Serialize(new
+                {
+                    displayScale = Shell.XamlRoot.RasterizationScale,
+                    inputs = heightSamples.Select(x => new
+                    {
+                        input = x.Name, unfocusedHeight = x.Unfocused.Height, focusedHeight = x.Focused.Height,
+                        unfocusedTop = x.Unfocused.Top, unfocusedBottom = x.Unfocused.Bottom,
+                        focusedTop = x.Focused.Top, focusedBottom = x.Focused.Bottom,
+                        unfocusedTextDelta = x.Unfocused.TextCenterDelta, focusedTextDelta = x.Focused.TextCenterDelta
+                    })
+                }, new JsonSerializerOptions { WriteIndented = true }));
+            }
+            foreach (var sample in heightSamples)
+            {
+                Require(Math.Abs(sample.Focused.Height - sample.Unfocused.Height) <= 1.2,
+                    $"Focused and unfocused input heights match: {sample.Name} unfocused={sample.Unfocused.Height}, focused={sample.Focused.Height}");
+                Require(Math.Abs(sample.Focused.Top - sample.Unfocused.Top) <= 0.5 && Math.Abs(sample.Focused.Bottom - sample.Unfocused.Bottom) <= 0.5,
+                    $"Input top and bottom edges stay put across focus: {sample.Name}");
+                Require(Math.Abs(sample.Unfocused.TextCenterDelta) <= 1.0 && Math.Abs(sample.Focused.TextCenterDelta) <= 1.0,
+                    $"Input text stays vertically centered: {sample.Name} unfocused delta={sample.Unfocused.TextCenterDelta}, focused delta={sample.Focused.TextCenterDelta}");
+            }
+            Require(Math.Abs(heightSamples[0].Unfocused.Height - heightSamples[1].Unfocused.Height) < 0.5,
+                "Both automatic-cleaning rows render the same input height");
+            checks.Add($"Focus-state input height and centering: {string.Join("; ", heightSamples.Select(x => $"{x.Name} height {x.Unfocused.Height}->{x.Focused.Height}, text delta {x.Unfocused.TextCenterDelta:F1}/{x.Focused.TextCenterDelta:F1}"))}.");
             _settings.AutoThreshold = savedAutoThreshold;
             _settings.AutoInterval = savedAutoInterval;
             ThresholdNumber.Value = _settings.Threshold = savedThreshold;
@@ -251,6 +372,15 @@ public sealed partial class MainWindow
                         Require(Math.Abs(upperX - lowerX) < 0.5
                             && (upper is TextBlock || Math.Abs(upper.ActualWidth - lower.ActualWidth) < 0.5),
                             $"Automatic-cleaning columns: {upper.Name}/{lower.Name}; x={upperX}/{lowerX}, widths={upper.ActualWidth}/{lower.ActualWidth}, width={width}, textScale={scale}, sidebar={sidebar}");
+                        if (upper is NumberBox upperInput)
+                        {
+                            var lowerInput = (NumberBox)lower;
+                            var upperGeometry = MeasureInput(upperInput);
+                            var lowerGeometry = MeasureInput(lowerInput);
+                            Require(Math.Abs(upperInput.ActualHeight - lowerInput.ActualHeight) < 0.5
+                                && Math.Abs(upperGeometry.TextCenterDelta) <= 1.0 && Math.Abs(lowerGeometry.TextCenterDelta) <= 1.0,
+                                $"Automatic-cleaning input heights and centering: {upperInput.ActualHeight}/{lowerInput.ActualHeight}, text delta={upperGeometry.TextCenterDelta}/{lowerGeometry.TextCenterDelta}, width={width}, textScale={scale}");
+                        }
                     }
                 }
                 Require(NavigationPane.Visibility == (sidebar && scale <= 1.25 ? Visibility.Visible : Visibility.Collapsed),
@@ -363,7 +493,8 @@ public sealed partial class MainWindow
             for (var column = 0; column < 4; column++)
             {
                 var size = sizes[row];
-                var icon = TrayGlyph.Create(new[] { 0, 9, 99, 100 }[column], size, dark ? 0xf4f4f4u : 0x202020u, out var pixels);
+                var percent = new[] { 0, 9, 99, 100 }[column];
+                var icon = TrayGlyph.Create(percent, size, TrayIcon.StatusColor(percent, CleanupFeedback.None, false, dark), out var pixels);
                 try
                 {
                     var visible = Enumerable.Range(0, size * size).Count(i => pixels[i * 4 + 3] != 0);
@@ -388,8 +519,27 @@ public sealed partial class MainWindow
         var gdi = GetGuiResources(process, 0);
         var user = GetGuiResources(process, 1);
         for (var i = 0; i < 200; i++)
-            TrayGlyph.DestroyIcon(TrayGlyph.Create(i % 101, 24, 0xf4f4f4, out _));
+            TrayGlyph.DestroyIcon(TrayGlyph.Create(i % 101, 24, 0xf4f4f4, out _, i % 12));
         Require(GetGuiResources(process, 0) == gdi && GetGuiResources(process, 1) == user, "Tray icon refresh releases native handles");
+        const int frameSize = 24, stripWidth = 12 * frameSize;
+        var strip = new byte[stripWidth * frameSize * 4];
+        byte[]? firstFrame = null;
+        for (var frame = 0; frame < 12; frame++)
+        {
+            var icon = TrayGlyph.Create(82, frameSize, TrayIcon.StatusColor(82, CleanupFeedback.Cleaning, false, false), out var pixels, frame);
+            try
+            {
+                if (frame == 0) firstFrame = pixels;
+                else Require(!firstFrame!.SequenceEqual(pixels), "Each spinner frame visibly changes");
+                for (var y = 0; y < frameSize; y++)
+                    Array.Copy(pixels, y * frameSize * 4, strip, (y * stripWidth + frame * frameSize) * 4, frameSize * 4);
+            }
+            finally { TrayGlyph.DestroyIcon(icon); }
+        }
+        using var spinnerStream = File.Open(Path.Combine(directory, "tray-spinner-frames.png"), FileMode.Create, FileAccess.ReadWrite);
+        var spinnerEncoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, spinnerStream.AsRandomAccessStream());
+        spinnerEncoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied, stripWidth, frameSize, 96, 96, strip);
+        await spinnerEncoder.FlushAsync();
     }
 
     [DllImport("user32.dll")] private static extern uint GetGuiResources(IntPtr process, uint flags);

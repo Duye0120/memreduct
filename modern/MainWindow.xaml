@@ -248,13 +248,21 @@
                                             <TextBlock x:Uid="CombineDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
                                         </StackPanel>
                                     </Grid>
-                                    <Grid Style="{StaticResource SettingRow}" BorderThickness="0">
+                                    <Grid Style="{StaticResource SettingRow}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <TextBlock x:Uid="ConfirmLabel" Style="{StaticResource Body}" Text="手动清理前确认" VerticalAlignment="Center" />
                                         <ToggleSwitch x:Uid="ConfirmSwitch" x:Name="ConfirmSwitch" Grid.Column="1" MinWidth="0" OnContent="" OffContent="" Toggled="Preference_Toggled" AutomationProperties.Name="手动清理前确认" />
+                                    </Grid>
+                                    <Grid Style="{StaticResource SettingRow}" BorderThickness="0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Uid="NotifyCleanupLabel" Style="{StaticResource Body}" Text="清理成功后显示气泡通知" VerticalAlignment="Center" />
+                                        <ToggleSwitch x:Uid="NotifyCleanupSwitch" x:Name="NotifyCleanupSwitch" Grid.Column="1" VerticalAlignment="Center" MinWidth="0" OnContent="" OffContent="" Toggled="Preference_Toggled" AutomationProperties.Name="清理成功后显示气泡通知" />
                                     </Grid>
                                 </StackPanel>
                             </Border>
@@ -269,9 +277,20 @@
                                             <ColumnDefinition />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
+                                        <StackPanel Spacing="4" VerticalAlignment="Center">
+                                            <TextBlock x:Uid="GameModeLabel" Style="{StaticResource Body}" Text="游戏模式" />
+                                            <TextBlock x:Uid="GameModeDescription" Style="{StaticResource Muted}" Text="全屏时暂停自动清理，退出后缓冲 30 秒。" />
+                                        </StackPanel>
+                                        <ToggleSwitch x:Uid="GameModeSwitch" x:Name="GameModeSwitch" Grid.Column="1" VerticalAlignment="Center" MinWidth="0" OnContent="" OffContent="" Toggled="GameModeSwitch_Toggled" AutomationProperties.Name="自动识别全屏并暂停清理" />
+                                    </Grid>
+                                    <Grid Style="{StaticResource SettingRow}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
                                         <TextBlock x:Uid="ThresholdLabel" Style="{StaticResource Body}" Text="内存达到阈值时清理" VerticalAlignment="Center" />
                                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                            <NumberBox x:Uid="ThresholdNumber" x:Name="ThresholdNumber" Minimum="50" Maximum="99" SmallChange="1" CornerRadius="{StaticResource AppControlCornerRadius}" SpinButtonPlacementMode="Hidden" ValueChanged="AutoNumber_ValueChanged" LostFocus="AutoNumber_LostFocus" Width="112" Padding="8,6" FontSize="13" />
+                                            <NumberBox x:Uid="ThresholdNumber" x:Name="ThresholdNumber" Minimum="50" Maximum="99" SmallChange="1" CornerRadius="{StaticResource AppControlCornerRadius}" SpinButtonPlacementMode="Hidden" ValueChanged="AutoNumber_ValueChanged" LostFocus="AutoNumber_LostFocus" Width="112" Padding="8,6" FontSize="13" VerticalAlignment="Center" />
                                             <TextBlock x:Name="ThresholdUnit" Text="%" Style="{StaticResource Muted}" Width="32" VerticalAlignment="Center" />
                                             <ToggleSwitch x:Uid="ThresholdSwitch" x:Name="ThresholdSwitch" MinWidth="0" OnContent="" OffContent="" Toggled="Preference_Toggled" AutomationProperties.Name="内存达到阈值时清理" />
                                         </StackPanel>
@@ -283,7 +302,7 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBlock x:Uid="IntervalLabel" Style="{StaticResource Body}" Text="按时间间隔清理" VerticalAlignment="Center" />
                                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                            <NumberBox x:Uid="IntervalNumber" x:Name="IntervalNumber" Minimum="1" Maximum="1440" SmallChange="1" CornerRadius="{StaticResource AppControlCornerRadius}" SpinButtonPlacementMode="Hidden" ValueChanged="AutoNumber_ValueChanged" LostFocus="AutoNumber_LostFocus" Width="112" Padding="8,6" FontSize="13" />
+                                            <NumberBox x:Uid="IntervalNumber" x:Name="IntervalNumber" Minimum="1" Maximum="1440" SmallChange="1" CornerRadius="{StaticResource AppControlCornerRadius}" SpinButtonPlacementMode="Hidden" ValueChanged="AutoNumber_ValueChanged" LostFocus="AutoNumber_LostFocus" Width="112" Padding="8,6" FontSize="13" VerticalAlignment="Center" />
                                             <TextBlock x:Name="IntervalUnit" Text="分钟" Style="{StaticResource Muted}" x:Uid="MinutesUnit" Width="32" VerticalAlignment="Center" />
                                             <ToggleSwitch x:Uid="IntervalSwitch" x:Name="IntervalSwitch" MinWidth="0" OnContent="" OffContent="" Toggled="Preference_Toggled" AutomationProperties.Name="按时间间隔清理" />
                                         </StackPanel>
@@ -291,6 +310,8 @@
                                 </StackPanel>
                             </Border>
                             <TextBlock x:Uid="CooldownNote" Text="连续两次自动清理至少间隔 30 秒。" Style="{StaticResource Muted}" Margin="2,0" />
+                            <TextBlock x:Name="GameModeStatus" Style="{StaticResource Muted}" Margin="2,0" />
+                            <TextBlock x:Uid="TrayBehaviorNote" Text="托盘：左键清理，右键菜单。70% 橙色预警，90% 红色告警。" Style="{StaticResource Muted}" Margin="2,0" />
                         </StackPanel>
                         <StackPanel Spacing="{StaticResource Space8}">
                             <TextBlock x:Uid="AboutHeading" Style="{StaticResource Muted}" Text="关于" />

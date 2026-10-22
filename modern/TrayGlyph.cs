@@ -7,9 +7,10 @@ namespace MemReduct.Fluent;
 internal static class TrayGlyph
 {
     // The caller owns the returned HICON; all temporary GDI objects stay local.
-    internal static IntPtr Create(int percent, int size, uint rgb, out byte[] pixels)
+    internal static IntPtr Create(int percent, int size, uint rgb, out byte[] pixels, int animationFrame = -1)
     {
-        if (percent is < 0 or > 100 || size is < 16 or > 256) throw new ArgumentOutOfRangeException();
+        if (percent is < 0 or > 100 || size is < 16 or > 256 || animationFrame is < -1 or > 11) throw new ArgumentOutOfRangeException();
+        var inset = animationFrame < 0 ? 0 : Math.Max(2, size / 8);
         var dc = Handle(CreateCompatibleDC(IntPtr.Zero));
         IntPtr bitmap = IntPtr.Zero, mask = IntPtr.Zero, font = IntPtr.Zero;
         IntPtr oldBitmap = IntPtr.Zero, oldFont = IntPtr.Zero;
@@ -21,21 +22,39 @@ internal static class TrayGlyph
             Marshal.Copy(pixels, 0, bits, pixels.Length);
             oldBitmap = Handle(SelectObject(dc, bitmap));
             var text = percent.ToString(CultureInfo.InvariantCulture);
-            for (var height = size; height > 0; height--)
+            for (var height = size - inset * 2; height > 0; height--)
             {
                 font = Handle(CreateFont(-height, 0, 0, 0, 700, 0, 0, 0, 1, 0, 0, 4, 0, "Segoe UI"));
                 oldFont = Handle(SelectObject(dc, font));
                 if (!GetTextExtentPoint32(dc, text, text.Length, out var extent)) throw new Win32Exception();
-                if (extent.X <= size && extent.Y <= size) break;
+                if (extent.X <= size - inset * 2 && extent.Y <= size - inset * 2) break;
                 SelectObject(dc, oldFont); oldFont = IntPtr.Zero;
                 DeleteObject(font); font = IntPtr.Zero;
             }
             SetBkMode(dc, 1);
             SetTextColor(dc, 0x00ffffff);
-            var rect = new Rect { Right = size, Bottom = size };
+            var rect = new Rect { Left = inset, Top = inset, Right = size - inset, Bottom = size - inset };
             if (DrawText(dc, text, text.Length, ref rect, 1 | 4 | 0x20 | 0x800) == 0) throw new Win32Exception();
             GdiFlush();
             Marshal.Copy(bits, pixels, 0, pixels.Length);
+            if (animationFrame >= 0)
+            {
+                var phase = animationFrame * Math.PI / 6;
+                for (var y = 0; y < size; y++)
+                for (var x = 0; x < size; x++)
+                {
+                    var dx = x + 0.5 - size / 2.0;
+                    var dy = y + 0.5 - size / 2.0;
+                    var trail = (phase - Math.Atan2(dy, dx) + Math.PI * 4) % (Math.PI * 2);
+                    if (trail > Math.PI * 1.4) continue;
+                    var fade = 1 - trail / (Math.PI * 1.4);
+                    var radius = size / 2.0 - 1 - (1 - fade) * inset * 0.6;
+                    var coverage = Math.Clamp(size / 32.0 + 0.75 - Math.Abs(Math.Sqrt(dx * dx + dy * dy) - radius), 0, 1);
+                    var alpha = (byte)(255 * coverage * (0.2 + 0.8 * fade));
+                    var index = (y * size + x) * 4;
+                    pixels[index] = pixels[index + 1] = pixels[index + 2] = Math.Max(pixels[index], alpha);
+                }
+            }
             // Grayscale coverage becomes alpha; premultiplication avoids dark fringes on a light taskbar.
             for (var i = 0; i < pixels.Length; i += 4)
             {

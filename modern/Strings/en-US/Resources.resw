@@ -290,4 +290,22 @@
   <data name="RestartNow" xml:space="preserve"><value>Restart now</value></data>
   <data name="RestartLater" xml:space="preserve"><value>Restart later</value></data>
   <data name="RestartFailed" xml:space="preserve"><value>Unable to restart the app. Please reopen it later.</value></data>
+  <data name="GameModeLabel.Text" xml:space="preserve"><value>Game mode</value></data>
+  <data name="GameModeDescription.Text" xml:space="preserve"><value>Pause automatic cleanup in full screen; wait 30 seconds after leaving.</value></data>
+  <data name="GameModeSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Pause automatic cleanup for full-screen apps</value></data>
+  <data name="GameModeMenu" xml:space="preserve"><value>Game mode (detect full screen)</value></data>
+  <data name="GameModeActive" xml:space="preserve"><value>Game mode · automatic cleanup paused</value></data>
+  <data name="GameModeWatching" xml:space="preserve"><value>Game mode · watching for full-screen apps, including video</value></data>
+  <data name="GameModeOff" xml:space="preserve"><value>Game mode is off</value></data>
+  <data name="MemoryNormal" xml:space="preserve"><value>Memory usage normal</value></data>
+  <data name="MemoryWarning" xml:space="preserve"><value>Memory usage high</value></data>
+  <data name="MemoryCritical" xml:space="preserve"><value>Memory usage critical</value></data>
+  <data name="CleanupCanceled" xml:space="preserve"><value>Cleanup canceled</value></data>
+  <data name="CleanupHasErrors" xml:space="preserve"><value>Cleanup errors · open from the menu for details</value></data>
+  <data name="TrayClickHint" xml:space="preserve"><value>Left-click: clean · right-click: menu</value></data>
+  <data name="TrayBehaviorNote.Text" xml:space="preserve"><value>Tray: left-click to clean, right-click for menu. Orange at 70%, red at 90%. Purple spinner while cleaning, green on success, orange/red on errors.</value></data>
+  <data name="NotifyCleanupLabel.Text" xml:space="preserve"><value>Notify after successful cleanup</value></data>
+  <data name="NotifyCleanupSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Notify after successful cleanup</value></data>
+  <data name="CleanupSucceeded" xml:space="preserve"><value>Memory cleanup complete</value></data>
+  <data name="CleanupNotification" xml:space="preserve"><value>Available memory increased by {0}.</value></data>
 </root>

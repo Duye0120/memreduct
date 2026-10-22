@@ -14,12 +14,20 @@ public sealed partial class MainWindow : Window
     private readonly AppSettings _settings;
     private readonly bool _checking;
     private readonly DispatcherQueueTimer? _timer;
+    private readonly DispatcherQueueTimer? _animationTimer;
+    private int _animationFrame;
     private readonly TrayIcon? _tray;
     private bool _ready, _cleaning, _exitRequested, _sampleFailed, _restartPromptOpen;
     private bool _statsStacked;
     private double _cornerScale;
     private DateTimeOffset _lastAttempt;
+    private bool _gameActive;
+    private double _lastPercent;
+    private CleanupFeedback _feedback;
+    private long _feedbackUntil;
+    private string _feedbackText = "";
     private readonly Windows.UI.ViewManagement.UISettings _uiSettings = new();
+    private readonly Windows.UI.ViewManagement.AccessibilitySettings _accessibility = new();
     internal bool CanStayInTray => _tray?.IsVisible == true;
 
     public MainWindow(AppSettings settings, bool checking)
@@ -36,11 +44,8 @@ public sealed partial class MainWindow : Window
         var handle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         var scale = GetDpiForWindow(handle) / 96.0;
         AppWindow.Resize(new SizeInt32((int)(700 * scale), (int)(560 * scale)));
-        if (AppWindow.Presenter is OverlappedPresenter presenter)
-        {
-            presenter.PreferredMinimumWidth = (int)(560 * scale);
-            presenter.PreferredMinimumHeight = (int)(440 * scale);
-        }
+        UpdatePresenterConstraints(scale);
+        UpdateCornerRadii();
         LoadSettings();
         if (!checking)
         {
@@ -48,7 +53,8 @@ public sealed partial class MainWindow : Window
             _uiSettings.TextScaleFactorChanged += (_, _) => DispatcherQueue.TryEnqueue(() => ReflowMetrics(Shell.ActualWidth, _uiSettings.TextScaleFactor));
             try
             {
-                _tray = new TrayIcon(handle, ShowWindow, ExitWindow);
+                _tray = new TrayIcon(handle, ShowWindow, ExitWindow, CleanFromTray,
+                    () => GameModeSwitch.IsOn = !GameModeSwitch.IsOn, () => _settings.GameMode);
                 if (!_tray.IsVisible) ReportIssue(UiText.Get("TrayUnavailable"), UiText.Get("ExitOnClose"));
             }
             catch (Exception error) { ReportIssue(UiText.Get("TrayUnavailable"), error.Message + " " + UiText.Get("ExitOnClose")); }
@@ -58,6 +64,14 @@ public sealed partial class MainWindow : Window
             _timer.Interval = TimeSpan.FromSeconds(1);
             _timer.Tick += (_, _) => Sample();
             _timer.Start();
+            _animationTimer = DispatcherQueue.CreateTimer();
+            _animationTimer.Interval = TimeSpan.FromMilliseconds(100);
+            _animationTimer.Tick += (_, _) =>
+            {
+                _animationFrame = (_animationFrame + 1) % 12;
+                try { UpdateTray(); }
+                catch (Exception error) { _animationTimer.Stop(); ReportIssue(UiText.Get("TrayUnavailable"), error.Message); }
+            };
         }
         _ready = true;
         RefreshOptions();
@@ -67,7 +81,7 @@ public sealed partial class MainWindow : Window
             if (!_exitRequested && !_checking && _settings.CloseToTray && _tray?.IsVisible == true)
             { args.Cancel = true; AppWindow.Hide(); }
         };
-        Closed += (_, _) => { _timer?.Stop(); _tray?.Dispose(); ((App)Application.Current).Finish(); };
+        Closed += (_, _) => { _timer?.Stop(); _animationTimer?.Stop(); _tray?.Dispose(); ((App)Application.Current).Finish(); };
         Shell.Loaded += async (_, _) =>
         {
             foreach (var button in new[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab })
@@ -90,6 +104,7 @@ public sealed partial class MainWindow : Window
         PinSwitch.IsOn = _settings.AlwaysOnTop;
         TraySwitch.IsOn = _settings.CloseToTray;
         ConfirmSwitch.IsOn = _settings.ConfirmCleanup;
+        NotifyCleanupSwitch.IsOn = _settings.NotifyAfterCleanup;
         WorkingSetCheck.IsChecked = _settings.CleanWorkingSets;
         SystemCacheCheck.IsChecked = _settings.CleanSystemCache;
         StandbyCheck.IsChecked = _settings.CleanLowPriorityStandby;
@@ -100,6 +115,7 @@ public sealed partial class MainWindow : Window
         CombineCheck.IsChecked = _settings.CombineMemoryPages;
         ThresholdSwitch.IsOn = _settings.AutoThreshold;
         IntervalSwitch.IsOn = _settings.AutoInterval;
+        GameModeSwitch.IsOn = _settings.GameMode;
         ThresholdNumber.Value = _settings.Threshold;
         IntervalNumber.Value = _settings.IntervalMinutes;
         ResultText.Text = _settings.LastCleanUtc is { } last
@@ -123,10 +139,25 @@ public sealed partial class MainWindow : Window
         { "Light" => TitleBarTheme.Light, "Dark" => TitleBarTheme.Dark, _ => TitleBarTheme.UseDefaultAppMode };
     }
 
-    private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args) => UpdateCornerRadii();
+    private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
+    {
+        UpdateCornerRadii();
+        UpdatePresenterConstraints(GetDpiForWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)) / 96.0);
+    }
+
+    // The presenter minimums are physical pixels, so they must follow the monitor DPI; the OS itself keeps the DIP window size.
+    private void UpdatePresenterConstraints(double scale)
+    {
+        if (AppWindow.Presenter is OverlappedPresenter presenter)
+        {
+            presenter.PreferredMinimumWidth = (int)(560 * scale);
+            presenter.PreferredMinimumHeight = (int)(440 * scale);
+        }
+    }
 
     private void UpdateCornerRadii()
     {
+        if (Shell.XamlRoot is null) return;
         var scale = Shell.XamlRoot.RasterizationScale;
         if (_cornerScale == scale) return;
         // The requested radii are screen pixels, while WinUI measures CornerRadius in DIPs.
@@ -150,7 +181,7 @@ public sealed partial class MainWindow : Window
         LanguageChoice.IsEnabled = !_cleaning && !_restartPromptOpen;
         if (!_cleaning) CleanButton.Content = UiText.Get(MemoryEngine.IsAdministrator ? "CleanMemory" : "AuthorizeClean");
         CleanDescription.Text = UiText.Get(MemoryEngine.IsAdministrator ? "CleanDescription" : "AuthorizeDescription");
-        AdminBanner.IsOpen = (_settings.AutoThreshold || _settings.AutoInterval)
+        AdminBanner.IsOpen = !_gameActive && (_settings.AutoThreshold || _settings.AutoInterval)
             && _settings.AutomaticAreas != CleanAreas.None && !MemoryEngine.IsAdministrator;
         AdminBanner.Visibility = AdminBanner.IsOpen ? Visibility.Visible : Visibility.Collapsed;
         var modes = new List<string>();
@@ -160,6 +191,8 @@ public sealed partial class MainWindow : Window
             UiText.Get("AutoModes", string.Join(" / ", modes)) + (AdminBanner.IsOpen ? UiText.Get("WaitingPermission") : "");
         if (_settings.Areas == CleanAreas.None) AutoStatusText.Text = UiText.Get("SelectArea");
         else if (modes.Count != 0 && _settings.AutomaticAreas == CleanAreas.None) AutoStatusText.Text = UiText.Get("ManualOnlyAuto");
+        if (_gameActive) AutoStatusText.Text = UiText.Get("GameModeActive");
+        GameModeStatus.Text = UiText.Get(_gameActive ? "GameModeActive" : _settings.GameMode ? "GameModeWatching" : "GameModeOff");
     }
 
     internal void ReflowMetrics(double width, double textScale)
@@ -192,11 +225,13 @@ public sealed partial class MainWindow : Window
     {
         try
         {
+            UpdateGameProtection(_settings.GameMode && GameModeMonitor.IsFullscreenApp(), DateTimeOffset.UtcNow);
             var snapshot = MemoryEngine.Read();
+            _lastPercent = snapshot.PhysicalPercent;
             if (AppWindow.IsVisible) UpdateStats(snapshot);
-            _tray?.Update(snapshot.PhysicalPercent);
+            UpdateTray();
             if (_sampleFailed) { _sampleFailed = false; if (IssueBanner.Title == UiText.Get("SampleFailed")) IssueBanner.IsOpen = false; }
-            if (!_cleaning && !_restartPromptOpen && MemoryEngine.IsAdministrator && _settings.IsAutoDue(snapshot.PhysicalPercent, DateTimeOffset.UtcNow, _lastAttempt))
+            if (!_cleaning && !_restartPromptOpen && MemoryEngine.IsAdministrator && _settings.IsAutoDue(snapshot.PhysicalPercent, DateTimeOffset.UtcNow, _lastAttempt, _gameActive))
                 _ = CleanAsync(false);
         }
         catch (Exception error)
@@ -204,6 +239,34 @@ public sealed partial class MainWindow : Window
             if (!_sampleFailed) ReportIssue(UiText.Get("SampleFailed"), error.Message);
             _sampleFailed = true;
         }
+    }
+
+    private void UpdateGameProtection(bool active, DateTimeOffset now)
+    {
+        if (_gameActive == active) return;
+        // A full-screen exit or Alt+Tab must not immediately trigger a pending cleanup.
+        if (_gameActive) _lastAttempt = now;
+        _gameActive = active;
+        RefreshOptions();
+    }
+
+    private void UpdateTray()
+    {
+        if (_feedback != CleanupFeedback.Cleaning && Environment.TickCount64 >= _feedbackUntil) _feedback = CleanupFeedback.None;
+        var status = _feedback != CleanupFeedback.None ? _feedbackText
+            : UiText.Get(_gameActive ? "GameModeActive" : _lastPercent >= 90 ? "MemoryCritical" : _lastPercent >= 70 ? "MemoryWarning" : "MemoryNormal");
+        if (_gameActive && _feedback != CleanupFeedback.None) status += " · " + UiText.Get("GameModeActive");
+        _tray?.Update(_lastPercent, _feedback, status, _gameActive, _feedback == CleanupFeedback.Cleaning ? _animationFrame : -1);
+    }
+
+    private void SetFeedback(CleanupFeedback feedback, string text)
+    {
+        _feedback = feedback; _feedbackText = text;
+        _feedbackUntil = Environment.TickCount64 + 5000;
+        if (feedback == CleanupFeedback.Cleaning) { _animationFrame = 0; _animationTimer?.Start(); }
+        else _animationTimer?.Stop();
+        try { UpdateTray(); }
+        catch (Exception error) { ReportIssue(UiText.Get("TrayUnavailable"), error.Message); }
     }
 
     internal void UpdateStats(MemorySnapshot snapshot)
@@ -217,6 +280,13 @@ public sealed partial class MainWindow : Window
         SetText(CacheValue, snapshot.CacheCurrent is { } current ? MemorySnapshot.Bytes(current) : "—");
         SetText(CachePeak, snapshot.CachePeak is { } peak ? UiText.Get("PeakMemory", MemorySnapshot.Bytes(peak)) : UiText.Get("PeakUnavailable"));
         SetProgress(PhysicalBar, snapshot.PhysicalPercent);
+        var foreground = _uiSettings.GetColorValue(Windows.UI.ViewManagement.UIColorType.Foreground);
+        var rgb = _accessibility.HighContrast
+            ? (uint)(foreground.R << 16 | foreground.G << 8 | foreground.B)
+            : TrayIcon.StatusColor(snapshot.PhysicalPercent, CleanupFeedback.None, false, Shell.ActualTheme == ElementTheme.Dark);
+        var color = Windows.UI.Color.FromArgb(255, (byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb);
+        if (PhysicalValue.Foreground is not Microsoft.UI.Xaml.Media.SolidColorBrush brush || brush.Color != color)
+            PhysicalValue.Foreground = PhysicalBar.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(color);
         SetProgress(CommitBar, snapshot.CommitPercent);
         SetProgress(CacheBar, snapshot.CacheCurrent is { } used && snapshot.CachePeak is { } total ? MemorySnapshot.Percent(used, total) : 0);
     }
@@ -309,9 +379,19 @@ public sealed partial class MainWindow : Window
         _settings.AlwaysOnTop = PinSwitch.IsOn;
         _settings.CloseToTray = TraySwitch.IsOn;
         _settings.ConfirmCleanup = ConfirmSwitch.IsOn;
+        _settings.NotifyAfterCleanup = NotifyCleanupSwitch.IsOn;
         _settings.AutoThreshold = ThresholdSwitch.IsOn;
         _settings.AutoInterval = IntervalSwitch.IsOn;
         RefreshOptions(); SaveSettings();
+    }
+
+    private void GameModeSwitch_Toggled(object sender, RoutedEventArgs args)
+    {
+        if (!_ready) return;
+        _settings.GameMode = GameModeSwitch.IsOn;
+        if (!_settings.GameMode) UpdateGameProtection(false, DateTimeOffset.UtcNow);
+        RefreshOptions(); SaveSettings();
+        if (!_checking) Sample();
     }
 
     private void CleanupOption_Click(object sender, RoutedEventArgs args)
@@ -357,15 +437,28 @@ public sealed partial class MainWindow : Window
     }
 
     private async void CleanButton_Click(object sender, RoutedEventArgs args) => await CleanAsync(true);
+    private async void CleanFromTray()
+    {
+        if (_checking || _cleaning || _restartPromptOpen) return;
+        if (_settings.Areas == CleanAreas.None)
+        {
+            SetFeedback(CleanupFeedback.Warning, UiText.Get("SelectArea"));
+            ShowWindow(); SelectPage(true); ReportIssue(UiText.Get("CleanMemory"), UiText.Get("SelectArea"));
+            return;
+        }
+        await CleanAsync(true);
+    }
+
     private async Task CleanAsync(bool manual, bool confirm = true)
     {
         var areas = manual ? _settings.Areas : _settings.AutomaticAreas;
-        if (_cleaning || _restartPromptOpen || areas == CleanAreas.None) return;
+        if (_cleaning || _restartPromptOpen || (!manual && _gameActive) || areas == CleanAreas.None) return;
         _cleaning = true; RefreshOptions();
         try
         {
             if (manual && confirm && _settings.ConfirmCleanup)
             {
+                await ShowForConfirmationAsync();
                 var dialog = new ContentDialog
                 {
                     XamlRoot = Shell.XamlRoot, RequestedTheme = Shell.ActualTheme, Title = UiText.Get("CleanMemory"),
@@ -373,21 +466,34 @@ public sealed partial class MainWindow : Window
                     Content = UiText.Get("CleanConfirm"),
                     PrimaryButtonText = UiText.Get("CleanAction"), CloseButtonText = UiText.Get("CancelAction"), DefaultButton = ContentDialogButton.Close
                 };
-                if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+                if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+                { SetFeedback(CleanupFeedback.Warning, UiText.Get("CleanupCanceled")); return; }
             }
             if (!MemoryEngine.IsAdministrator) { RelaunchElevated("--clean"); return; }
             _lastAttempt = DateTimeOffset.UtcNow;
             CleanButton.Content = UiText.Get("Cleaning");
+            SetFeedback(CleanupFeedback.Cleaning, UiText.Get("Cleaning"));
             var result = await Task.Run(() => MemoryEngine.Clean(areas, automatic: !manual));
             _settings.LastCleanUtc = DateTimeOffset.UtcNow;
             SaveSettings();
             ResultText.Text = UiText.Get("FreedStatus", DateTime.Now, MemorySnapshot.Bytes(result.FreedBytes));
+            SetFeedback(result.Errors.Count == 0 ? CleanupFeedback.Success : CleanupFeedback.Warning,
+                result.Errors.Count == 0 ? ResultText.Text : UiText.Get("CleanupHasErrors"));
             if (result.Errors.Count != 0) ReportIssue(UiText.Get("PartialCleanup"), string.Join("\n", result.Errors));
             Sample();
+            if (ShouldNotifyCleanup(_settings.NotifyAfterCleanup, result.Errors.Count, manual, _gameActive))
+            {
+                try { _tray?.NotifySuccess(MemorySnapshot.Bytes(result.FreedBytes)); }
+                catch (Exception error) { ReportIssue(UiText.Get("TrayUnavailable"), error.Message); }
+            }
         }
-        catch (Exception error) { _lastAttempt = DateTimeOffset.UtcNow; ReportIssue(UiText.Get("CleanupFailed"), error.Message); }
-        finally { _cleaning = false; RefreshOptions(); }
+        catch (Exception error)
+        { _lastAttempt = DateTimeOffset.UtcNow; SetFeedback(CleanupFeedback.Failed, UiText.Get("CleanupFailed")); ReportIssue(UiText.Get("CleanupFailed"), error.Message); }
+        finally { _animationTimer?.Stop(); _cleaning = false; RefreshOptions(); }
     }
+
+    internal static bool ShouldNotifyCleanup(bool enabled, int errors, bool manual, bool gameActive)
+        => enabled && errors == 0 && (manual || !gameActive);
 
     private void Elevate_Click(object sender, RoutedEventArgs args) => RelaunchElevated("");
     private void RelaunchElevated(string intent)
@@ -401,8 +507,20 @@ public sealed partial class MainWindow : Window
             using var process = Process.Start(start);
             if (process is not null) ExitWindow();
         }
-        catch (Win32Exception error) when (error.NativeErrorCode == 1223) { ResultText.Text = UiText.Get("ElevationCanceled"); }
-        catch (Exception error) { ReportIssue(UiText.Get("ElevationFailed"), error.Message); }
+        catch (Win32Exception error) when (error.NativeErrorCode == 1223)
+        { ResultText.Text = UiText.Get("ElevationCanceled"); SetFeedback(CleanupFeedback.Warning, ResultText.Text); }
+        catch (Exception error)
+        { SetFeedback(CleanupFeedback.Failed, UiText.Get("ElevationFailed")); ReportIssue(UiText.Get("ElevationFailed"), error.Message); }
+    }
+
+    private async Task ShowForConfirmationAsync()
+    {
+        if (Shell.IsLoaded) { ShowWindow(); return; }
+        var loaded = new TaskCompletionSource();
+        RoutedEventHandler onLoaded = (_, _) => loaded.TrySetResult();
+        Shell.Loaded += onLoaded;
+        try { ShowWindow(); await loaded.Task; }
+        finally { Shell.Loaded -= onLoaded; }
     }
 
     private void ShowWindow()
