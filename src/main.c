@@ -756,13 +756,13 @@ DASHBOARD_COLORS _app_dashboard_colors ()
 	DASHBOARD_COLORS colors;
 	BOOLEAN is_dark = _r_theme_isenabled ();
 
-	colors.background = is_dark ? RGB (24, 24, 24) : RGB (245, 246, 248);
-	colors.surface = is_dark ? WND_BACKGROUND_CLR : RGB (255, 255, 255);
-	colors.border = is_dark ? RGB (57, 57, 57) : RGB (225, 228, 233);
-	colors.text = is_dark ? RGB (245, 245, 245) : RGB (26, 29, 35);
-	colors.muted = is_dark ? RGB (187, 191, 198) : RGB (92, 101, 114);
-	colors.accent = is_dark ? RGB (96, 205, 255) : RGB (0, 103, 192);
-	colors.button_text = is_dark ? RGB (10, 32, 44) : RGB (255, 255, 255);
+	colors.background = is_dark ? RGB (25, 25, 29) : RGB (244, 244, 247);
+	colors.surface = is_dark ? RGB (35, 35, 40) : RGB (255, 255, 255);
+	colors.border = is_dark ? RGB (57, 57, 65) : RGB (226, 226, 232);
+	colors.text = is_dark ? RGB (238, 238, 242) : RGB (37, 37, 44);
+	colors.muted = is_dark ? RGB (175, 175, 187) : RGB (114, 114, 128);
+	colors.accent = is_dark ? RGB (174, 161, 255) : RGB (89, 72, 233);
+	colors.button_text = is_dark ? RGB (34, 28, 65) : RGB (255, 255, 255);
 
 	if (SystemParametersInfoW (SPI_GETHIGHCONTRAST, sizeof (high_contrast), &high_contrast, 0) && (high_contrast.dwFlags & HCF_HIGHCONTRASTON))
 	{
@@ -782,13 +782,13 @@ VOID _app_dashboard_fonts (
 	_In_ HWND hwnd
 )
 {
-	LONG sizes[] = {30, 20, 10};
+	LONG sizes[] = {19, 11, 9};
 	LONG dpi = _r_dc_getwindowdpi (hwnd);
 
 	for (INT i = 0; i < 3; i++)
 	{
 		SAFE_DELETE_OBJECT (config.dashboard_fonts[i]);
-		config.dashboard_fonts[i] = CreateFontW (-MulDiv (sizes[i], dpi, 72), 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
+		config.dashboard_fonts[i] = CreateFontW (-MulDiv (sizes[i], dpi, 72), 0, 0, 0, i == 2 ? FW_NORMAL : FW_SEMIBOLD, FALSE, FALSE, FALSE,
 			DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
 	}
 }
@@ -800,14 +800,16 @@ VOID _app_dashboard_theme (
 	if (_r_config_getboolean_ex (L"FollowSystemTheme", TRUE, NULL))
 		_r_theme_enable (hwnd, _r_wnd_isdarkmodeenabled ());
 
-	_r_menu_checkitem (GetMenu (hwnd), IDM_FOLLOW_SYSTEM_THEME, 0, MF_BYCOMMAND, _r_config_getboolean_ex (L"FollowSystemTheme", TRUE, NULL));
-	_r_menu_checkitem (GetMenu (hwnd), IDM_USEDARKTHEME, 0, MF_BYCOMMAND, _r_theme_isenabled ());
+	_r_menu_checkitem (config.dashboard_menu, IDM_FOLLOW_SYSTEM_THEME, 0, MF_BYCOMMAND, _r_config_getboolean_ex (L"FollowSystemTheme", TRUE, NULL));
+	_r_menu_checkitem (config.dashboard_menu, IDM_USEDARKTHEME, 0, MF_BYCOMMAND, _r_theme_isenabled ());
 
 	if (_r_sys_isosversiongreaterorequal (WINDOWS_11))
 	{
 		DASHBOARD_COLORS colors = _app_dashboard_colors ();
 		DwmSetWindowAttribute (hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &(DWM_WINDOW_CORNER_PREFERENCE){DWMWCP_ROUND}, sizeof (DWM_WINDOW_CORNER_PREFERENCE));
 		DwmSetWindowAttribute (hwnd, DWMWA_BORDER_COLOR, &colors.border, sizeof (colors.border));
+		DwmSetWindowAttribute (hwnd, DWMWA_CAPTION_COLOR, &colors.background, sizeof (colors.background));
+		DwmSetWindowAttribute (hwnd, DWMWA_TEXT_COLOR, &colors.text, sizeof (colors.text));
 	}
 
 	RedrawWindow (hwnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
@@ -818,32 +820,41 @@ VOID _app_dashboard_paint (
 	_In_ HDC hdc
 )
 {
-	const RECT cards[] = {{12, 12, 308, 130}, {12, 142, 154, 254}, {166, 142, 308, 254}};
-	const RECT bars[] = {{24, 84, 296, 89}, {24, 205, 142, 210}, {178, 205, 296, 210}};
+	const RECT bars[] = {{24, 156, 112, 159}, {132, 156, 220, 159}, {240, 156, 324, 159}};
 	DASHBOARD_COLORS colors = _app_dashboard_colors ();
 	COLORREF accent;
-	RECT rect;
-	LONG radius = MulDiv (8, _r_dc_getwindowdpi (hwnd), 96);
+	RECT rect = {12, 48, 336, 176};
+	LONG dpi = _r_dc_getwindowdpi (hwnd);
+	LONG radius = MulDiv (16, dpi, 96);
+	LONG bar_radius = MulDiv (5, dpi, 96);
 	INT saved_dc = SaveDC (hdc);
 
-	GetClientRect (hwnd, &rect);
-	_r_dc_fillrect (hdc, &rect, colors.background);
+	RECT client;
+	GetClientRect (hwnd, &client);
+	_r_dc_fillrect (hdc, &client, colors.background);
 	SelectObject (hdc, GetStockObject (DC_BRUSH));
 	SelectObject (hdc, GetStockObject (DC_PEN));
 
+	MapDialogRect (hwnd, &rect);
+	SetDCBrushColor (hdc, colors.surface);
+	SetDCPenColor (hdc, colors.border);
+	RoundRect (hdc, rect.left, rect.top, rect.right, rect.bottom, radius * 2, radius * 2);
+
+	for (INT i = 1; i < 3; i++)
+	{
+		rect = (RECT){12 + i * 108, 60, 12 + i * 108, 164};
+		MapDialogRect (hwnd, &rect);
+		MoveToEx (hdc, rect.left, rect.top, NULL);
+		LineTo (hdc, rect.left, rect.bottom);
+	}
+
 	for (INT i = 0; i < 3; i++)
 	{
-		rect = cards[i];
-		MapDialogRect (hwnd, &rect);
-		SetDCBrushColor (hdc, colors.surface);
-		SetDCPenColor (hdc, colors.border);
-		RoundRect (hdc, rect.left, rect.top, rect.right, rect.bottom, radius * 2, radius * 2);
-
 		rect = bars[i];
 		MapDialogRect (hwnd, &rect);
 		SetDCBrushColor (hdc, colors.border);
 		SetDCPenColor (hdc, colors.border);
-		RoundRect (hdc, rect.left, rect.top, rect.right, rect.bottom, radius, radius);
+		RoundRect (hdc, rect.left, rect.top, rect.right, rect.bottom, bar_radius, bar_radius);
 
 		if (!config.memory_percent[i])
 			continue;
@@ -858,7 +869,7 @@ VOID _app_dashboard_paint (
 		rect.right = rect.left + max (1, MulDiv (rect.right - rect.left, min (100, config.memory_percent[i]), 100));
 		SetDCBrushColor (hdc, accent);
 		SetDCPenColor (hdc, accent);
-		RoundRect (hdc, rect.left, rect.top, rect.right, rect.bottom, radius, radius);
+		RoundRect (hdc, rect.left, rect.top, rect.right, rect.bottom, bar_radius, bar_radius);
 	}
 
 	RestoreDC (hdc, saved_dc);
@@ -871,33 +882,35 @@ BOOLEAN _app_dashboard_drawitem (
 {
 	DASHBOARD_COLORS colors = _app_dashboard_colors ();
 	WCHAR text[0x100];
-	HFONT font = (HFONT)SendMessageW (hwnd, WM_GETFONT, 0, 0);
-	BOOLEAN is_value;
+	HFONT font = config.dashboard_fonts[2];
+	BOOLEAN is_value = FALSE;
+	COLORREF background = colors.surface;
 	INT saved_dc;
 
 	if (item->CtlType != ODT_STATIC)
 		return FALSE;
 
-	if (item->CtlID >= IDC_MEMORY_HEADING_FIRST && item->CtlID < IDC_MEMORY_HEADING_FIRST + 3)
+	if (item->CtlID == IDC_DASHBOARD_TITLE || item->CtlID == IDC_DASHBOARD_REFRESH)
 	{
-		font = config.dashboard_fonts[2];
-		is_value = TRUE;
+		background = colors.background;
+		is_value = item->CtlID == IDC_DASHBOARD_TITLE;
+		font = config.dashboard_fonts[is_value ? 1 : 2];
 	}
 	else if (item->CtlID >= IDC_MEMORY_USAGE_FIRST && item->CtlID < IDC_MEMORY_USAGE_FIRST + 9)
 	{
 		is_value = (item->CtlID - IDC_MEMORY_USAGE_FIRST) % 3 == 0;
 
 		if (is_value)
-			font = config.dashboard_fonts[item->CtlID == IDC_MEMORY_USAGE_FIRST ? 0 : 1];
+			font = config.dashboard_fonts[0];
 	}
-	else
+	else if (item->CtlID < IDC_MEMORY_HEADING_FIRST || item->CtlID >= IDC_MEMORY_HEADING_FIRST + 3)
 	{
 		return FALSE;
 	}
 
 	GetWindowTextW (item->hwndItem, text, RTL_NUMBER_OF (text));
 	saved_dc = SaveDC (item->hDC);
-	_r_dc_fillrect (item->hDC, &item->rcItem, colors.surface);
+	_r_dc_fillrect (item->hDC, &item->rcItem, background);
 	SetBkMode (item->hDC, TRANSPARENT);
 	SetTextColor (item->hDC, is_value ? colors.text : colors.muted);
 
@@ -906,6 +919,7 @@ BOOLEAN _app_dashboard_drawitem (
 
 	DrawTextW (item->hDC, text, -1, &item->rcItem, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
 	RestoreDC (item->hDC, saved_dc);
+	UNREFERENCED_PARAMETER (hwnd);
 	return TRUE;
 }
 
@@ -963,9 +977,9 @@ LONG_PTR _app_dashboard_drawbutton (
 	HWND button = item->hdr.hwndFrom;
 	BOOLEAN is_primary = item->hdr.idFrom == IDC_CLEAN;
 	BOOLEAN is_disabled = !IsWindowEnabled (button);
-	COLORREF background = is_primary ? colors.accent : colors.surface;
+	COLORREF background = is_primary ? colors.accent : colors.background;
 	LONG dpi = _r_dc_getwindowdpi (button);
-	LONG radius = MulDiv (12, dpi, 96);
+	LONG radius = MulDiv (14, dpi, 96);
 	LONG split_width = MulDiv (22, dpi, 96);
 	INT saved_dc;
 
@@ -983,7 +997,7 @@ LONG_PTR _app_dashboard_drawbutton (
 	SelectObject (item->hdc, GetStockObject (DC_BRUSH));
 	SelectObject (item->hdc, GetStockObject (DC_PEN));
 	SetDCBrushColor (item->hdc, background);
-	SetDCPenColor (item->hdc, is_primary ? background : colors.border);
+	SetDCPenColor (item->hdc, background);
 	RoundRect (item->hdc, rect.left, rect.top, rect.right, rect.bottom, radius, radius);
 	SetBkMode (item->hdc, TRANSPARENT);
 	SetTextColor (item->hdc, is_disabled ? colors.muted : (is_primary ? colors.button_text : colors.text));
@@ -1765,7 +1779,7 @@ INT_PTR CALLBACK SettingsProc (
 
 					_r_config_setboolean_ex (L"AlwaysOnTop", is_enable, NULL);
 
-					_r_menu_checkitem (GetMenu (_r_app_gethwnd ()), IDM_ALWAYSONTOP_CHK, 0, MF_BYCOMMAND, is_enable);
+					_r_menu_checkitem (config.dashboard_menu, IDM_ALWAYSONTOP_CHK, 0, MF_BYCOMMAND, is_enable);
 
 					break;
 				}
@@ -1778,7 +1792,7 @@ INT_PTR CALLBACK SettingsProc (
 
 					is_enable = _r_autorun_isenabled ();
 
-					_r_menu_checkitem (GetMenu (_r_app_gethwnd ()), IDM_LOADONSTARTUP_CHK, 0, MF_BYCOMMAND, is_enable);
+					_r_menu_checkitem (config.dashboard_menu, IDM_LOADONSTARTUP_CHK, 0, MF_BYCOMMAND, is_enable);
 
 					_r_ctrl_checkbutton (hwnd, ctrl_id, is_enable);
 
@@ -1791,7 +1805,7 @@ INT_PTR CALLBACK SettingsProc (
 
 					_r_config_setboolean_ex (L"IsStartMinimized", is_enable, NULL);
 
-					_r_menu_checkitem (GetMenu (_r_app_gethwnd ()), IDM_STARTMINIMIZED_CHK, 0, MF_BYCOMMAND, is_enable);
+					_r_menu_checkitem (config.dashboard_menu, IDM_STARTMINIMIZED_CHK, 0, MF_BYCOMMAND, is_enable);
 
 					break;
 				}
@@ -1802,7 +1816,7 @@ INT_PTR CALLBACK SettingsProc (
 
 					_r_config_setboolean_ex (L"IsShowReductConfirmation", is_enable, NULL);
 
-					_r_menu_checkitem (GetMenu (_r_app_gethwnd ()), IDM_REDUCTCONFIRMATION_CHK, 0, MF_BYCOMMAND, is_enable);
+					_r_menu_checkitem (config.dashboard_menu, IDM_REDUCTCONFIRMATION_CHK, 0, MF_BYCOMMAND, is_enable);
 
 					break;
 				}
@@ -1815,7 +1829,7 @@ INT_PTR CALLBACK SettingsProc (
 
 					is_enable = _r_skipuac_isenabled ();
 
-					_r_menu_checkitem (GetMenu (_r_app_gethwnd ()), IDM_SKIPUACWARNING_CHK, 0, MF_BYCOMMAND, is_enable);
+					_r_menu_checkitem (config.dashboard_menu, IDM_SKIPUACWARNING_CHK, 0, MF_BYCOMMAND, is_enable);
 
 					_r_ctrl_checkbutton (hwnd, ctrl_id, is_enable);
 
@@ -1830,7 +1844,7 @@ INT_PTR CALLBACK SettingsProc (
 
 					is_enable = _r_update_isenabled (FALSE);
 
-					_r_menu_checkitem (GetMenu (_r_app_gethwnd ()), IDM_CHECKUPDATES_CHK, 0, MF_BYCOMMAND, is_enable);
+					_r_menu_checkitem (config.dashboard_menu, IDM_CHECKUPDATES_CHK, 0, MF_BYCOMMAND, is_enable);
 
 					break;
 				}
@@ -2052,6 +2066,8 @@ VOID _app_initialize (
 	_r_ctrl_setbuttonmargins (hwnd, IDC_CLEAN, _r_dc_getwindowdpi (hwnd));
 
 	_app_dashboard_fonts (hwnd);
+	SetWindowSubclass (GetDlgItem (hwnd, IDC_DASHBOARD_TITLE), &_app_dashboard_labelproc, 1, 0);
+	SetWindowSubclass (GetDlgItem (hwnd, IDC_DASHBOARD_REFRESH), &_app_dashboard_labelproc, 1, 0);
 
 	// Native text controls retain their accessible values while painting card surfaces.
 	for (INT i = 0; i < 3; i++)
@@ -2064,6 +2080,7 @@ VOID _app_initialize (
 
 	_r_wnd_setcontext (GetDlgItem (hwnd, IDC_CLEAN), SHORT_MAX, (PVOID)1);
 	_r_wnd_setcontext (GetDlgItem (hwnd, IDC_DASHBOARD_SETTINGS), SHORT_MAX, (PVOID)1);
+	_r_wnd_setcontext (GetDlgItem (hwnd, IDC_DASHBOARD_MORE), SHORT_MAX, (PVOID)1);
 
 	// settings
 	_r_settings_addpage (IDD_SETTINGS_GENERAL, IDS_SETTINGS_GENERAL);
@@ -2084,6 +2101,16 @@ INT_PTR CALLBACK DlgProc (
 	{
 		case WM_INITDIALOG:
 		{
+			HMENU menu = LoadMenuW (_r_sys_getimagebase (), MAKEINTRESOURCEW (IDM_MAIN));
+
+			if (menu)
+			{
+				config.dashboard_menu = GetSubMenu (menu, 0);
+				RemoveMenu (menu, 0, MF_BYPOSITION);
+				DestroyMenu (menu);
+			}
+
+			EnableWindow (GetDlgItem (hwnd, IDC_DASHBOARD_MORE), config.dashboard_menu != NULL);
 			_r_app_sethwnd (hwnd); // HACK!!!
 
 			_app_initialize (hwnd);
@@ -2101,6 +2128,8 @@ INT_PTR CALLBACK DlgProc (
 				SAFE_DELETE_OBJECT (config.dashboard_fonts[i]);
 
 			_r_tray_destroy (hwnd, &GUID_TrayIcon);
+			if (config.dashboard_menu)
+				DestroyMenu (config.dashboard_menu);
 
 			PostQuitMessage (0);
 
@@ -2114,7 +2143,7 @@ INT_PTR CALLBACK DlgProc (
 			_r_config_setboolean_ex (L"IsWindowCornerRound", TRUE, NULL);
 			_app_dashboard_theme (hwnd);
 
-			hmenu = GetMenu (hwnd);
+			hmenu = config.dashboard_menu;
 
 			if (hmenu)
 			{
@@ -2163,7 +2192,7 @@ INT_PTR CALLBACK DlgProc (
 			// localize menu
 			HMENU hmenu;
 
-			hmenu = GetMenu (hwnd);
+			hmenu = config.dashboard_menu;
 
 			if (hmenu)
 			{
@@ -2196,6 +2225,9 @@ INT_PTR CALLBACK DlgProc (
 			// configure button
 			_r_ctrl_setstring (hwnd, IDC_CLEAN, _r_locale_getstring (IDS_CLEAN));
 			_r_ctrl_setstring (hwnd, IDC_DASHBOARD_SETTINGS, _r_locale_getstring (IDS_SETTINGS));
+			_r_ctrl_setstring (hwnd, IDC_DASHBOARD_MORE, _r_locale_getstring (IDS_MORE));
+			_r_ctrl_setstring (hwnd, IDC_DASHBOARD_TITLE, _r_locale_getstring (IDS_MEMORY_OVERVIEW));
+			_r_ctrl_setstring (hwnd, IDC_DASHBOARD_REFRESH, _r_locale_getstring (IDS_LIVE_REFRESH));
 			_app_iconredraw (hwnd);
 
 			// enum localizations
@@ -2279,7 +2311,7 @@ INT_PTR CALLBACK DlgProc (
 			{
 				case NM_CUSTOMDRAW:
 				{
-					if (nmlp->idFrom == IDC_CLEAN || nmlp->idFrom == IDC_DASHBOARD_SETTINGS)
+					if (nmlp->idFrom == IDC_CLEAN || nmlp->idFrom == IDC_DASHBOARD_SETTINGS || nmlp->idFrom == IDC_DASHBOARD_MORE)
 					{
 						LONG_PTR result = _app_dashboard_drawbutton ((LPNMCUSTOMDRAW)lparam);
 						SetWindowLongPtrW (hwnd, DWLP_MSGRESULT, result);
@@ -2333,7 +2365,7 @@ INT_PTR CALLBACK DlgProc (
 						_r_wnd_adjustrectangletoworkingarea (&rectangle, nmlp->hwndFrom);
 						_r_wnd_rectangletorect (&rect, &rectangle);
 
-						_r_menu_popup (hmenu, hwnd, (PPOINT)&rect, 0);
+						_r_menu_popup (hmenu, hwnd, (PPOINT)&rect, TRUE);
 					}
 
 					DestroyMenu (hmenu);
@@ -2505,7 +2537,7 @@ INT_PTR CALLBACK DlgProc (
 						);
 					}
 
-					_r_menu_popup (hsubmenu, hwnd, NULL, 0);
+					_r_menu_popup (hsubmenu, hwnd, NULL, TRUE);
 
 					DestroyMenu (hmenu);
 
@@ -2525,7 +2557,7 @@ INT_PTR CALLBACK DlgProc (
 			{
 				HMENU hmenu, hsubmenu;
 
-				hmenu = GetMenu (hwnd);
+				hmenu = config.dashboard_menu;
 
 				if (hmenu)
 				{
@@ -2563,7 +2595,7 @@ INT_PTR CALLBACK DlgProc (
 					BOOLEAN new_val = !_r_config_getboolean_ex (L"AlwaysOnTop", FALSE, NULL);
 					_r_config_setboolean_ex (L"AlwaysOnTop", new_val, NULL);
 
-					_r_menu_checkitem (GetMenu (hwnd), ctrl_id, 0, MF_BYCOMMAND, new_val);
+					_r_menu_checkitem (config.dashboard_menu, ctrl_id, 0, MF_BYCOMMAND, new_val);
 
 					_r_wnd_top (hwnd, new_val);
 
@@ -2575,7 +2607,7 @@ INT_PTR CALLBACK DlgProc (
 					BOOLEAN new_val = !_r_config_getboolean_ex (L"IsStartMinimized", FALSE, NULL);
 					_r_config_setboolean_ex (L"IsStartMinimized", new_val, NULL);
 
-					_r_menu_checkitem (GetMenu (hwnd), ctrl_id, 0, MF_BYCOMMAND, new_val);
+					_r_menu_checkitem (config.dashboard_menu, ctrl_id, 0, MF_BYCOMMAND, new_val);
 
 					break;
 				}
@@ -2585,7 +2617,7 @@ INT_PTR CALLBACK DlgProc (
 					BOOLEAN new_val = !_r_config_getboolean_ex (L"IsShowReductConfirmation", TRUE, NULL);
 					_r_config_setboolean_ex (L"IsShowReductConfirmation", new_val, NULL);
 
-					_r_menu_checkitem (GetMenu (hwnd), ctrl_id, 0, MF_BYCOMMAND, new_val);
+					_r_menu_checkitem (config.dashboard_menu, ctrl_id, 0, MF_BYCOMMAND, new_val);
 
 					break;
 				}
@@ -2593,7 +2625,7 @@ INT_PTR CALLBACK DlgProc (
 				case IDM_LOADONSTARTUP_CHK:
 				{
 					_r_autorun_enable (hwnd, !_r_autorun_isenabled ());
-					_r_menu_checkitem (GetMenu (hwnd), ctrl_id, 0, MF_BYCOMMAND, _r_autorun_isenabled ());
+					_r_menu_checkitem (config.dashboard_menu, ctrl_id, 0, MF_BYCOMMAND, _r_autorun_isenabled ());
 
 					break;
 				}
@@ -2603,10 +2635,10 @@ INT_PTR CALLBACK DlgProc (
 					BOOLEAN is_enabled = !_r_theme_isenabled ();
 
 					_r_config_setboolean_ex (L"FollowSystemTheme", FALSE, NULL);
-					_r_menu_checkitem (GetMenu (hwnd), IDM_FOLLOW_SYSTEM_THEME, 0, MF_BYCOMMAND, FALSE);
+					_r_menu_checkitem (config.dashboard_menu, IDM_FOLLOW_SYSTEM_THEME, 0, MF_BYCOMMAND, FALSE);
 					_r_theme_enable (hwnd, is_enabled);
-					_r_menu_checkitem (GetMenu (hwnd), ctrl_id, 0, MF_BYCOMMAND, is_enabled);
-					RedrawWindow (hwnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
+					_r_menu_checkitem (config.dashboard_menu, ctrl_id, 0, MF_BYCOMMAND, is_enabled);
+					_app_dashboard_theme (hwnd);
 
 					break;
 				}
@@ -2622,7 +2654,7 @@ INT_PTR CALLBACK DlgProc (
 				case IDM_SKIPUACWARNING_CHK:
 				{
 					_r_skipuac_enable (hwnd, !_r_skipuac_isenabled ());
-					_r_menu_checkitem (GetMenu (hwnd), ctrl_id, 0, MF_BYCOMMAND, _r_skipuac_isenabled ());
+					_r_menu_checkitem (config.dashboard_menu, ctrl_id, 0, MF_BYCOMMAND, _r_skipuac_isenabled ());
 
 					break;
 				}
@@ -2631,7 +2663,7 @@ INT_PTR CALLBACK DlgProc (
 				{
 					BOOLEAN new_val = !_r_update_isenabled (FALSE);
 
-					_r_menu_checkitem (GetMenu (hwnd), ctrl_id, 0, MF_BYCOMMAND, new_val);
+					_r_menu_checkitem (config.dashboard_menu, ctrl_id, 0, MF_BYCOMMAND, new_val);
 					_r_update_enable (new_val);
 
 					break;
@@ -2794,6 +2826,15 @@ INT_PTR CALLBACK DlgProc (
 				case IDM_TRAY_DISABLE_2:
 				{
 					_r_config_setboolean_ex (L"AutoreductIntervalEnable", !_r_config_getboolean_ex (L"AutoreductIntervalEnable", FALSE, NULL), NULL);
+					break;
+				}
+
+				case IDC_DASHBOARD_MORE:
+				{
+					RECT rect;
+					GetWindowRect (GetDlgItem (hwnd, IDC_DASHBOARD_MORE), &rect);
+					POINT point = {rect.left, rect.bottom};
+					_r_menu_popup (config.dashboard_menu, hwnd, &point, TRUE);
 					break;
 				}
 

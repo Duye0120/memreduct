@@ -15,7 +15,7 @@ DEFINE_GUID (GUID_TrayIcon, 0xAE9053F0, 0x8D59, 0x4803, 0x9A, 0xBB, 0x74, 0xAF, 
 #define UID 1337
 
 #define LANG_SUBMENU 1
-#define LANG_MENU 4
+#define LANG_MENU 5
 
 #define TRAY_SUBMENU_1 4
 #define TRAY_SUBMENU_2 5
@@ -71,6 +71,7 @@ typedef struct _STATIC_DATA
 	RECT icon_size;
 	ULONG ms_prev;
 	HFONT dashboard_fonts[3];
+	HMENU dashboard_menu;
 	ULONG memory_percent[3];
 } STATIC_DATA, *PSTATIC_DATA;
 
