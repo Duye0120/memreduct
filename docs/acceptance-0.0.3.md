@@ -2,6 +2,14 @@
 
 This is a local acceptance candidate. It has not been installed over the user's existing application or published to GitHub Releases. Henry++ and upstream contributor attribution and the GPL license are retained.
 
+## Candidate identity
+
+- Source: `bfacd81e9f4b4132280904537af2fe0f5f0f0884`.
+- Installer: `MemReductFluent-0.0.3-win-x64-setup.exe`, 46,291,982 bytes (44.15 MiB).
+- SHA-256: `499eba3db0103d99738639ab5a96d9ff16c9db8763fe7ca021ddece4f95fd906`.
+- Both installer-stage language checks passed all 21 groups and 48 layout cases after final packaging; the fixed preview uses the same source.
+- Installed and portable settings hashes match the pre-iteration baseline.
+
 ## Changes since 0.0.2
 
 - Reopening an installed application reuses an existing authorized startup task, with a bounded wait and an ordinary-permission fallback when it fails. Permission text distinguishes current-session consent from persistent startup configuration.
