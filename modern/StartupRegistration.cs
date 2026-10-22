@@ -15,6 +15,9 @@ internal static class StartupRegistration
     private static string TaskName => TaskPrefix + UserSid;
     private static string Command => "\"" + Environment.ProcessPath + "\" --minimized";
 
+    internal static bool ShouldReuseStartup(bool installed, bool elevated, string[] arguments) => installed && !elevated
+        && arguments.Skip(1).All(argument => argument == "--restart");
+
     public static bool IsEnabled()
     {
         if (Installation.IsInstalled) return IsInstalledStartupEnabled();

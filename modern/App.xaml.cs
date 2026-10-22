@@ -48,6 +48,22 @@ public partial class App : Application
                 StartupRegistration.ConfigureInstalled(Arguments[index + 1] == "on", Arguments[index + 2]);
                 Exit(); return;
             }
+            string? startupResumeError = null;
+            if (!checking && StartupRegistration.ShouldReuseStartup(Installation.IsInstalled, MemoryEngine.IsAdministrator, Arguments))
+            {
+                try
+                {
+                    if (StartupRegistration.IsInstalledStartupEnabled())
+                    {
+                        // Do not acquire the instance mutex while the elevated process is starting.
+                        StartupRegistration.RunInstalled();
+                        if (await WaitForWindowAsync(TrayIcon.TryShowExistingWindow, TimeSpan.FromSeconds(10)))
+                        { Exit(); return; }
+                        throw new TimeoutException("The authorized startup task did not open a responsive window within 10 seconds.");
+                    }
+                }
+                catch (Exception error) { startupResumeError = error.Message; }
+            }
             if (!checking)
             {
                 _instance = new Mutex(false, @"Local\MemReduct.Fluent." + WindowsIdentity.GetCurrent().User!.Value);
@@ -67,6 +83,7 @@ public partial class App : Application
             settings.Normalize();
             UiText.Initialize(settings.Language);
             _window = new MainWindow(settings, checking);
+            if (startupResumeError is not null) _window.ReportStartupResumeFailure(startupResumeError);
             if (checking)
             {
                 var index = Array.IndexOf(Arguments, "--self-check");
@@ -93,6 +110,18 @@ public partial class App : Application
             }
             Environment.ExitCode = 1;
             Finish();
+        }
+    }
+
+    internal static async Task<bool> WaitForWindowAsync(Func<bool> showWindow, TimeSpan timeout)
+    {
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        while (true)
+        {
+            if (showWindow()) return true;
+            var remaining = timeout - timer.Elapsed;
+            if (remaining <= TimeSpan.Zero) return false;
+            await Task.Delay(remaining < TimeSpan.FromMilliseconds(100) ? remaining : TimeSpan.FromMilliseconds(100));
         }
     }
 

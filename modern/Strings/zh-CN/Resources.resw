@@ -340,4 +340,5 @@
   </data>
   <data name="UpdateStatus.Text" xml:space="preserve"><value>从 GitHub 检查新版本。</value></data>
   <data name="UpdateUnprotected" xml:space="preserve"><value>当前安装目录可被普通用户修改，请通过“下载与发行说明”手动下载安装包更新。</value></data>
+  <data name="StartupResumeFailed" xml:space="preserve"><value>无法复用管理员启动任务，已以普通权限打开；清理时仍可手动授权。</value></data>
 </root>

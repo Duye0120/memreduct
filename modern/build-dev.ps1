@@ -9,10 +9,8 @@ $output = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\MemReduct-WinUI
 $BuildRoot = [IO.Path]::GetFullPath($BuildRoot)
 $dotnet = Join-Path $BuildRoot 'dotnet\dotnet.exe'
 if (!(Test-Path -LiteralPath $dotnet)) { throw "SDK not found: $dotnet. Pass -BuildRoot pointing to the existing toolchain." }
-# An elevated instance can hide its path; do not assume it is safe to overwrite.
-if (Get-Process -Name 'MemReduct.Fluent' -ErrorAction SilentlyContinue) {
-    throw 'Exit Mem Reduct from its tray menu before building. No files have been replaced.'
-}
+. (Join-Path $PSScriptRoot 'build-common.ps1')
+Assert-BuildOutputsAvailable -Directories @($output)
 $env:DOTNET_CLI_HOME = Join-Path $BuildRoot 'cli'
 $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
 $env:DOTNET_GENERATE_ASPNET_CERTIFICATE = 'false'

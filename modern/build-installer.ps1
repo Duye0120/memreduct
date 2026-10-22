@@ -15,7 +15,6 @@ if (!$Compiler) {
 }
 # Check prerequisites before creating a publish copy. No automatic tool installation.
 if (!$Compiler -or !(Test-Path -LiteralPath $Compiler -PathType Leaf)) { throw 'Inno Setup 7 is required. Install it manually or pass -Compiler <ISCC.exe>.' }
-if (Get-Process -Name 'MemReduct.Fluent' -ErrorAction SilentlyContinue) { throw 'Exit Mem Reduct from its tray menu first.' }
 $dotnet = Join-Path $BuildRoot 'dotnet\dotnet.exe'
 if (!(Test-Path -LiteralPath $dotnet -PathType Leaf)) { throw 'The existing .NET SDK was not found.' }
 $project = Join-Path $PSScriptRoot 'MemReduct.Fluent.csproj'
@@ -25,6 +24,9 @@ if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Use a three-part stable Versi
 $parsed = [version]$version
 $stage = [IO.Path]::GetFullPath((Join-Path $BuildRoot 'installer-stage'))
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
+$preview = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\MemReduct-WinUI3-多语言预览'))
+. (Join-Path $PSScriptRoot 'build-common.ps1')
+Assert-BuildOutputsAvailable -Directories @($stage, $preview)
 if (Test-Path -LiteralPath $stage) {
     if ((Get-Item -LiteralPath $stage).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Staging cannot be a symbolic link.' }
     $entries = @(Get-ChildItem -LiteralPath $stage -Force -Recurse)
@@ -32,7 +34,6 @@ if (Test-Path -LiteralPath $stage) {
     if ((Split-Path -Parent $stage) -ne $BuildRoot -or (Split-Path -Leaf $stage) -ne 'installer-stage') { throw 'Staging path escaped the build directory.' }
     Remove-Item -LiteralPath $stage -Recurse -Force
 }
-$preview = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\MemReduct-WinUI3-多语言预览'))
 $settingsPath = Join-Path $preview 'settings.json'
 $settingsHash = if (Test-Path -LiteralPath $settingsPath) { (Get-FileHash -LiteralPath $settingsPath).Hash } else { $null }
 $env:DOTNET_CLI_HOME = Join-Path $BuildRoot 'cli'

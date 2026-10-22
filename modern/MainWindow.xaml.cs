@@ -482,6 +482,7 @@ public sealed partial class MainWindow : Window
     }
 
     private async void CleanButton_Click(object sender, RoutedEventArgs args) => await CleanAsync(true);
+    internal void ReportStartupResumeFailure(string detail) => ReportIssue(UiText.Get("StartupResumeFailed"), detail);
     private void ConfirmSwitch_Toggled(object sender, RoutedEventArgs args)
     {
         if (_ready) SaveCleanupConfirmation(ConfirmSwitch.IsOn);

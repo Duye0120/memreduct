@@ -107,7 +107,7 @@ internal sealed class TrayIcon : IDisposable
 
     private IntPtr WindowProc(IntPtr window, uint message, UIntPtr wparam, IntPtr lparam, UIntPtr id, UIntPtr reference)
     {
-        if (message == ShowMessage) { _show(); return IntPtr.Zero; }
+        if (message == ShowMessage) { _show(); return new IntPtr(MemoryEngine.IsAdministrator ? 2 : 1); }
         if (message == _taskbarCreated) { Add(); return IntPtr.Zero; }
         if (message == CallbackMessage)
         {
@@ -168,6 +168,13 @@ internal sealed class TrayIcon : IDisposable
         if (window != IntPtr.Zero) PostMessage(window, ShowMessage, UIntPtr.Zero, IntPtr.Zero);
     }
 
+    internal static bool TryShowExistingWindow()
+    {
+        var window = FindWindow(null, "Mem Reduct Fluent");
+        return window != IntPtr.Zero && SendMessageTimeout(window, ShowMessage, UIntPtr.Zero, IntPtr.Zero,
+            0x0002, 250, out var result) != IntPtr.Zero && result == new UIntPtr(2);
+    }
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct NotifyIconData
     {
@@ -201,6 +208,8 @@ internal sealed class TrayIcon : IDisposable
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GetCursorPos(out Point point);
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool SetForegroundWindow(IntPtr window);
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool PostMessage(IntPtr window, uint message, UIntPtr wparam, IntPtr lparam);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr SendMessageTimeout(IntPtr window,
+        uint message, UIntPtr wparam, IntPtr lparam, uint flags, uint timeout, out UIntPtr result);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr FindWindow(string? className, string? title);
     [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr window);
     [DllImport("user32.dll")] private static extern int GetSystemMetricsForDpi(int index, uint dpi);

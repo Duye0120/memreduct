@@ -10,6 +10,12 @@ public sealed partial class MainWindow
 {
     private static async Task CheckUpdateCopyAsync(string directory)
     {
+        var attempts = 0;
+        Require(await App.WaitForWindowAsync(() => ++attempts == 3, TimeSpan.FromSeconds(2)) && attempts == 3,
+            "Startup waits for the destination window instead of dropping the first show request");
+        Require(!await App.WaitForWindowAsync(() => false, TimeSpan.FromMilliseconds(20)),
+            "An unavailable startup window times out and permits a normal launch");
+        Require(await App.WaitForWindowAsync(() => true, TimeSpan.Zero), "An already responsive window is accepted immediately");
         var payload = Encoding.UTF8.GetBytes("verified release payload");
         var hash = Convert.ToHexString(SHA256.HashData(payload)).ToLowerInvariant();
         var release = new AppRelease(new Version(0, 0, 1), new Uri(UpdateService.Repository), hash, payload.Length);
@@ -56,6 +62,13 @@ public sealed partial class MainWindow
         var startupEnabled = StartupRegistration.IsInstalledStartupEnabled();
         File.WriteAllText(Path.Combine(directory, "startup-read.json"), JsonSerializer.Serialize(new { startupEnabled }));
         Require(Installation.IsInstalledPath(Installation.ExecutablePath), "The registered installed path is recognized");
+        Require(StartupRegistration.ShouldReuseStartup(true, false, ["app.exe"])
+            && StartupRegistration.ShouldReuseStartup(true, false, ["app.exe", "--restart"]), "Manual installed launches reuse existing authorization");
+        Require(!StartupRegistration.ShouldReuseStartup(false, false, ["app.exe"])
+            && !StartupRegistration.ShouldReuseStartup(true, true, ["app.exe"]), "Portable and already elevated processes do not relaunch");
+        foreach (var argument in new[] { "--self-check", "--elevated", "--minimized", "--clean", "--install-update", "--configure-startup", "--import-settings" })
+            Require(!StartupRegistration.ShouldReuseStartup(true, false, ["app.exe", argument]),
+                "Helper, background and explicit action launches cannot recurse or replay through the startup task");
         var customDirectory = Installation.ResolveDirectory(@"D:\Apps\内存工具\");
         Require(customDirectory == @"D:\Apps\内存工具"
             && Installation.MatchesExecutable(@"d:\apps\内存工具\MemReduct.Fluent.exe", customDirectory),
