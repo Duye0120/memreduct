@@ -72,6 +72,8 @@ public sealed partial class MainWindow
                 Require(Math.Abs(card.CornerRadius.TopLeft * displayScale - 12) < 0.01, "Cards must have 12 screen-pixel radii");
             checks.Add($"Light/dark/system caption themes and physical 12px card / 10px button radii passed at scale {displayScale}.");
             checks.Add("Native cleaning button backgrounds use the muted violet palette in light, dark and system themes.");
+            await CheckTrayGlyphs(directory);
+            checks.Add("Tray digits 0/9/99/100 rendered at 16/20/24/32px on light/dark backgrounds; 200 refreshes leaked no GDI or USER handles.");
             Require(Marshal.SizeOf<MemoryEngine.MemoryStatus>() == 64, "MEMORYSTATUSEX ABI");
             Require(Marshal.SizeOf<MemoryEngine.PerformanceInfo>() == 104, "PERFORMANCE_INFORMATION ABI");
             Require(Marshal.SizeOf<MemoryEngine.FileCacheInfo>() == 64, "SYSTEM_FILECACHE_INFORMATION ABI");
@@ -197,6 +199,50 @@ public sealed partial class MainWindow
             (uint)bitmap.PixelHeight, 96, 96, bytes);
         await encoder.FlushAsync();
     }
+
+    private static async Task CheckTrayGlyphs(string directory)
+    {
+        var sizes = new[] { 16, 20, 24, 32 };
+        foreach (var dark in new[] { false, true })
+        {
+            const int width = 192, height = 192;
+            var canvas = new byte[width * height * 4];
+            Array.Fill(canvas, dark ? (byte)32 : (byte)244);
+            for (var i = 3; i < canvas.Length; i += 4) canvas[i] = 255;
+            for (var row = 0; row < sizes.Length; row++)
+            for (var column = 0; column < 4; column++)
+            {
+                var size = sizes[row];
+                var icon = TrayGlyph.Create(new[] { 0, 9, 99, 100 }[column], size, dark ? 0xf4f4f4u : 0x202020u, out var pixels);
+                try
+                {
+                    var visible = Enumerable.Range(0, size * size).Count(i => pixels[i * 4 + 3] != 0);
+                    Require(visible > size * size / 10 && visible < size * size / 2, "Tray digit coverage and transparent background");
+                    for (var y = 0; y < size; y++)
+                    for (var x = 0; x < size; x++)
+                    {
+                        var source = (y * size + x) * 4;
+                        var target = ((row * 48 + (48 - size) / 2 + y) * width + column * 48 + (48 - size) / 2 + x) * 4;
+                        for (var channel = 0; channel < 3; channel++)
+                            canvas[target + channel] = (byte)(pixels[source + channel] + canvas[target + channel] * (255 - pixels[source + 3]) / 255);
+                    }
+                }
+                finally { TrayGlyph.DestroyIcon(icon); }
+            }
+            using var stream = File.Open(Path.Combine(directory, dark ? "tray-digits-dark.png" : "tray-digits-light.png"), FileMode.Create, FileAccess.ReadWrite);
+            var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream.AsRandomAccessStream());
+            encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied, width, height, 96, 96, canvas);
+            await encoder.FlushAsync();
+        }
+        var process = System.Diagnostics.Process.GetCurrentProcess().Handle;
+        var gdi = GetGuiResources(process, 0);
+        var user = GetGuiResources(process, 1);
+        for (var i = 0; i < 200; i++)
+            TrayGlyph.DestroyIcon(TrayGlyph.Create(i % 101, 24, 0xf4f4f4, out _));
+        Require(GetGuiResources(process, 0) == gdi && GetGuiResources(process, 1) == user, "Tray icon refresh releases native handles");
+    }
+
+    [DllImport("user32.dll")] private static extern uint GetGuiResources(IntPtr process, uint flags);
 
     private static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
     {

@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.InteropServices;
+using Microsoft.Win32;
+using Windows.UI.ViewManagement;
 
 namespace MemReduct.Fluent;
 
@@ -15,6 +17,9 @@ internal sealed class TrayIcon : IDisposable
     private NotifyIconData _data;
     private bool _added;
     private string _tooltip = "";
+    private (int Percent, int Size, uint Color) _glyph = (-1, 0, 0);
+    private readonly AccessibilitySettings _accessibility = new();
+    private readonly UISettings _uiSettings = new();
     public bool IsVisible => _added;
 
     public TrayIcon(IntPtr window, Action show, Action exit)
@@ -37,6 +42,7 @@ internal sealed class TrayIcon : IDisposable
 
     private void Add()
     {
+        _data.Flags = 1 | 2 | 4 | 0x80;
         _added = Shell_NotifyIcon(0, ref _data);
         if (_added) { _data.TimeoutOrVersion = 4; Shell_NotifyIcon(4, ref _data); }
     }
@@ -44,10 +50,23 @@ internal sealed class TrayIcon : IDisposable
     public void Update(double percent)
     {
         var value = UiText.Get("TrayUsage", percent);
-        if (value == _tooltip) return;
+        var taskbar = FindWindow("Shell_TrayWnd", null);
+        var size = GetSystemMetricsForDpi(49, GetDpiForWindow(taskbar != IntPtr.Zero ? taskbar : _window));
+        var foreground = _uiSettings.GetColorValue(UIColorType.Foreground);
+        var color = _accessibility.HighContrast ? (uint)(foreground.R << 16 | foreground.G << 8 | foreground.B)
+            : Registry.GetValue(@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "SystemUsesLightTheme", 0) is int light && light != 0
+                ? 0x202020u : 0xf4f4f4u;
+        var glyph = ((int)Math.Clamp(Math.Round(percent), 0, 100), Math.Clamp(size, 16, 256), color);
+        var redraw = glyph != _glyph;
+        if (value == _tooltip && !redraw && _added) return;
+        var previousIcon = _data.Icon;
+        if (redraw) _data.Icon = TrayGlyph.Create(glyph.Item1, glyph.Item2, color, out _);
         _tooltip = value;
         _data.Tip = value;
-        if (_added) Shell_NotifyIcon(1, ref _data); else Add();
+        _data.Flags = 4 | 0x80 | (redraw ? 2u : 0u);
+        if (_added) _added = Shell_NotifyIcon(1, ref _data);
+        if (!_added) Add();
+        if (redraw) { _glyph = glyph; DestroyIcon(previousIcon); }
     }
 
     private IntPtr WindowProc(IntPtr window, uint message, UIntPtr wparam, IntPtr lparam, UIntPtr id, UIntPtr reference)
@@ -126,6 +145,8 @@ internal sealed class TrayIcon : IDisposable
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GetCursorPos(out Point point);
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool SetForegroundWindow(IntPtr window);
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool PostMessage(IntPtr window, uint message, UIntPtr wparam, IntPtr lparam);
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr FindWindow(string? className, string title);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr FindWindow(string? className, string? title);
+    [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr window);
+    [DllImport("user32.dll")] private static extern int GetSystemMetricsForDpi(int index, uint dpi);
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool ChangeWindowMessageFilterEx(IntPtr window, uint message, uint action, IntPtr filter);
 }
