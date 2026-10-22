@@ -167,7 +167,7 @@ public sealed partial class MainWindow : Window
         // The requested radii are screen pixels, while WinUI measures CornerRadius in DIPs.
         var cardRadius = new CornerRadius(12 / scale);
         var controlRadius = new CornerRadius(10 / scale);
-        foreach (var card in new[] { MetricsCard, HistoryCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
+        foreach (var card in new[] { MetricsCard, HistoryCard, CleanupHistoryCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
             card.CornerRadius = cardRadius;
         PressureBadge.CornerRadius = controlRadius;
         foreach (var control in new Control[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab, PaneToggleButton,
@@ -580,6 +580,7 @@ public sealed partial class MainWindow : Window
         var areas = manual ? _settings.Areas : _settings.AutomaticAreas;
         if (_cleaning || _restartPromptOpen || (!manual && _gameActive) || areas == CleanAreas.None) return;
         _cleaning = true; RefreshOptions();
+        Stopwatch? cleanupDuration = null;
         try
         {
             var firstTrayClick = fromTray && !_settings.TrayCleanupHintShown;
@@ -595,7 +596,12 @@ public sealed partial class MainWindow : Window
             _lastAttempt = DateTimeOffset.UtcNow;
             CleanButton.Content = UiText.Get("Cleaning");
             SetFeedback(CleanupFeedback.Cleaning, UiText.Get("Cleaning"));
+            cleanupDuration = Stopwatch.StartNew();
             var result = await Task.Run(() => MemoryEngine.Clean(areas, automatic: !manual));
+            if (_exitRequested) return;
+            cleanupDuration.Stop();
+            RecordCleanup(manual, result, cleanupDuration.Elapsed);
+            cleanupDuration = null;
             _settings.LastCleanUtc = DateTimeOffset.UtcNow;
             SaveSettings();
             ResultText.Text = UiText.Get("FreedStatus", DateTime.Now, MemorySnapshot.Bytes(result.FreedBytes));
@@ -611,7 +617,12 @@ public sealed partial class MainWindow : Window
             }
         }
         catch (Exception error)
-        { CompleteCleanupAttempt(manual, _lastPercent, DateTimeOffset.UtcNow); SetFeedback(CleanupFeedback.Failed, UiText.Get("CleanupFailed")); ReportIssue(UiText.Get("CleanupFailed"), error.Message); }
+        {
+            if (_exitRequested) return;
+            if (cleanupDuration is not null) RecordCleanup(manual, null, cleanupDuration.Elapsed, error.Message);
+            CompleteCleanupAttempt(manual, _lastPercent, DateTimeOffset.UtcNow);
+            SetFeedback(CleanupFeedback.Failed, UiText.Get("CleanupFailed")); ReportIssue(UiText.Get("CleanupFailed"), error.Message);
+        }
         finally { _animationTimer?.Stop(); _cleaning = false; RefreshOptions(); }
     }
 

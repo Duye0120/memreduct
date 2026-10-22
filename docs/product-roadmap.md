@@ -39,6 +39,8 @@ Initial microbenchmark on the development machine: native sampling averaged 0.10
 
 The graph now uses one polyline per uninterrupted series instead of one WinRT segment per sample. The same check measured 0.651 ms and 82,926 managed bytes per frame (approximately 87% less preparation time and 75% fewer managed allocations). The Chinese self-check passed all 18 groups and 48 layout cases after the change; data-gap assertions still pass. Timing is machine/load dependent.
 
+Recent cleanups now retain the last five native attempts in memory for the current session. They show manual/automatic origin, duration, the observed available-memory increase, and partial/failed outcomes. Confirmation or UAC cancellation does not create a fake cleanup record. Chinese and English checks passed 19 groups and 48 layout cases, including bounded retention and failure rendering. Fixture images were inspected; no real cleanup was invoked.
+
 ## Size experiment boundary
 
 An isolated .NET 10.0.402 partial-trimming experiment reduced the publish folder from 178,340,120 to 87,032,681 bytes. It was **rejected for delivery**: the executable exited with `0xC0000005` before producing a self-check report. Analysis also warned about dynamic COM, reflection-based serialization and WinRT projections. Normal builds remain untrimmed and unchanged; do not enable trimming just to reproduce the smaller number. See Microsoft's [known trimming incompatibilities](https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/incompatibilities).

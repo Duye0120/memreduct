@@ -84,7 +84,7 @@ public sealed partial class MainWindow
             var buttonRadiusPixels = CleanButton.CornerRadius.TopLeft * displayScale;
             Require(Math.Abs(buttonRadiusPixels - 10) < 0.01,
                 $"Button radius must be 10 screen pixels; actual={buttonRadiusPixels}, scale={displayScale}");
-            foreach (var card in new[] { MetricsCard, HistoryCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
+            foreach (var card in new[] { MetricsCard, HistoryCard, CleanupHistoryCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
                 Require(Math.Abs(card.CornerRadius.TopLeft * displayScale - 12) < 0.01, "All grouping cards have 12 screen-pixel radii");
             foreach (var control in new Control[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab, PaneToggleButton,
                 ElevateButton, ThemeChoice, LanguageChoice, ThresholdNumber, IntervalNumber, SourceLink, ExitButton, UpdateButton, ReleasesLink })
@@ -401,6 +401,17 @@ public sealed partial class MainWindow
             RefreshOptions();
 
             // Layout is measured inside this hidden app window, without inspecting the user's desktop.
+            Require(CleanupHistoryCard.Visibility == Visibility.Collapsed && _cleanupHistory.Count == 0, "A new session has no fabricated cleanup records");
+            for (var index = 0; index < 7; index++)
+                RecordCleanup(true, new CleanupResult((ulong)index * 1024 * 1024, []), TimeSpan.FromSeconds(1));
+            Require(_cleanupHistory.Count == 5 && _cleanupHistory[0].Details.Contains("6 MB"), "Cleanup history keeps only the five most recent attempts, newest first");
+            RecordCleanup(false, new CleanupResult(0, ["self-check failure"]), TimeSpan.FromSeconds(2));
+            Require(_cleanupHistory[0].Outcome == UiText.Get("PartialCleanup") && _cleanupHistory[0].Details.Contains(UiText.Get("CleanupHistoryErrors", 1)),
+                "Partial cleanup records keep the error count and observed zero-byte result");
+            RecordCleanup(true, null, TimeSpan.FromSeconds(1), "Self-check fixture: access denied");
+            Require(_cleanupHistory[0].Outcome == UiText.Get("CleanupFailed") && _cleanupHistory[0].Details == "Self-check fixture: access denied",
+                "Failed cleanup records preserve the error without inventing reclaimed memory");
+            checks.Add("Session-only cleanup history is bounded to five attempts and preserves manual/automatic, partial and failed results without invoking cleanup.");
             var originalStartupNote = StartupNote.Text;
             var originalCleanDescription = CleanDescription.Text;
             StartupNote.Text = UiText.Get("InstalledStartupNote");
@@ -408,6 +419,7 @@ public sealed partial class MainWindow
             Shell.RequestedTheme = ElementTheme.Light;
             SelectPage(false);
             Layout(680, 1600, 1);
+            await WritePreview(directory, "cleanup-history-fixture.png", CleanupHistoryCard);
             var fonts = Descendants(Shell).OfType<TextBlock>().ToDictionary(x => x, x => x.FontSize);
             var controlFonts = Descendants(OverviewPage).OfType<Control>().ToDictionary(x => x, x => x.FontSize);
             SelectPage(true); Layout(680, 3200, 1);
@@ -503,6 +515,8 @@ public sealed partial class MainWindow
             foreach (var (block, size) in fonts) block.FontSize = size;
             StartupNote.Text = originalStartupNote;
             CleanDescription.Text = originalCleanDescription;
+            _cleanupHistory.Clear();
+            CleanupHistoryCard.Visibility = Visibility.Collapsed;
             _settings.SidebarExpanded = false;
             Layout(700, 560, 1);
             SelectPage(true);

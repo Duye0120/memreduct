@@ -358,4 +358,9 @@
   <data name="UpdateProgress.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Update download progress</value></data>
   <data name="InstalledStartupOn" xml:space="preserve"><value>Administrator startup is enabled. Sign-in starts the tray app; reopening also reuses authorization.</value></data>
   <data name="AuthorizeSessionDescription" xml:space="preserve"><value>Authorization lasts for this session. Enable administrator startup to reuse it when reopening.</value></data>
+  <data name="CleanupHistoryHeading.Text" xml:space="preserve"><value>Recent cleanups · This session</value></data>
+  <data name="CleanupHistoryResult" xml:space="preserve"><value>Available memory increased by {0} · {1:0.0} seconds</value></data>
+  <data name="CleanupHistoryErrors" xml:space="preserve"><value> · Errors: {0}</value></data>
+  <data name="CleanupHistoryManual" xml:space="preserve"><value>{0:HH:mm:ss} · Manual</value></data>
+  <data name="CleanupHistoryAutomatic" xml:space="preserve"><value>{0:HH:mm:ss} · Automatic</value></data>
 </root>

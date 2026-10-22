@@ -358,4 +358,9 @@
   <data name="UpdateProgress.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>更新下载进度</value></data>
   <data name="InstalledStartupOn" xml:space="preserve"><value>已启用管理员启动；登录时进入托盘，手动重新打开也会复用授权。</value></data>
   <data name="AuthorizeSessionDescription" xml:space="preserve"><value>授权对本次运行有效。开启管理员开机启动后，重新打开可复用授权。</value></data>
+  <data name="CleanupHistoryHeading.Text" xml:space="preserve"><value>最近清理 · 本次运行</value></data>
+  <data name="CleanupHistoryResult" xml:space="preserve"><value>可用内存增加 {0} · 耗时 {1:0.0} 秒</value></data>
+  <data name="CleanupHistoryErrors" xml:space="preserve"><value> · {0} 项错误</value></data>
+  <data name="CleanupHistoryManual" xml:space="preserve"><value>{0:HH:mm:ss} · 手动</value></data>
+  <data name="CleanupHistoryAutomatic" xml:space="preserve"><value>{0:HH:mm:ss} · 自动</value></data>
 </root>
