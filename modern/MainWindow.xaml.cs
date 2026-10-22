@@ -35,7 +35,7 @@ public sealed partial class MainWindow : Window
         AppWindow.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico"));
         var handle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         var scale = GetDpiForWindow(handle) / 96.0;
-        AppWindow.Resize(new SizeInt32((int)(600 * scale), (int)(520 * scale)));
+        AppWindow.Resize(new SizeInt32((int)(760 * scale), (int)(560 * scale)));
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.PreferredMinimumWidth = (int)(560 * scale);
@@ -120,8 +120,7 @@ public sealed partial class MainWindow : Window
         // The requested radii are screen pixels, while WinUI measures CornerRadius in DIPs.
         var cardRadius = new CornerRadius(12 / scale);
         var controlRadius = new CornerRadius(10 / scale);
-        foreach (var card in new[] { MetricsCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
-            card.CornerRadius = cardRadius;
+        MetricsCard.CornerRadius = cardRadius;
         foreach (var control in new Control[] { OverviewTab, SettingsTab, CleanButton, ElevateButton, ThemeChoice, LanguageChoice,
             ThresholdNumber, IntervalNumber, SourceLink, ExitButton })
             control.CornerRadius = controlRadius;
@@ -148,7 +147,18 @@ public sealed partial class MainWindow : Window
 
     internal void ReflowMetrics(double width, double textScale)
     {
-        var stacked = width - 48 < 3 * 160 * textScale;
+        var compactNavigation = width < 700 || textScale > 1.25;
+        NavigationColumn.Width = new GridLength(compactNavigation ? 0 : 140);
+        NavigationPanel.Orientation = compactNavigation ? Orientation.Horizontal : Orientation.Vertical;
+        NavigationPane.Padding = compactNavigation ? new Thickness(20, 8, 20, 8) : new Thickness(12, 20, 12, 20);
+        NavigationPane.BorderThickness = compactNavigation ? new Thickness(0, 0, 0, 1) : new Thickness(0, 0, 1, 0);
+        Grid.SetRowSpan(NavigationPane, compactNavigation ? 1 : 2);
+        Grid.SetColumnSpan(NavigationPane, compactNavigation ? 2 : 1);
+        Grid.SetRow(BodyScroll, compactNavigation ? 1 : 0);
+        Grid.SetColumn(BodyScroll, compactNavigation ? 0 : 1);
+        Grid.SetRowSpan(BodyScroll, compactNavigation ? 1 : 2);
+        Grid.SetColumnSpan(BodyScroll, compactNavigation ? 2 : 1);
+        var stacked = width - 48 - (compactNavigation ? 0 : 140) < 3 * 160 * textScale;
         if (stacked == _statsStacked) return;
         _statsStacked = stacked;
         MetricsGrid.ColumnDefinitions.Clear(); MetricsGrid.RowDefinitions.Clear();

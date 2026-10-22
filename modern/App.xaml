@@ -8,36 +8,63 @@
             </ResourceDictionary.MergedDictionaries>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="CanvasBrush" Color="#F4F4F7" />
+                    <SolidColorBrush x:Key="CanvasBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="NavigationBrush" Color="#F7F7F7" />
                     <SolidColorBrush x:Key="SurfaceBrush" Color="White" />
-                    <SolidColorBrush x:Key="OutlineBrush" Color="#E3E3E9" />
-                    <SolidColorBrush x:Key="MutedBrush" Color="#747480" />
-                    <SolidColorBrush x:Key="AccentBrush" Color="#7964AD" />
+                    <SolidColorBrush x:Key="OutlineBrush" Color="#E8E8E8" />
+                    <SolidColorBrush x:Key="MutedBrush" Color="#737373" />
+                    <SolidColorBrush x:Key="AccentBrush" Color="#303030" />
+                    <Color x:Key="NavigationSelectedColor">#EAEAEA</Color>
+                    <Color x:Key="NavigationHoverColor">#EFEFEF</Color>
+                    <Color x:Key="NavigationTextColor">#202020</Color>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Default">
-                    <SolidColorBrush x:Key="CanvasBrush" Color="#19191D" />
-                    <SolidColorBrush x:Key="SurfaceBrush" Color="#242429" />
-                    <SolidColorBrush x:Key="OutlineBrush" Color="#3B3B44" />
-                    <SolidColorBrush x:Key="MutedBrush" Color="#AFAFBB" />
-                    <SolidColorBrush x:Key="AccentBrush" Color="#BCA8DD" />
+                    <SolidColorBrush x:Key="CanvasBrush" Color="#181818" />
+                    <SolidColorBrush x:Key="NavigationBrush" Color="#212121" />
+                    <SolidColorBrush x:Key="SurfaceBrush" Color="#1E1E1E" />
+                    <SolidColorBrush x:Key="OutlineBrush" Color="#363636" />
+                    <SolidColorBrush x:Key="MutedBrush" Color="#A3A3A3" />
+                    <SolidColorBrush x:Key="AccentBrush" Color="#E8E8E8" />
+                    <Color x:Key="NavigationSelectedColor">#363636</Color>
+                    <Color x:Key="NavigationHoverColor">#2D2D2D</Color>
+                    <Color x:Key="NavigationTextColor">#EEEEEE</Color>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
                     <SolidColorBrush x:Key="CanvasBrush" Color="{ThemeResource SystemColorWindowColor}" />
+                    <SolidColorBrush x:Key="NavigationBrush" Color="{ThemeResource SystemColorWindowColor}" />
                     <SolidColorBrush x:Key="SurfaceBrush" Color="{ThemeResource SystemColorWindowColor}" />
                     <SolidColorBrush x:Key="OutlineBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
                     <SolidColorBrush x:Key="MutedBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
                     <SolidColorBrush x:Key="AccentBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <StaticResource x:Key="NavigationSelectedColor" ResourceKey="SystemColorHighlightColor" />
+                    <StaticResource x:Key="NavigationHoverColor" ResourceKey="SystemColorHighlightColor" />
+                    <StaticResource x:Key="NavigationTextColor" ResourceKey="SystemColorHighlightTextColor" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
-            <Color x:Key="SystemAccentColor">#7964AD</Color>
-            <Color x:Key="SystemAccentColorDark1">#6E5A9C</Color>
-            <Color x:Key="SystemAccentColorDark2">#5C497F</Color>
-            <Color x:Key="SystemAccentColorDark3">#4C3A6E</Color>
-            <Color x:Key="SystemAccentColorLight1">#A994D0</Color>
-            <Color x:Key="SystemAccentColorLight2">#BCA8DD</Color>
-            <Color x:Key="SystemAccentColorLight3">#D7C8EB</Color>
+            <Color x:Key="SystemAccentColor">#303030</Color>
+            <Color x:Key="SystemAccentColorDark1">#171717</Color>
+            <Color x:Key="SystemAccentColorDark2">#101010</Color>
+            <Color x:Key="SystemAccentColorDark3">#080808</Color>
+            <Color x:Key="SystemAccentColorLight1">#D4D4D4</Color>
+            <Color x:Key="SystemAccentColorLight2">#F2F2F2</Color>
+            <Color x:Key="SystemAccentColorLight3">#FAFAFA</Color>
+            <FontFamily x:Key="ContentControlThemeFontFamily">Segoe UI Variable</FontFamily>
             <CornerRadius x:Key="AppControlCornerRadius">10</CornerRadius>
             <CornerRadius x:Key="CardCornerRadius">12</CornerRadius>
+            <Style x:Key="NavigationButton" TargetType="ToggleButton">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="Padding" Value="12,9" />
+                <Setter Property="MinHeight" Value="36" />
+                <Setter Property="FontSize" Value="13" />
+            </Style>
+            <Style x:Key="Section" TargetType="Border">
+                <Setter Property="BorderBrush" Value="{ThemeResource OutlineBrush}" />
+                <Setter Property="BorderThickness" Value="0,0,0,1" />
+                <Setter Property="Padding" Value="0,0,0,24" />
+            </Style>
             <Style x:Key="Card" TargetType="Border">
                 <Setter Property="Background" Value="{ThemeResource SurfaceBrush}" />
                 <Setter Property="BorderBrush" Value="{ThemeResource OutlineBrush}" />
@@ -49,17 +76,20 @@
                 <Setter Property="FontSize" Value="13" />
                 <Setter Property="TextWrapping" Value="Wrap" />
                 <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
+                <Setter Property="FontFamily" Value="{StaticResource ContentControlThemeFontFamily}" />
             </Style>
             <Style x:Key="Muted" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="12" />
                 <Setter Property="TextWrapping" Value="Wrap" />
                 <Setter Property="Foreground" Value="{ThemeResource MutedBrush}" />
+                <Setter Property="FontFamily" Value="{StaticResource ContentControlThemeFontFamily}" />
             </Style>
             <Style x:Key="StatValue" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="24" />
+                <Setter Property="FontSize" Value="28" />
                 <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="FontFamily" Value="{StaticResource ContentControlThemeFontFamily}" />
                 <Setter Property="TextWrapping" Value="NoWrap" />
-                <Setter Property="Margin" Value="0,8,0,12" />
+                <Setter Property="Margin" Value="0,4,0,8" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>

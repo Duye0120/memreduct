@@ -61,17 +61,18 @@ public sealed partial class MainWindow
                 await Task.Delay(120);
                 var colorKey = Shell.ActualTheme == ElementTheme.Dark ? "SystemAccentColorLight2" : "SystemAccentColorDark1";
                 Require(CleanButton.Background is SolidColorBrush fill && fill.Color == (Windows.UI.Color)Application.Current.Resources[colorKey],
-                    "The actual cleaning button uses the app palette, not the system blue");
+                    "The actual cleaning button uses the monochrome app palette");
             }
             _settings.Theme = savedTheme; ApplyTheme();
             var displayScale = Shell.XamlRoot.RasterizationScale;
             var buttonRadiusPixels = CleanButton.CornerRadius.TopLeft * displayScale;
             Require(Math.Abs(buttonRadiusPixels - 10) < 0.01,
                 $"Button radius must be 10 screen pixels; actual={buttonRadiusPixels}, scale={displayScale}");
-            foreach (var card in new[] { MetricsCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
-                Require(Math.Abs(card.CornerRadius.TopLeft * displayScale - 12) < 0.01, "Cards must have 12 screen-pixel radii");
+            Require(Math.Abs(MetricsCard.CornerRadius.TopLeft * displayScale - 12) < 0.01, "The memory card has a 12 screen-pixel radius");
+            foreach (var section in new[] { CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
+                Require(section.CornerRadius.TopLeft == 0, "Flat sections do not reintroduce nested rounded cards");
             checks.Add($"Light/dark/system caption themes and physical 12px card / 10px button radii passed at scale {displayScale}.");
-            checks.Add("Native cleaning button backgrounds use the muted violet palette in light, dark and system themes.");
+            checks.Add("Native cleaning button backgrounds use black/white in light/dark/system themes; settings use flat sections.");
             await CheckTrayGlyphs(directory);
             checks.Add("Tray digits 0/9/99/100 rendered at 16/20/24/32px on light/dark backgrounds; 200 refreshes leaked no GDI or USER handles.");
             Require(Marshal.SizeOf<MemoryEngine.MemoryStatus>() == 64, "MEMORYSTATUSEX ABI");
@@ -118,13 +119,15 @@ public sealed partial class MainWindow
             foreach (var control in Descendants(SettingsPage).OfType<Control>()) controlFonts.TryAdd(control, control.FontSize);
             var layouts = new List<object>();
             foreach (var scale in new[] { 1.0, 1.5, 2.0 })
-            foreach (var width in new[] { 560.0, 680.0, 880.0 })
+            foreach (var width in new[] { 560.0, 680.0, 760.0, 880.0 })
             foreach (var settings in new[] { false, true })
             {
                 SelectPage(settings);
                 foreach (var (control, size) in controlFonts) control.FontSize = size * scale;
                 foreach (var (block, size) in fonts) block.FontSize = size * scale;
                 Layout(width, settings ? 3200 : 1600, scale);
+                Require(NavigationPanel.Orientation == (width < 700 || scale > 1.25 ? Orientation.Horizontal : Orientation.Vertical),
+                    "Navigation adapts to window width and larger text");
                 var checkedText = 0;
                 foreach (var block in Descendants(settings ? SettingsPage : OverviewPage).OfType<TextBlock>())
                 {
@@ -152,17 +155,17 @@ public sealed partial class MainWindow
                 Require(checkedText >= 8, "Actual page text was measured");
                 layouts.Add(new { width, textScale = scale, page = settings ? "settings" : "memory", checkedText });
             }
-            checks.Add("18 memory/settings layout cases passed at widths 560/680/880 and text sizes 100/150/200%.");
+            checks.Add("24 memory/settings layout cases passed at widths 560/680/760/880 and text sizes 100/150/200%, including adaptive navigation.");
             foreach (var (control, size) in controlFonts) control.FontSize = size;
             foreach (var (block, size) in fonts) block.FontSize = size;
-            SelectPage(false); Layout(600, 520, 1);
+            SelectPage(false); Layout(760, 520, 1);
             await WritePreview(directory, "memory-light.png");
-            SelectPage(true); Layout(680, 1600, 1);
+            SelectPage(true); Layout(760, 1600, 1);
             await WritePreview(directory, "settings-light.png");
-            Layout(600, 600, 1);
+            Layout(760, 660, 1);
             await WritePreview(directory, "language-settings.png");
             Shell.RequestedTheme = ElementTheme.Dark;
-            SelectPage(false); Layout(600, 520, 1);
+            SelectPage(false); Layout(760, 520, 1);
             await WritePreview(directory, "memory-dark.png");
             File.WriteAllText(Path.Combine(directory, "self-check.json"), JsonSerializer.Serialize(new
             { passed = true, language = UiText.LanguageTag, checks, layouts, displayScale, cardRadiusPixels = MetricsCard.CornerRadius.TopLeft * displayScale,
