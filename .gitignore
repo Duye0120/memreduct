@@ -9,6 +9,10 @@ x64/
 win32/
 arm64/
 __pycache__
+modern/bin/
+modern/obj/
+modern/settings.json
+modern/settings.json.tmp
 
 thumbs.db
 ehthumbs.db

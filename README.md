@@ -1,5 +1,8 @@
 <h1 align="center">Mem Reduct</h1>
 
+本分支包含独立的 **WinUI 3 精简改版**：实时监测、内存清理、托盘及统一设置页。
+源码、构建方式与功能边界见 [modern/README.md](modern/README.md)。下方保留原版项目说明。
+
 <p align="center">
 	<a href="https://github.com/henrypp/memreduct/releases"><img src="https://img.shields.io/github/v/release/henrypp/memreduct?style=flat-square&include_prereleases&label=version" /></a>
 	<a href="https://github.com/henrypp/memreduct/releases"><img src="https://img.shields.io/github/downloads/henrypp/memreduct/total.svg?style=flat-square" /></a>

@@ -1,0 +1,44 @@
+# Mem Reduct Fluent
+
+基于 Microsoft WinUI 3 / Windows App SDK 的精简版。沿用原项目 GPL 许可和
+Windows 内存清理方式，独立重写界面。旧 C 版本保留在 `src/`。
+
+## 首版范围
+
+- 实时显示物理内存、提交内存、系统文件缓存。
+- 手动清理进程工作集、系统文件缓存、低优先级备用列表。
+- 内存阈值与定时自动清理；两次自动清理至少间隔 30 秒。
+- 托盘、置顶、关闭到托盘、开机启动、跟随系统的深浅色。
+- 内存页和设置页使用同一套 WinUI 控件；不再嵌入旧设置窗口与多级菜单。
+
+暂不移植全局快捷键、托盘字体和颜色定制、全量备用列表、已修改页面、注册表或
+磁盘缓存清空。保留清理前确认、权限检查、重入保护和逐项错误报告。
+
+## 状态与权限
+
+`settings.json` 存在程序旁；不读取、覆盖安装版 INI，也不接管其开机任务。
+默认监测不要求管理员权限。清理时可以请求以管理员权限重新运行。
+自动清理在权限不足时暂停，并在界面中明确提示。
+
+新程序只有在用户打开“开机启动”时，才设置当前用户自己的 `Run` 项
+`MemReduct.Fluent`，运行当前这份可执行文件。安装版的 `Mem Reduct - Logon` 任务不变。
+便携版登录启动使用普通权限；自动清理需要用户重新授予管理员权限。
+不为用户可写的便携程序创建静默提权任务。移动目录后需要重新开启启动项。
+
+## 构建
+
+需要 .NET 10 SDK。无需安装 Visual Studio 或开启 Windows 开发者模式。
+
+```powershell
+dotnet build modern/MemReduct.Fluent.csproj -c Release -p:Platform=x64
+dotnet publish modern/MemReduct.Fluent.csproj -c Release -p:Platform=x64 -o publish
+```
+
+输出包含 .NET 和 Windows App SDK 运行时；完整保留输出目录，运行
+`MemReduct.Fluent.exe`。不需要手动安装运行时或商店 MSIX 包。
+
+## 验证边界
+
+编译、只读内存采样、配置边界、清理计划与 UI 布局验证分别记录。
+`--self-check <目录>` 只进行自动检查并导出布局，不执行真实清理或创建开机任务。
+真实清理、UAC、托盘交互和登录自启需要在用户桌面单独验证。
