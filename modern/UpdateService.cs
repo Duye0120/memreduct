@@ -13,7 +13,7 @@ internal sealed record AppRelease(Version Version, Uri Download, string Sha256, 
 
 internal static class UpdateService
 {
-    internal const string Repository = "https://github.com/Duye0120/memreduct";
+    internal const string Repository = "https://github.com/Duye0120/memreduct-winui";
     internal static Version CurrentVersion => Assembly.GetExecutingAssembly().GetName().Version!;
     internal static string DisplayVersion => CurrentVersion.ToString(3);
     private const long MaximumDownload = 512L * 1024 * 1024;
@@ -29,7 +29,7 @@ internal static class UpdateService
     internal static async Task<AppRelease?> CheckAsync()
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        using var response = await Client.GetAsync("https://api.github.com/repos/Duye0120/memreduct/releases/latest", HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+        using var response = await Client.GetAsync("https://api.github.com/repos/Duye0120/memreduct-winui/releases/latest", HttpCompletionOption.ResponseHeadersRead, timeout.Token);
         if (response.StatusCode == HttpStatusCode.NotFound) return null;
         response.EnsureSuccessStatusCode();
         await response.Content.LoadIntoBufferAsync(1024 * 1024, timeout.Token);

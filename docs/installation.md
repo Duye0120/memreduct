@@ -31,7 +31,7 @@ pwsh -File .\modern\build-installer.ps1 -Compiler 'D:\apps\Inno Setup 7\ISCC.exe
 - 先检查编译器和运行实例，再发布到单一 `installer-stage`；缺少编译器时不会创建发布副本。
 - 暂存目录每次仅重建此生成目录；遇到设置文件或符号链接立即停止，必须人工检查。预览设置在构建前后校验哈希。
 - 默认结果在仓库同级 `MemReduct-安装包`，可用 `-OutputDirectory` 指定。
-- 文件名固定 `MemReductFluent-1.0.0-win-x64-setup.exe`，旁边生成 `.sha256`。
+- 文件名遵循 `MemReductFluent-X.Y.Z-win-x64-setup.exe`，旁边生成 `.sha256`。
 - 打包排除用户设置、PDB、日志和更新缓存；包含运行依赖及 GPL 许可。
 - 脚本只构建，不安装、不创建任务、不创建 PR、不推送标签、不发布 Release。
 
@@ -40,7 +40,7 @@ pwsh -File .\modern\build-installer.ps1 -Compiler 'D:\apps\Inno Setup 7\ISCC.exe
 发布属于单独的用户授权操作。准备发布时：
 
 1. 更新 `.csproj` 的 `Version`，验证代码并提交到个人仓库，构建安装包。
-2. 在同一提交上创建 `fluent-vX.Y.Z` 标签，发布到 `Duye0120/memreduct`；附上对应源码提交与变更说明。
+2. 在同一提交上创建 `fluent-vX.Y.Z` 标签，发布到 `Duye0120/memreduct-winui`；附上对应源码提交与变更说明。
 3. 上传精确命名的 `MemReductFluent-X.Y.Z-win-x64-setup.exe` 和 `.sha256`，设为正式、非草稿 Release。
 4. 检查 GitHub Release API 的资产 `digest` 为 `sha256:<64位哈希>`；旧资产或没有 digest 的资产不会执行。该值与本地 `.sha256` 必须一致。
 5. 应用“检查更新”只读取本仓库最新正式 Release。旧版标签、预发布、相同/更旧版本不提示安装。
@@ -55,8 +55,16 @@ SHA-256 用于检查下载完整性，信任根是 GitHub 仓库/Release；它�
 - Windows Task Scheduler COM 接受生成的 XML；仅设置内存中的 TaskDefinition，**未注册任务、未提权**。
 - 构建脚本语法、缺少编译器时提前退出、XAML/资源以及预览设置保持检查通过。
 - 2026-10-22 用户自行安装 Inno Setup 7.1.0 后，发布与 `.iss` 编译通过，生成约 44.93 MiB 的 `MemReductFluent-1.0.0-win-x64-setup.exe` 及 `.sha256`；未包含用户设置。实编译时修复了 Pascal 的 `Type` 保留字冲突，卸载仍仅按本产品任务名称与执行目标匹配移除。
-- **未实际安装/升级/卸载或重启登录验证。** 安装包尚未签名，没有发布到 GitHub Release。
-- 仓库目前没有正式 Release，因此尚无真实更新下载与安装验收；自检使用本地发布元数据及哈希样本，不伪造发布。
+- **未实际安装/升级/卸载或重启登录验证。** 安装包尚未签名。
+- 内置自检使用本地发布元数据及哈希样本；发布文件校验与实际升级安装验收需分别记录。
+
+### 1.0.1 发布准备
+
+仓库已更名为 `Duye0120/memreduct-winui`，应用源码链接、发布页、更新 API 与安装器元数据同步迁移。安装标识、安装路径、设置路径和启动任务名称保持不变。版本提升到 1.0.1，包含持续高占用自动清理修复。
+
+应用发布与 Inno Setup 编译通过；改名后的中文自检通过 15 组检查、48 组布局，两语言清理回归见 [问题核查记录](bug-audit.md)。便携设置 SHA-256 保持不变。
+
+安装包：`MemReductFluent-1.0.1-win-x64-setup.exe`（47,074,654 字节）。SHA-256：`2a7f4c8a57f67c9479ff66dd6b7bb60589d9e7492b36d420e661ad11cc9720df`。
 
 后续在隔离 Windows 环境验证首次安装/导入、UAC 取消、同用户授权、退出后重新登录自动管理员运行、更新保留设置及任务、降级拦截、卸载任务移除且设置保留。确认后再对用户本机安装和正式发布。
 

@@ -320,12 +320,12 @@
                                     <TextBlock x:Name="VersionText" Style="{StaticResource Body}" Text="Mem Reduct Fluent" />
                                     <TextBlock x:Uid="LicenseNote" Text="基于 Henry++ 的 Mem Reduct，遵循 GPL 许可。" Style="{StaticResource Muted}" />
                                     <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <HyperlinkButton x:Uid="SourceLink" x:Name="SourceLink" Content="项目源码" CornerRadius="{StaticResource AppControlCornerRadius}" NavigateUri="https://github.com/Duye0120/memreduct/tree/ui/winui3-rewrite" />
+                                        <HyperlinkButton x:Uid="SourceLink" x:Name="SourceLink" Content="项目源码" CornerRadius="{StaticResource AppControlCornerRadius}" NavigateUri="https://github.com/Duye0120/memreduct-winui/tree/ui/winui3-rewrite" />
                                         <Button x:Uid="ExitButton" x:Name="ExitButton" Content="退出程序" CornerRadius="{StaticResource AppControlCornerRadius}" Click="Exit_Click" />
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <Button x:Uid="UpdateButton" x:Name="UpdateButton" Content="检查更新" CornerRadius="{StaticResource AppControlCornerRadius}" Click="Update_Click" />
-                                        <HyperlinkButton x:Uid="ReleasesLink" x:Name="ReleasesLink" Content="下载与发行说明" CornerRadius="{StaticResource AppControlCornerRadius}" NavigateUri="https://github.com/Duye0120/memreduct/releases" />
+                                        <HyperlinkButton x:Uid="ReleasesLink" x:Name="ReleasesLink" Content="下载与发行说明" CornerRadius="{StaticResource AppControlCornerRadius}" NavigateUri="https://github.com/Duye0120/memreduct-winui/releases" />
                                     </StackPanel>
                                     <TextBlock x:Name="UpdateStatus" Style="{StaticResource Muted}" />
                                 </StackPanel>

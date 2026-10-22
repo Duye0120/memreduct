@@ -1,4 +1,4 @@
-# Mem Reduct Fluent
+# memreduct-winui
 
 面向 Windows 的内存监测与清理工具，采用 C# 与 WinUI 3 构建，提供实时内存概览、数字托盘、自动清理和全屏保护。
 
@@ -22,7 +22,7 @@
 
 ## 安装与使用
 
-安装包通过本仓库的 [Releases](https://github.com/Duye0120/memreduct/releases) 页面分发，文件名为 `MemReductFluent-X.Y.Z-win-x64-setup.exe`。
+安装包通过本仓库的 [Releases](https://github.com/Duye0120/memreduct-winui/releases) 页面分发，文件名为 `MemReductFluent-X.Y.Z-win-x64-setup.exe`。
 
 1. 运行安装程序，按向导完成安装。首次安装可选择导入本项目便携版的 `settings.json`。
 2. 打开应用，在“内存”页面查看用量或执行清理。
@@ -37,7 +37,7 @@
 
 在 **设置 → 关于 → 检查更新** 中检查新版本。安装版读取本仓库的正式 `fluent-vX.Y.Z` Release，经用户确认后下载，校验大小与 SHA-256，再打开安装向导；便携版提供发布页入口。
 
-更新源为 [Duye0120/memreduct](https://github.com/Duye0120/memreduct/releases)。仅推送源码不会产生应用更新，需要发布对应版本的安装包。
+更新源为 [Duye0120/memreduct-winui](https://github.com/Duye0120/memreduct-winui/releases)。仅推送源码不会产生应用更新，需要发布对应版本的安装包。
 
 | 版本 | 设置位置 |
 | --- | --- |

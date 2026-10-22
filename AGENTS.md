@@ -4,7 +4,7 @@
 
 ## 开始工作
 
-- 本项目只在用户自己的仓库 `https://github.com/Duye0120/memreduct` 维护，推送目标为 `origin`。不创建 PR，不向原作者仓库合并或推送；`upstream` 仅用于来源参考。用户已明确此长期约定，不重复询问。
+- 本项目只在用户自己的仓库 `https://github.com/Duye0120/memreduct-winui` 维护，推送目标为 `origin`。不创建 PR，不向原作者仓库合并或推送；`upstream` 仅用于来源参考。用户已明确此长期约定，不重复询问。
 
 1. 先看 `git status --short`、当前分支与用户的新需求；保留他人未提交修改，不自动切分支、重置或新建工作树。
 2. 读 [README.md](README.md)，再按任务读 [docs/development.md](docs/development.md) 对应部分。
@@ -35,7 +35,7 @@
 - 便携版 `settings.json` 在 EXE 旁；本项目安装版在 `%LOCALAPPDATA%\MemReductFluent\settings.json`。导入只复制且不覆盖已有设置，升级和卸载保留个人设置。不覆盖原版 INI 或原版登录任务。
 - 用户已要求安装版支持一次授权后管理员自启：仅固定 `Program Files\MemReduct Fluent` 下通过 ACL / 非链接校验的程序可创建最高权限交互式登录任务；仅当前登录的同一管理员账户，无密码、无 SYSTEM 身份。便携版仍禁止永久提权。
 - 便携版保留自身当前用户 Run 项；安装版使用 `MemReduct.Fluent.<用户 SID>` 任务，升级保留、卸载按名称及执行目标匹配后移除。语言重启不能重放 `--clean` 或 `--update`。
-- 更新只读取 `Duye0120/memreduct` 的正式 `fluent-vX.Y.Z` Release，检查 x64 安装包精确名称、来源、大小与 GitHub SHA-256。下载到受保护安装目录，用户确认后才执行。不得自动发布 Release、安装或绕过 UAC。
+- 更新只读取 `Duye0120/memreduct-winui` 的正式 `fluent-vX.Y.Z` Release，检查 x64 安装包精确名称、来源、大小与 GitHub SHA-256。下载到受保护安装目录，用户确认后才执行。不得自动发布 Release、安装或绕过 UAC。
 - 每秒采样复用现有控件，仅更新变动值。托盘保留实时百分比数字、主题/DPI 适配和 HICON/句柄释放。
 - “已提交内存”是 CommitTotal/CommitLimit，不是分页文件磁盘占用，不把名称改回模糊的“虚拟内存”。
 
