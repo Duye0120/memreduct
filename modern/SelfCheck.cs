@@ -25,6 +25,9 @@ public sealed partial class MainWindow
             AppWindow.Show(false);
             await Task.Delay(250);
             var english = UiText.LanguageTag == "en-US";
+            CheckInstallationAndUpdates(directory);
+            Require(UpdateButton.Content?.ToString() == (english ? "Check for updates" : "检查更新"), "Update controls are translated");
+            checks.Add("Installed-path/ACL boundaries, task XML, non-overwriting settings import, release filtering, download-source and SHA-256 checks passed without creating tasks, downloading or installing anything.");
             Require(SettingsTab.Content?.ToString() == (english ? "Settings" : "设置"), "XAML loads the selected language");
             Require(WorkingSetCheck.Content?.ToString() == (english ? "Process working sets" : "进程工作集"), "Settings controls are translated");
             Require(Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(PinSwitch) == (english ? "Always on top" : "窗口始终置顶"),
@@ -82,7 +85,7 @@ public sealed partial class MainWindow
             foreach (var card in new[] { MetricsCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
                 Require(Math.Abs(card.CornerRadius.TopLeft * displayScale - 12) < 0.01, "All grouping cards have 12 screen-pixel radii");
             foreach (var control in new Control[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab, PaneToggleButton,
-                ElevateButton, ThemeChoice, LanguageChoice, ThresholdNumber, IntervalNumber, SourceLink, ExitButton })
+                ElevateButton, ThemeChoice, LanguageChoice, ThresholdNumber, IntervalNumber, SourceLink, ExitButton, UpdateButton, ReleasesLink })
                 Require(Math.Abs(control.CornerRadius.TopLeft * displayScale - 10) < 0.01,
                     $"Every custom control has 10 screen-pixel radii: {control.Name} at scale {displayScale}");
             var presenter = AppWindow.Presenter as Microsoft.UI.Windowing.OverlappedPresenter;
@@ -424,6 +427,7 @@ public sealed partial class MainWindow
             SelectPage(true); Layout(700, 1600, 1);
             await WritePreview(directory, "settings-light.png");
             await WritePreview(directory, "automatic-settings.png", AutoSettingsCard);
+            await WritePreview(directory, "update-settings.png", AboutCard);
             Layout(700, 660, 1);
             await WritePreview(directory, "language-settings.png");
             var restartDialog = CreateLanguageRestartDialog();

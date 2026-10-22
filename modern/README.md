@@ -57,7 +57,9 @@ DPI 的 `SM_CXSMICON`。布局、间距、字体仍是 DIP（设计如此），�
 | [AppSettings.cs](AppSettings.cs) | 默认值、数值范围、选中区域、自动计划、原子替换保存 |
 | [MemoryEngine.cs](MemoryEngine.cs) | 只读采样、原生清理、权限与逐项错误收集 |
 | [TrayIcon.cs](TrayIcon.cs) / [TrayGlyph.cs](TrayGlyph.cs) | 托盘消息、百分比数字图标、DPI/颜色、句柄释放 |
-| [StartupRegistration.cs](StartupRegistration.cs) | 当前用户 Run 注册表启动项 |
+| [StartupRegistration.cs](StartupRegistration.cs) | 便携版 Run 项；安装版同用户最高权限交互式登录任务 |
+| [Installation.cs](Installation.cs) / [UpdateService.cs](UpdateService.cs) | 固定安装路径及 ACL 校验、个人设置路径、本人仓库的 Release 检查与验证下载 |
+| [installer/README.md](installer/README.md) | Inno Setup 安装、升级、卸载及发布流程与验证边界 |
 | [UiText.cs](UiText.cs) / [Strings/](Strings/) | 启动时语言选择、ResourceLoader、简体中文与英文 `.resw` |
 | [SelfCheck.cs](SelfCheck.cs) | 内置开发者自检、隐藏窗口布局测量、PNG/JSON 导出 |
 | [app.manifest](app.manifest) | Windows 兼容声明、PerMonitorV2 DPI |
@@ -159,13 +161,15 @@ SDK、NuGet 与 obj 是下一次增量构建所需缓存，不属于重复安装
 
 星号过滤同时存在于 `AppSettings.AutomaticAreas` / 计划判断和 `MemoryEngine.GetOperations(automatic: true)`，
 不得仅在 UI 隐藏。自动清理还受管理员权限、30 秒冷却、重入保护和语言重启弹窗状态控制。
-不允许自动任务偷偷提权；原生失败保留逐项错误，释放量只报告观测到的可用内存增加。
+除用户明确启用的安装版登录任务外，普通权限的自动清理不会自行请求提权；原生失败保留逐项错误，释放量只报告观测到的可用内存增加。
 
-`settings.json` 在 EXE 旁，`SettingsStore.Save` 先写 `.tmp` 再替换；旧配置缺少新字段时使用默认值。
+便携版 `settings.json` 在 EXE 旁，安装版在 `%LOCALAPPDATA%\MemReductFluent`；`SettingsStore.Save` 先写 `.tmp` 再替换，旧配置缺少新字段时使用默认值。
 解析损坏配置时应保留原文件，不用默认设置静默覆盖。新增设置不应改变已有用户选择。
-不读取安装版 INI，不修改其 `Mem Reduct - Logon` 任务。
-新版开机启动只使用当前用户 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` 的
+不读取 Henry++ 原版 INI，不修改其 `Mem Reduct - Logon` 任务。
+便携版开机启动使用当前用户 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` 的
 `MemReduct.Fluent` 项，命令为当前 EXE 加 `--minimized`；移动目录后需重新设置。
+本项目安装版在用户授权后使用同账户的最高权限交互式登录任务，不保存密码；首次启用会切换到管理员托盘实例。
+具体安装路径、设置导入、升级和卸载约定见 [安装维护说明](installer/README.md)。
 
 尚未移植全局快捷键和托盘字体/颜色手动定制；当前数字托盘按内存阈值及清理状态变色，并适配任务栏主题和高对比度。
 

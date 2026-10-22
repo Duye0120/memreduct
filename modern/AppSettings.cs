@@ -59,7 +59,21 @@ public sealed class AppSettings
 
 internal static class SettingsStore
 {
-    private static readonly string FilePath = Path.Combine(AppContext.BaseDirectory, "settings.json");
+    private static string FilePath => Installation.SettingsPath;
+
+    internal static void ImportIfMissing(string source, string destination)
+    {
+        if (File.Exists(destination)) return;
+        var file = new FileInfo(source);
+        if (file.Length > 65536) throw new InvalidDataException("Settings file is too large.");
+        var json = File.ReadAllText(source);
+        _ = JsonSerializer.Deserialize<AppSettings>(json) ?? throw new InvalidDataException(UiText.Get("EmptySettings"));
+        Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+        // Preserve the source and never replace an existing installed profile, including on upgrade.
+        using var target = new FileStream(destination, FileMode.CreateNew, FileAccess.Write);
+        using var writer = new StreamWriter(target);
+        writer.Write(json);
+    }
 
     public static AppSettings Load()
     {
@@ -73,6 +87,7 @@ internal static class SettingsStore
     public static void Save(AppSettings settings)
     {
         settings.Normalize();
+        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
         var temporary = FilePath + ".tmp";
         File.WriteAllText(temporary, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
         File.Move(temporary, FilePath, overwrite: true);

@@ -8,6 +8,7 @@ namespace MemReduct.Fluent;
 public partial class App : Application
 {
     private Mutex? _instance;
+    private Mutex? _installerMutex;
     private MainWindow? _window;
     internal static string[] Arguments => Environment.GetCommandLineArgs();
     public App()
@@ -32,6 +33,13 @@ public partial class App : Application
         try
         {
             var checking = Arguments.Contains("--self-check");
+            if (!checking && Arguments.Contains("--configure-startup"))
+            {
+                var index = Array.IndexOf(Arguments, "--configure-startup");
+                if (index + 2 >= Arguments.Length || Arguments[index + 1] is not ("on" or "off")) throw new ArgumentException("Invalid startup request.");
+                StartupRegistration.ConfigureInstalled(Arguments[index + 1] == "on", Arguments[index + 2]);
+                Exit(); return;
+            }
             if (!checking)
             {
                 _instance = new Mutex(false, @"Local\MemReduct.Fluent." + WindowsIdentity.GetCurrent().User!.Value);
@@ -39,6 +47,10 @@ public partial class App : Application
                 bool acquired;
                 try { acquired = _instance.WaitOne(timeout); } catch (AbandonedMutexException) { acquired = true; }
                 if (!acquired) { TrayIcon.ShowExistingWindow(); _instance.Dispose(); _instance = null; Exit(); return; }
+                _installerMutex = new Mutex(false, @"Local\MemReduct.Fluent.Running");
+                var importIndex = Array.IndexOf(Arguments, "--import-settings");
+                if (Installation.IsInstalled && importIndex >= 0 && importIndex + 1 < Arguments.Length && Arguments[importIndex + 1].Length > 0)
+                    SettingsStore.ImportIfMissing(Arguments[importIndex + 1], Installation.SettingsPath);
             }
             var settings = checking ? new AppSettings { Language = "zh-CN" } : SettingsStore.Load();
             var languageIndex = Array.IndexOf(Arguments, "--check-language");
@@ -57,9 +69,9 @@ public partial class App : Application
         }
         catch (Exception error)
         {
-            if (!Arguments.Contains("--self-check"))
+            if (!Arguments.Contains("--self-check") && !Arguments.Contains("--configure-startup"))
                 MessageBox(IntPtr.Zero, error.Message + "\n" + UiText.Get("OriginalUntouched"), "Mem Reduct Fluent", 0x10);
-            else
+            else if (Arguments.Contains("--self-check"))
             {
                 Console.Error.WriteLine(error);
                 var index = Array.IndexOf(Arguments, "--self-check");
@@ -79,6 +91,7 @@ public partial class App : Application
     internal void Finish()
     {
         if (_instance is not null) { _instance.ReleaseMutex(); _instance.Dispose(); _instance = null; }
+        _installerMutex?.Dispose();
         Exit();
     }
 

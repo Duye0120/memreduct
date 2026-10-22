@@ -47,6 +47,8 @@ public sealed partial class MainWindow : Window
         UpdatePresenterConstraints(scale);
         UpdateCornerRadii();
         LoadSettings();
+        VersionText.Text = "Mem Reduct Fluent · " + UpdateService.DisplayVersion;
+        if (Installation.IsInstalled) StartupNote.Text = UiText.Get("InstalledStartupNote");
         if (!checking)
         {
             Shell.SizeChanged += (_, _) => ReflowMetrics(Shell.ActualWidth, _uiSettings.TextScaleFactor);
@@ -94,6 +96,7 @@ public sealed partial class MainWindow : Window
             Shell.XamlRoot.Changed -= XamlRoot_Changed;
             Shell.XamlRoot.Changed += XamlRoot_Changed;
             if (App.Arguments.Contains("--clean") && !checking) await CleanAsync(true, confirm: false);
+            if (App.Arguments.Contains("--update") && !checking) await CheckUpdateAsync(true);
         };
     }
 
@@ -167,7 +170,7 @@ public sealed partial class MainWindow : Window
             card.CornerRadius = cardRadius;
         foreach (var control in new Control[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab, PaneToggleButton,
             CleanButton, ElevateButton, ThemeChoice, LanguageChoice,
-            ThresholdNumber, IntervalNumber, SourceLink, ExitButton })
+            ThresholdNumber, IntervalNumber, SourceLink, ExitButton, UpdateButton, ReleasesLink })
             control.CornerRadius = controlRadius;
         _cornerScale = scale;
     }
@@ -424,16 +427,26 @@ public sealed partial class MainWindow : Window
             box.Value = box == ThresholdNumber ? _settings.Threshold : _settings.IntervalMinutes;
     }
 
-    private void StartupSwitch_Toggled(object sender, RoutedEventArgs args)
+    private async void StartupSwitch_Toggled(object sender, RoutedEventArgs args)
     {
         if (!_ready || _checking) return;
         var desired = StartupSwitch.IsOn;
-        try { StartupRegistration.SetEnabled(desired); }
+        StartupSwitch.IsEnabled = false;
+        try
+        {
+            await StartupRegistration.SetEnabledAsync(desired);
+            if (desired && Installation.IsInstalled && !MemoryEngine.IsAdministrator && SaveSettings())
+            { StartupRegistration.RunInstalled(); ExitWindow(); }
+        }
         catch (Exception error)
         {
-            _ready = false; StartupSwitch.IsOn = !desired; _ready = true;
+            _ready = false;
+            try { StartupSwitch.IsOn = StartupRegistration.IsEnabled(); }
+            catch { StartupSwitch.IsOn = !desired; }
+            _ready = true;
             ReportIssue(UiText.Get("StartupFailed"), error.Message);
         }
+        finally { if (!_exitRequested) StartupSwitch.IsEnabled = true; }
     }
 
     private async void CleanButton_Click(object sender, RoutedEventArgs args) => await CleanAsync(true);

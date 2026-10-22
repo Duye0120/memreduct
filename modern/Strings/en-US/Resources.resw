@@ -308,4 +308,20 @@
   <data name="NotifyCleanupSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Notify after successful cleanup</value></data>
   <data name="CleanupSucceeded" xml:space="preserve"><value>Memory cleanup complete</value></data>
   <data name="CleanupNotification" xml:space="preserve"><value>Available memory increased by {0}.</value></data>
+  <data name="InstalledOnly" xml:space="preserve"><value>Install to the default application folder before enabling elevated startup or installing updates.</value></data>
+  <data name="InstalledStartupNote" xml:space="preserve"><value>Authorize once when enabling; future sign-ins start the elevated tray app automatically.</value></data>
+  <data name="StartupAdminFailed" xml:space="preserve"><value>Startup setup did not finish. Authorize with the currently signed-in administrator account, not another account.</value></data>
+  <data name="UpdateButton.Content" xml:space="preserve"><value>Check for updates</value></data>
+  <data name="ReleasesLink.Content" xml:space="preserve"><value>Downloads and release notes</value></data>
+  <data name="UpdateAssetInvalid" xml:space="preserve"><value>The release asset is invalid or has no SHA-256 digest. Update stopped.</value></data>
+  <data name="UpdateHashFailed" xml:space="preserve"><value>Download size or SHA-256 verification failed. The installer was not executed.</value></data>
+  <data name="UpdateChecking" xml:space="preserve"><value>Checking this fork for a stable release…</value></data>
+  <data name="UpdateNone" xml:space="preserve"><value>No newer stable release is available.</value></data>
+  <data name="UpdateAvailable" xml:space="preserve"><value>Version {0} is available</value></data>
+  <data name="UpdatePortable" xml:space="preserve"><value>For the portable version, use Downloads and release notes to get the installer and import existing settings.</value></data>
+  <data name="UpdateConfirm" xml:space="preserve"><value>After downloading and verifying the installer, this app will exit and open setup. Settings and startup preferences are preserved.</value></data>
+  <data name="UpdateInstall" xml:space="preserve"><value>Download and install</value></data>
+  <data name="Later" xml:space="preserve"><value>Later</value></data>
+  <data name="UpdateDownloading" xml:space="preserve"><value>Downloading and verifying the installer…</value></data>
+  <data name="UpdateFailed" xml:space="preserve"><value>Update did not complete. The current version and settings are preserved.</value></data>
 </root>
