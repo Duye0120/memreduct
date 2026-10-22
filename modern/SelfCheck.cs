@@ -176,6 +176,18 @@ public sealed partial class MainWindow
                 foreach (var (control, size) in controlFonts) control.FontSize = size * scale;
                 foreach (var (block, size) in fonts) block.FontSize = size * scale;
                 Layout(width, settings ? 3200 : 1600, scale);
+                if (settings)
+                {
+                    foreach (var (upper, lower) in new (FrameworkElement, FrameworkElement)[]
+                        { (ThresholdNumber, IntervalNumber), (ThresholdUnit, IntervalUnit), (ThresholdSwitch, IntervalSwitch) })
+                    {
+                        var upperX = upper.TransformToVisual(AutoSettingsCard).TransformPoint(new Point()).X;
+                        var lowerX = lower.TransformToVisual(AutoSettingsCard).TransformPoint(new Point()).X;
+                        Require(Math.Abs(upperX - lowerX) < 0.5
+                            && (upper is TextBlock || Math.Abs(upper.ActualWidth - lower.ActualWidth) < 0.5),
+                            $"Automatic-cleaning columns: {upper.Name}/{lower.Name}; x={upperX}/{lowerX}, widths={upper.ActualWidth}/{lower.ActualWidth}, width={width}, textScale={scale}, sidebar={sidebar}");
+                    }
+                }
                 Require(NavigationPane.Visibility == (sidebar && scale <= 1.25 ? Visibility.Visible : Visibility.Collapsed),
                     "The selected navigation mode is preserved, with a larger-text fallback");
                 Require(SidebarOverviewTab.IsChecked == OverviewTab.IsChecked && SidebarSettingsTab.IsChecked == SettingsTab.IsChecked,
@@ -208,6 +220,7 @@ public sealed partial class MainWindow
                 layouts.Add(new { width, textScale = scale, sidebar, page = settings ? "settings" : "memory", checkedText });
             }
             checks.Add("48 memory/settings layout cases passed in both navigation modes, at widths 560/680/760/880 and text sizes 100/150/200%.");
+            checks.Add("Automatic-cleaning inputs, units and switches align in all settings layout cases.");
             foreach (var (control, size) in controlFonts) control.FontSize = size;
             foreach (var (block, size) in fonts) block.FontSize = size;
             _settings.SidebarExpanded = false;
@@ -215,6 +228,7 @@ public sealed partial class MainWindow
             await WritePreview(directory, "memory-light.png");
             SelectPage(true); Layout(700, 1600, 1);
             await WritePreview(directory, "settings-light.png");
+            await WritePreview(directory, "automatic-settings.png", AutoSettingsCard);
             Layout(700, 660, 1);
             await WritePreview(directory, "language-settings.png");
             var restartDialog = CreateLanguageRestartDialog();
