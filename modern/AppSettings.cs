@@ -7,6 +7,7 @@ public sealed class AppSettings
 {
     public string Theme { get; set; } = "System";
     public string Language { get; set; } = "System";
+    public bool SidebarExpanded { get; set; }
     public bool AlwaysOnTop { get; set; }
     public bool CloseToTray { get; set; } = true;
     public bool ConfirmCleanup { get; set; } = true;

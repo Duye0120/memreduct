@@ -35,7 +35,7 @@ public sealed partial class MainWindow : Window
         AppWindow.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico"));
         var handle = WinRT.Interop.WindowNative.GetWindowHandle(this);
         var scale = GetDpiForWindow(handle) / 96.0;
-        AppWindow.Resize(new SizeInt32((int)(760 * scale), (int)(560 * scale)));
+        AppWindow.Resize(new SizeInt32((int)(700 * scale), (int)(560 * scale)));
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.PreferredMinimumWidth = (int)(560 * scale);
@@ -70,6 +70,12 @@ public sealed partial class MainWindow : Window
         Closed += (_, _) => { _timer?.Stop(); _tray?.Dispose(); ((App)Application.Current).Finish(); };
         Shell.Loaded += async (_, _) =>
         {
+            foreach (var button in new[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab })
+            {
+                var shadow = new Microsoft.UI.Xaml.Media.ThemeShadow();
+                shadow.Receivers.Add(button == OverviewTab || button == SettingsTab ? TopShadowReceiver : SidebarShadowReceiver);
+                button.Shadow = shadow;
+            }
             UpdateCornerRadii();
             Shell.XamlRoot.Changed -= XamlRoot_Changed;
             Shell.XamlRoot.Changed += XamlRoot_Changed;
@@ -94,6 +100,7 @@ public sealed partial class MainWindow : Window
         ResultText.Text = _settings.LastCleanUtc is { } last
             ? UiText.Get("LastClean", last.ToLocalTime()) : UiText.Get("NeverCleaned");
         ApplyTheme();
+        SelectPage(false);
     }
 
     private bool SaveSettings()
@@ -120,8 +127,10 @@ public sealed partial class MainWindow : Window
         // The requested radii are screen pixels, while WinUI measures CornerRadius in DIPs.
         var cardRadius = new CornerRadius(12 / scale);
         var controlRadius = new CornerRadius(10 / scale);
-        MetricsCard.CornerRadius = cardRadius;
-        foreach (var control in new Control[] { OverviewTab, SettingsTab, CleanButton, ElevateButton, ThemeChoice, LanguageChoice,
+        foreach (var card in new[] { MetricsCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
+            card.CornerRadius = cardRadius;
+        foreach (var control in new Control[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab, PaneToggleButton,
+            CleanButton, ElevateButton, ThemeChoice, LanguageChoice,
             ThresholdNumber, IntervalNumber, SourceLink, ExitButton })
             control.CornerRadius = controlRadius;
         _cornerScale = scale;
@@ -147,18 +156,17 @@ public sealed partial class MainWindow : Window
 
     internal void ReflowMetrics(double width, double textScale)
     {
-        var compactNavigation = width < 700 || textScale > 1.25;
-        NavigationColumn.Width = new GridLength(compactNavigation ? 0 : 140);
-        NavigationPanel.Orientation = compactNavigation ? Orientation.Horizontal : Orientation.Vertical;
-        NavigationPane.Padding = compactNavigation ? new Thickness(20, 8, 20, 8) : new Thickness(12, 20, 12, 20);
-        NavigationPane.BorderThickness = compactNavigation ? new Thickness(0, 0, 0, 1) : new Thickness(0, 0, 1, 0);
-        Grid.SetRowSpan(NavigationPane, compactNavigation ? 1 : 2);
-        Grid.SetColumnSpan(NavigationPane, compactNavigation ? 2 : 1);
-        Grid.SetRow(BodyScroll, compactNavigation ? 1 : 0);
-        Grid.SetColumn(BodyScroll, compactNavigation ? 0 : 1);
-        Grid.SetRowSpan(BodyScroll, compactNavigation ? 1 : 2);
-        Grid.SetColumnSpan(BodyScroll, compactNavigation ? 2 : 1);
-        var stacked = width - 48 - (compactNavigation ? 0 : 140) < 3 * 160 * textScale;
+        var sidebar = _settings.SidebarExpanded && textScale <= 1.25;
+        NavigationColumn.Width = new GridLength(sidebar ? (double)Application.Current.Resources["SidebarWidth"] : 0);
+        NavigationPane.Visibility = sidebar ? Visibility.Visible : Visibility.Collapsed;
+        NavigationPanel.Visibility = sidebar ? Visibility.Collapsed : Visibility.Visible;
+        HeaderBreadcrumb.Visibility = sidebar ? Visibility.Visible : Visibility.Collapsed;
+        PaneToggleButton.IsEnabled = textScale <= 1.25;
+        ThresholdNumber.Width = IntervalNumber.Width = 80 * textScale;
+        LanguageChoice.MinWidth = ThemeChoice.MinWidth = 144 * textScale;
+        var pageInset = (Thickness)Application.Current.Resources["PageInset"];
+        var inset = (double)Application.Current.Resources["Space16"];
+        var stacked = width - pageInset.Left - pageInset.Right - NavigationColumn.Width.Value < 3 * 140 * textScale;
         if (stacked == _statsStacked) return;
         _statsStacked = stacked;
         MetricsGrid.ColumnDefinitions.Clear(); MetricsGrid.RowDefinitions.Clear();
@@ -167,8 +175,8 @@ public sealed partial class MainWindow : Window
         var cells = new FrameworkElement[] { PhysicalCell, CommitCell, CacheCell };
         for (var i = 0; i < cells.Length; i++) { Grid.SetColumn(cells[i], stacked ? 0 : i); Grid.SetRow(cells[i], stacked ? i : 0); }
         CommitCell.BorderThickness = stacked ? new Thickness(0, 1, 0, 1) : new Thickness(1, 0, 1, 0);
-        CommitCell.Margin = stacked ? new Thickness(20, 0, 20, 0) : new Thickness(0, 20, 0, 20);
-        CommitStack.Padding = stacked ? new Thickness(0, 20, 0, 20) : new Thickness(20, 0, 20, 0);
+        CommitCell.Margin = stacked ? new Thickness(inset, 0, inset, 0) : new Thickness(0, inset, 0, inset);
+        CommitStack.Padding = stacked ? new Thickness(0, inset, 0, inset) : new Thickness(inset, 0, inset, 0);
     }
 
     private void Sample()
@@ -213,11 +221,22 @@ public sealed partial class MainWindow : Window
 
     private void OverviewTab_Click(object sender, RoutedEventArgs args) => SelectPage(false);
     private void SettingsTab_Click(object sender, RoutedEventArgs args) => SelectPage(true);
+    private void PaneToggle_Click(object sender, RoutedEventArgs args)
+    {
+        _settings.SidebarExpanded = !_settings.SidebarExpanded;
+        ReflowMetrics(Shell.ActualWidth, _uiSettings.TextScaleFactor);
+        SaveSettings();
+    }
     internal void SelectPage(bool settings)
     {
-        OverviewTab.IsChecked = !settings; SettingsTab.IsChecked = settings;
-        OverviewTab.FontWeight = settings ? Microsoft.UI.Text.FontWeights.Normal : Microsoft.UI.Text.FontWeights.SemiBold;
-        SettingsTab.FontWeight = settings ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal;
+        foreach (var button in new[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab })
+        {
+            var selected = settings == (button == SettingsTab || button == SidebarSettingsTab);
+            button.IsChecked = selected;
+            button.FontWeight = selected ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal;
+            button.Translation = new System.Numerics.Vector3(0, 0, selected ? 4 : 0);
+        }
+        PageCaption.Text = UiText.Get(settings ? "SettingsTab.Content" : "OverviewTab.Content");
         OverviewPage.Visibility = settings ? Visibility.Collapsed : Visibility.Visible;
         SettingsPage.Visibility = settings ? Visibility.Visible : Visibility.Collapsed;
         BodyScroll.ChangeView(null, 0, null, true);

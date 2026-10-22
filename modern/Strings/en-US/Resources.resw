@@ -120,7 +120,7 @@
   <data name="IntervalMode" xml:space="preserve">
     <value>Every {0} minutes</value>
   </data>
-  <data name="IntervalNumber.Header" xml:space="preserve">
+  <data name="IntervalNumber.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Interval (minutes)</value>
   </data>
   <data name="IntervalSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
@@ -234,7 +234,7 @@
   <data name="ThresholdMode" xml:space="preserve">
     <value>At {0}% memory usage</value>
   </data>
-  <data name="ThresholdNumber.Header" xml:space="preserve">
+  <data name="ThresholdNumber.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Usage threshold (%)</value>
   </data>
   <data name="ThresholdSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
@@ -267,4 +267,8 @@
   <data name="WorkingSetCheck.Content" xml:space="preserve">
     <value>Process working sets</value>
   </data>
+  <data name="MonitorGroup.Text" xml:space="preserve"><value>Monitor</value></data>
+  <data name="MinutesUnit.Text" xml:space="preserve"><value>min</value></data>
+  <data name="PaneToggleButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Toggle navigation layout</value></data>
+  <data name="PaneToggleButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Switch between top navigation and sidebar</value></data>
 </root>

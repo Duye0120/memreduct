@@ -120,7 +120,7 @@
   <data name="IntervalMode" xml:space="preserve">
     <value>每 {0} 分钟</value>
   </data>
-  <data name="IntervalNumber.Header" xml:space="preserve">
+  <data name="IntervalNumber.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>间隔（分钟）</value>
   </data>
   <data name="IntervalSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
@@ -234,7 +234,7 @@
   <data name="ThresholdMode" xml:space="preserve">
     <value>用量达到 {0}%</value>
   </data>
-  <data name="ThresholdNumber.Header" xml:space="preserve">
+  <data name="ThresholdNumber.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>用量阈值（%）</value>
   </data>
   <data name="ThresholdSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
@@ -267,4 +267,8 @@
   <data name="WorkingSetCheck.Content" xml:space="preserve">
     <value>进程工作集</value>
   </data>
+  <data name="MonitorGroup.Text" xml:space="preserve"><value>监控</value></data>
+  <data name="MinutesUnit.Text" xml:space="preserve"><value>分钟</value></data>
+  <data name="PaneToggleButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>切换导航布局</value></data>
+  <data name="PaneToggleButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>切换顶部导航与侧栏</value></data>
 </root>

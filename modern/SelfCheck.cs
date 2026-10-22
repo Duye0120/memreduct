@@ -33,6 +33,16 @@ public sealed partial class MainWindow
             Require(UiText.Get("PermissionRequired") == (english ? "Cleaning memory requires administrator permission." : "清理内存需要管理员权限。"),
                 "Permission messages are translated");
             Require(LanguageChoice.Items.Count == 3, "Only supported languages and the system option are listed");
+            Require(Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(PaneToggleButton)
+                == (english ? "Toggle navigation layout" : "切换导航布局"), "Navigation layout control has a translated accessible name");
+            var savedAreas = _settings.Areas;
+            PaneToggle_Click(PaneToggleButton, new RoutedEventArgs());
+            Require(_settings.SidebarExpanded && NavigationPane.Visibility == Visibility.Visible, "The layout button opens the sidebar");
+            Require(JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(_settings))!.SidebarExpanded, "The navigation preference survives serialization");
+            PaneToggle_Click(PaneToggleButton, new RoutedEventArgs());
+            Require(!_settings.SidebarExpanded && NavigationPanel.Visibility == Visibility.Visible && _settings.Areas == savedAreas,
+                "The layout button restores top navigation without changing cleanup settings");
+            Require(!JsonSerializer.Deserialize<AppSettings>("{}")!.SidebarExpanded, "Existing settings default to top navigation");
             var selectedLanguage = LanguageChoice.SelectedIndex;
             LanguageChoice.SelectedIndex = selectedLanguage == 2 ? 1 : 2;
             var chosenLanguage = selectedLanguage == 2 ? "zh-CN" : "en-US";
@@ -68,11 +78,10 @@ public sealed partial class MainWindow
             var buttonRadiusPixels = CleanButton.CornerRadius.TopLeft * displayScale;
             Require(Math.Abs(buttonRadiusPixels - 10) < 0.01,
                 $"Button radius must be 10 screen pixels; actual={buttonRadiusPixels}, scale={displayScale}");
-            Require(Math.Abs(MetricsCard.CornerRadius.TopLeft * displayScale - 12) < 0.01, "The memory card has a 12 screen-pixel radius");
-            foreach (var section in new[] { CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
-                Require(section.CornerRadius.TopLeft == 0, "Flat sections do not reintroduce nested rounded cards");
+            foreach (var card in new[] { MetricsCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
+                Require(Math.Abs(card.CornerRadius.TopLeft * displayScale - 12) < 0.01, "All grouping cards have 12 screen-pixel radii");
             checks.Add($"Light/dark/system caption themes and physical 12px card / 10px button radii passed at scale {displayScale}.");
-            checks.Add("Native cleaning button backgrounds use black/white in light/dark/system themes; settings use flat sections.");
+            checks.Add("Black/white controls, pale gray canvas and compact white grouping cards use the reference palette.");
             await CheckTrayGlyphs(directory);
             checks.Add("Tray digits 0/9/99/100 rendered at 16/20/24/32px on light/dark backgrounds; 200 refreshes leaked no GDI or USER handles.");
             Require(Marshal.SizeOf<MemoryEngine.MemoryStatus>() == 64, "MEMORYSTATUSEX ABI");
@@ -117,17 +126,22 @@ public sealed partial class MainWindow
             SelectPage(true); Layout(680, 3200, 1);
             foreach (var block in Descendants(Shell).OfType<TextBlock>()) fonts.TryAdd(block, block.FontSize);
             foreach (var control in Descendants(SettingsPage).OfType<Control>()) controlFonts.TryAdd(control, control.FontSize);
+            foreach (var control in new[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab }) controlFonts.TryAdd(control, control.FontSize);
             var layouts = new List<object>();
+            foreach (var sidebar in new[] { false, true })
             foreach (var scale in new[] { 1.0, 1.5, 2.0 })
             foreach (var width in new[] { 560.0, 680.0, 760.0, 880.0 })
             foreach (var settings in new[] { false, true })
             {
+                _settings.SidebarExpanded = sidebar;
                 SelectPage(settings);
                 foreach (var (control, size) in controlFonts) control.FontSize = size * scale;
                 foreach (var (block, size) in fonts) block.FontSize = size * scale;
                 Layout(width, settings ? 3200 : 1600, scale);
-                Require(NavigationPanel.Orientation == (width < 700 || scale > 1.25 ? Orientation.Horizontal : Orientation.Vertical),
-                    "Navigation adapts to window width and larger text");
+                Require(NavigationPane.Visibility == (sidebar && scale <= 1.25 ? Visibility.Visible : Visibility.Collapsed),
+                    "The selected navigation mode is preserved, with a larger-text fallback");
+                Require(SidebarOverviewTab.IsChecked == OverviewTab.IsChecked && SidebarSettingsTab.IsChecked == SettingsTab.IsChecked,
+                    "Top and sidebar navigation select the same page");
                 var checkedText = 0;
                 foreach (var block in Descendants(settings ? SettingsPage : OverviewPage).OfType<TextBlock>())
                 {
@@ -153,19 +167,26 @@ public sealed partial class MainWindow
                         $"Vertical overflow: {block.Text}; width={width}, scale={scale}, actual={block.ActualWidth}x{block.ActualHeight}, desired={probe.DesiredSize}, font={block.FontSize}, language={block.Language}");
                 }
                 Require(checkedText >= 8, "Actual page text was measured");
-                layouts.Add(new { width, textScale = scale, page = settings ? "settings" : "memory", checkedText });
+                layouts.Add(new { width, textScale = scale, sidebar, page = settings ? "settings" : "memory", checkedText });
             }
-            checks.Add("24 memory/settings layout cases passed at widths 560/680/760/880 and text sizes 100/150/200%, including adaptive navigation.");
+            checks.Add("48 memory/settings layout cases passed in both navigation modes, at widths 560/680/760/880 and text sizes 100/150/200%.");
             foreach (var (control, size) in controlFonts) control.FontSize = size;
             foreach (var (block, size) in fonts) block.FontSize = size;
-            SelectPage(false); Layout(760, 520, 1);
+            _settings.SidebarExpanded = false;
+            SelectPage(false); Layout(700, 520, 1);
             await WritePreview(directory, "memory-light.png");
-            SelectPage(true); Layout(760, 1600, 1);
+            SelectPage(true); Layout(700, 1600, 1);
             await WritePreview(directory, "settings-light.png");
-            Layout(760, 660, 1);
+            Layout(700, 660, 1);
             await WritePreview(directory, "language-settings.png");
+            _settings.SidebarExpanded = true;
+            SelectPage(false); Layout(760, 600, 1);
+            await WritePreview(directory, "memory-sidebar.png");
+            SelectPage(true); Layout(760, 900, 1);
+            await WritePreview(directory, "settings-sidebar.png");
             Shell.RequestedTheme = ElementTheme.Dark;
-            SelectPage(false); Layout(760, 520, 1);
+            _settings.SidebarExpanded = false;
+            SelectPage(false); Layout(700, 520, 1);
             await WritePreview(directory, "memory-dark.png");
             File.WriteAllText(Path.Combine(directory, "self-check.json"), JsonSerializer.Serialize(new
             { passed = true, language = UiText.LanguageTag, checks, layouts, displayScale, cardRadiusPixels = MetricsCard.CornerRadius.TopLeft * displayScale,
