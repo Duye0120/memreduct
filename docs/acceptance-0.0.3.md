@@ -4,16 +4,17 @@ This is a local acceptance candidate. It has not been installed over the user's 
 
 ## Candidate identity
 
-- Source: `e5ecc1f7cdf6cfd8f1ea0fb47e09ddf94ed97e79`.
-- Installer: `MemReductFluent-0.0.3-win-x64-setup.exe`, 46,275,591 bytes (44.13 MiB).
-- SHA-256: `de11d8a675d92f774a570934bf06c6aa6654bd4714b01574c1d401516900910d`.
-- Both installer-stage language checks passed all 27 groups and 48 layout cases after final packaging.
+- Source: `242029dd573f9e9911732c7afd8c0d9f998c3577`.
+- Installer: `MemReductFluent-0.0.3-win-x64-setup.exe`, 46,284,912 bytes (44.14 MiB).
+- SHA-256: `ab1c9ae5bcca0fe5ce7c104b8a00d7864f0003abd434b360fdf5171811e71a67`.
+- Both installer-stage language checks passed all 28 groups and 48 layout cases after final packaging.
 - Installed and portable settings hashes match the pre-iteration baseline.
 
 ## Changes since 0.0.2
 
 - Reopening an installed application reuses an existing authorized startup task, with a bounded wait and an ordinary-permission fallback when it fails. Permission text distinguishes current-session consent from persistent startup configuration.
 - Manual elevation validates the requesting account before reading settings. The original window remains open until the elevated process passes that check, reads its settings, and completes a two-way handoff. Cancellation, timeout and account mismatch do not authorize delayed cleanup; preferences and duplicate actions are locked during transfer. Cross-account elevation is unsupported.
+- An explicit startup cleanup request blocks automatic scheduling until window loading consumes it once. An already-due automatic cleanup cannot preempt that request and cause manual-only selections to be skipped by reentry protection.
 - A five-minute physical/committed memory chart uses bounded in-memory samples, shows sampling gaps, and stops preparing geometry while the overview is hidden, minimized or outside the scroll viewport.
 - Recent cleanup results retain five actual attempts for the current session, including duration and partial/failed outcomes. Available-memory changes are observations, not guaranteed reclaimed amounts.
 - Cleanup privileges are scoped to each selected operation. A Win32 failure is retained for that operation while later operations continue. If none completes without errors, the result uses failure feedback, keeps the previous completion timestamp and does not attribute unrelated memory changes to cleanup. Fully successful zero-byte results remain valid, and a later success dismisses an earlier cleanup-error banner.
@@ -24,13 +25,14 @@ This is a local acceptance candidate. It has not been installed over the user's 
 - Update downloads expose progress and cancellation. Both native window closing and tray Exit cancel pending release/download work and prevent late callbacks from updating disposed windows or starting cleanup.
 - User settings and downloaded update files are accessed with the same account's ordinary permissions. Settings writes use exclusive random temporary files and atomic replacement; failed replacement keeps the original, and reads reject files larger than 64 KiB.
 - Card/control corners remain 12/10 physical pixels, navigation restores scroll position, and Chinese/English layouts retain the existing input-height checks.
+- Global errors and permission notices stay beneath navigation while pages scroll or change. Long messages scroll within a bounded notification area, closing an error reclaims its space, and failed/partial cleanup outcomes use their own error/warning severity. Layout refreshes and queued navigation clicks preserve elevation and large-text restrictions.
 - Stronger installer compression reduces download size without removing runtime files or moving dependencies into a separate download.
 
 ## Evidence and limits
 
-The fixed preview builds without compiler warnings. Chinese and English self-checks exercise 27 groups and 48 layout cases each. Checks include deferred settings initialization, elevation request identity/parameter validation and event handoff, mutex ownership, per-operation cleanup failure dispatch and result presentation, real read-only memory/process APIs, task XML/query contracts, release parsing and verified-copy cancellation, atomic settings replacement and failure preservation, ordinary-token identity across asynchronous continuations, tray handle lifetime, input editing, text scaling and offscreen rendering. Fixture screenshots use synthetic history and process names. Installer-stage evidence is in `staged-cleanup-zh-CN` and `staged-cleanup-en-US` under the local verification directory.
+The fixed preview builds without compiler warnings. Chinese and English self-checks exercise 28 groups and 48 layout cases each. Checks include deferred settings initialization, elevation request identity/parameter validation and event handoff, mutex ownership, explicit startup-cleanup priority, per-operation cleanup failure dispatch and result presentation, persistent notification layout and severity, real read-only memory/process APIs, task XML/query contracts, release parsing and verified-copy cancellation, atomic settings replacement and failure preservation, ordinary-token identity across asynchronous continuations, tray handle lifetime, input editing, text scaling and offscreen rendering. Fixture screenshots use synthetic history, failures and process names. Installer-stage evidence is in `staged-startup-priority-zh-CN` and `staged-startup-priority-en-US` under the local verification directory.
 
-The [independent Windows CI build](https://github.com/Duye0120/memreduct-winui/actions/runs/39788896155) passed for this source with .NET 10.0.402, locked NuGet dependencies and resource-key parity checks. It produced a portable build artifact with seven-day retention; no desktop acceptance or installation is implied.
+The [independent Windows CI build for UI revision `bfaae17`](https://github.com/Duye0120/memreduct-winui/actions/runs/39792255036) passed with .NET 10.0.402, locked NuGet dependencies and resource-key parity checks. The [startup-priority revision's run](https://github.com/Duye0120/memreduct-winui/actions/runs/39794029432) is still pending. CI produces a portable build artifact with seven-day retention; no desktop acceptance or installation is implied.
 
 A separate ordinary-permission process was launched with a handoff request and no cleanup intent; it exited with the expected rejection code 2 before loading settings. The in-process event checks cover readiness, transfer confirmation, timeout and expired handles. Neither check establishes that an elevated process can access the original process's events across integrity levels; actual UAC consent and transfer remain desktop acceptance items.
 
@@ -38,7 +40,9 @@ A local import-table inspection of 150 PE binaries found 167 unique imported mod
 
 A short real-process tray measurement is recorded in [the product roadmap](product-roadmap.md). CPU cost was low on the development machine, but the WinUI runtime's roughly 172 MiB working set is not comparable to the tiny native upstream application. Deferred settings creation does not demonstrate a substantial memory reduction. A smaller trimmed build crashed and was rejected; normal candidates remain untrimmed.
 
-The exact staged executable above also completed a 320.3-second tray observation after a five-second warmup, crossing the five-minute history capacity. On this 22-logical-processor machine, it used 531.25 ms CPU (0.166% of one core / 0.00754% of the machine), ending at 170.7 MiB working set and 89.6 MiB private commit. Across sixteen samples, GDI objects stayed at 82, USER objects ranged from 25 to 27, and kernel handles from 835 to 850, without sustained handle growth. Raw evidence is `tray-soak-e5ecc1f.json` in the local verification directory. This was an isolated, ordinary-permission process with automatic cleanup off, no settings file, no open settings page and no actual cleanup. The observation does not establish overnight leak freedom, active-window performance or a material reduction in runtime memory.
+The preceding staged source `e5ecc1f` completed a 320.3-second tray observation after a five-second warmup, crossing the five-minute history capacity. On this 22-logical-processor machine, it used 531.25 ms CPU (0.166% of one core / 0.00754% of the machine), ending at 170.7 MiB working set and 89.6 MiB private commit. Across sixteen samples, GDI objects stayed at 82, USER objects ranged from 25 to 27, and kernel handles from 835 to 850, without sustained handle growth. Raw evidence is `tray-soak-e5ecc1f.json` in the local verification directory. This was an isolated, ordinary-permission process with automatic cleanup off, no settings file, no open settings page and no actual cleanup. The observation does not establish overnight leak freedom, active-window performance or a material reduction in runtime memory.
+
+UI revision `bfaae17` was also observed for 30.06 seconds using the same isolated tray procedure: 93.75 ms CPU (0.312% of one core / 0.0142% of this machine), 171.69 MiB final working set, 89.39 MiB private commit and 886 handles at each of three samples. Evidence is `tray-idle-bfaae17.json`. Different observation durations and ordinary runtime variation prevent a performance-improvement claim. These measurements predate the final startup scheduling fix; that fix has local functional checks but no separate idle benchmark.
 
 Both the installed and portable user settings are checked against their pre-iteration hashes. Builds and self-checks do not register startup tasks, run real cleanup, install software, or alter those settings.
 
@@ -50,6 +54,7 @@ A read-only local check still found installed version 0.0.1. Task Scheduler retu
 2. Enable elevated startup once using the same signed-in administrator account. Exit from the tray, reopen normally, and verify that the existing task supplies permission without another UAC prompt. Disable the task and verify ordinary startup still works.
 3. Cancel a first-time elevation and retry; verify the same-account two-way handoff and that a different administrator account is rejected while the original window remains open. A normal one-time UAC consent alone does not authorize future processes; user-writable custom directories intentionally cannot host the persistent elevated task.
 4. Exercise actual tray left/right clicks, cleanup, full-screen protection and language restart with physical keyboard input and the user's display settings.
+   Verify that an explicit startup manual-clean request takes priority over an already-due automatic cleanup and is not replayed by another loading event.
 5. Exercise a real released update through download, cancellation, permission, installer completion and reopening. There is no new public Release for this candidate yet.
 6. Verify fresh installation, upgrade and uninstall on a clean Windows machine. The local self-contained build is not proof of clean-machine dependency compatibility or a signed installer.
 7. Verify settings save and update download from a same-account elevated process. Current identity checks ran from an ordinary process. If a same-account limited token is unavailable (including UAC-disabled configurations), file access intentionally fails instead of falling back to elevated user-data writes.
