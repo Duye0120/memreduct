@@ -804,7 +804,11 @@ VOID _app_dashboard_theme (
 	_r_menu_checkitem (GetMenu (hwnd), IDM_USEDARKTHEME, 0, MF_BYCOMMAND, _r_theme_isenabled ());
 
 	if (_r_sys_isosversiongreaterorequal (WINDOWS_11))
+	{
+		DASHBOARD_COLORS colors = _app_dashboard_colors ();
 		DwmSetWindowAttribute (hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &(DWM_WINDOW_CORNER_PREFERENCE){DWMWCP_ROUND}, sizeof (DWM_WINDOW_CORNER_PREFERENCE));
+		DwmSetWindowAttribute (hwnd, DWMWA_BORDER_COLOR, &colors.border, sizeof (colors.border));
+	}
 
 	RedrawWindow (hwnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
 }
@@ -915,6 +919,13 @@ LRESULT CALLBACK _app_dashboard_labelproc (
 )
 {
 	UNREFERENCED_PARAMETER (reference);
+
+	if (message == WM_SETTEXT)
+	{
+		LRESULT result = DefSubclassProc (label, message, wparam, lparam);
+		InvalidateRect (label, NULL, FALSE);
+		return result;
+	}
 
 	if (message == WM_PAINT)
 	{
@@ -1106,7 +1117,7 @@ VOID CALLBACK _app_timercallback (
 		_r_ctrl_setstringformat (hwnd, IDC_MEMORY_USAGE_FIRST + i * 3 + 2, L"%s: %s", _r_locale_getstring (IDS_ITEM_3), buffer);
 	}
 
-	InvalidateRect (hwnd, NULL, FALSE);
+	RedrawWindow (hwnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
 }
 
 VOID _app_iconredraw (
