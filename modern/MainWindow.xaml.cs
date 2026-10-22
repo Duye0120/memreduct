@@ -17,7 +17,7 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherQueueTimer? _animationTimer;
     private int _animationFrame;
     private readonly TrayIcon? _tray;
-    private bool _ready, _cleaning, _exitRequested, _sampleFailed, _restartPromptOpen;
+    private bool _ready, _cleaning, _exitRequested, _sampleFailed, _restartPromptOpen, _elevating;
     private bool _startupEnabled;
     private SettingsView SettingsPage { get; set; } = null!;
     private bool _startupReadable = true;
@@ -231,18 +231,21 @@ public sealed partial class MainWindow : Window
     private void RefreshOptions()
     {
         if (_exitRequested) return;
+        SettingsHost.IsEnabled = PaneToggleButton.IsEnabled = !_elevating;
         if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.IsAlwaysOnTop = _settings.AlwaysOnTop;
         if (SettingsPage is not null)
         {
             SetText(SettingsPage.AdvancedCleanupSummary, UiText.Get("AdvancedCleanupSummary", AdvancedCleanupCount()));
             SettingsPage.ThresholdNumber.IsEnabled = _settings.AutoThreshold;
             SettingsPage.IntervalNumber.IsEnabled = _settings.AutoInterval;
-            SettingsPage.LanguageChoice.IsEnabled = !_cleaning && !_restartPromptOpen;
+            SettingsPage.LanguageChoice.IsEnabled = !_cleaning && !_restartPromptOpen && !_elevating;
             if (Installation.IsInstalled) SettingsPage.StartupNote.Text = UiText.Get(SettingsPage.StartupSwitch.IsOn ? "InstalledStartupOn" : "InstalledStartupNote");
             SettingsPage.GameModeStatus.Text = UiText.Get(_gameActive ? "GameModeActive" : _settings.GameMode ? "GameModeWatching" : "GameModeOff");
         }
-        CleanButton.IsEnabled = !_cleaning && !_restartPromptOpen && _settings.Areas != CleanAreas.None;
-        if (!_cleaning) CleanButton.Content = UiText.Get(MemoryEngine.IsAdministrator ? "CleanMemory" : "AuthorizeClean");
+        CleanButton.IsEnabled = !_cleaning && !_restartPromptOpen && !_elevating && _settings.Areas != CleanAreas.None;
+        ElevateButton.IsEnabled = !_cleaning && !_restartPromptOpen && !_elevating;
+        if (_elevating) CleanButton.Content = UiText.Get("ElevationStarting");
+        else if (!_cleaning) CleanButton.Content = UiText.Get(MemoryEngine.IsAdministrator ? "CleanMemory" : "AuthorizeClean");
         CleanDescription.Text = UiText.Get(MemoryEngine.IsAdministrator ? "CleanDescription" : "AuthorizeDescription");
         if (Installation.IsInstalled)
         {
@@ -521,7 +524,7 @@ public sealed partial class MainWindow : Window
 
     private void SetGameMode(bool enabled)
     {
-        if (!_ready) return;
+        if (!_ready || _elevating) return;
         _settings.GameMode = enabled;
         if (SettingsPage is not null)
         {
@@ -596,6 +599,7 @@ public sealed partial class MainWindow : Window
 
     private bool SaveCleanupConfirmation(bool confirm, bool hintShown = false)
     {
+        if (_elevating) return false;
         var previous = (_settings.ConfirmCleanup, _settings.TrayCleanupHintShown);
         _settings.ConfirmCleanup = confirm;
         _settings.TrayCleanupHintShown |= hintShown;
@@ -642,7 +646,7 @@ public sealed partial class MainWindow : Window
 
     private async void CleanFromTray()
     {
-        if (_exitRequested || _checking || _cleaning || _restartPromptOpen) return;
+        if (_exitRequested || _checking || _cleaning || _restartPromptOpen || _elevating) return;
         if (_settings.Areas == CleanAreas.None)
         {
             SetFeedback(CleanupFeedback.Warning, UiText.Get("SelectArea"));
@@ -656,7 +660,7 @@ public sealed partial class MainWindow : Window
     {
         if (_exitRequested || _checking) return;
         var areas = manual ? _settings.Areas : _settings.AutomaticAreas;
-        if (_cleaning || _restartPromptOpen || (!manual && _gameActive) || areas == CleanAreas.None) return;
+        if (_cleaning || _restartPromptOpen || _elevating || (!manual && _gameActive) || areas == CleanAreas.None) return;
         _cleaning = true; RefreshOptions();
         Stopwatch? cleanupDuration = null;
         try
@@ -673,7 +677,7 @@ public sealed partial class MainWindow : Window
                 { SetFeedback(CleanupFeedback.Warning, UiText.Get("CleanupCanceled")); return; }
                 if (firstTrayClick && !SaveCleanupConfirmation(confirmationChoice!.IsChecked == true, hintShown: true)) return;
             }
-            if (!MemoryEngine.IsAdministrator) { RelaunchElevated("--clean"); return; }
+            if (!MemoryEngine.IsAdministrator) { await RelaunchElevatedAsync("--clean"); return; }
             _lastAttempt = DateTimeOffset.UtcNow;
             CleanButton.Content = UiText.Get("Cleaning");
             SetFeedback(CleanupFeedback.Cleaning, UiText.Get("Cleaning"));
@@ -710,22 +714,39 @@ public sealed partial class MainWindow : Window
     internal static bool ShouldNotifyCleanup(bool enabled, int errors, bool manual, bool gameActive)
         => enabled && errors == 0 && (manual || !gameActive);
 
-    private void Elevate_Click(object sender, RoutedEventArgs args) => RelaunchElevated("");
-    private void RelaunchElevated(string intent)
+    private async void Elevate_Click(object sender, RoutedEventArgs args) => await RelaunchElevatedAsync("");
+    private async Task RelaunchElevatedAsync(string intent)
     {
+        if (_checking || _exitRequested || _elevating || _restartPromptOpen) return;
+        _elevating = true;
+        RefreshOptions();
         try
         {
             if (!SaveSettings()) return;
-            var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = true, Verb = "runas", WorkingDirectory = AppContext.BaseDirectory };
-            start.ArgumentList.Add("--elevated");
-            if (intent.Length != 0) start.ArgumentList.Add(intent);
-            using var process = Process.Start(start);
-            if (process is not null) ExitWindow();
+            var request = Guid.NewGuid();
+            using var ready = new EventWaitHandle(false, EventResetMode.ManualReset, ElevationHandoff.EventName(request), out var created);
+            if (!created) throw new InvalidOperationException(UiText.Get("ElevationFailed"));
+            using var transfer = new EventWaitHandle(false, EventResetMode.ManualReset, ElevationHandoff.TransferEventName(request), out var transferCreated);
+            if (!transferCreated) throw new InvalidOperationException(UiText.Get("ElevationFailed"));
+            using var process = Process.Start(ElevationHandoff.CreateStartInfo(request, intent))
+                ?? throw new InvalidOperationException(UiText.Get("ElevationFailed"));
+            if (!await App.WaitUntilAsync(() =>
+            {
+                if (_exitRequested) throw new OperationCanceledException();
+                if (process.HasExited) throw new InvalidOperationException(UiText.Get(
+                    process.ExitCode == ElevationHandoff.WrongAccountExitCode ? "ElevationSameUser" : "ElevationHandoffFailed"));
+                return ready.WaitOne(0);
+            }, TimeSpan.FromSeconds(10))) throw new TimeoutException(UiText.Get("ElevationHandoffFailed"));
+            if (_exitRequested) return;
+            transfer.Set();
+            ExitWindow();
         }
+        catch (OperationCanceledException) when (_exitRequested) { }
         catch (Win32Exception error) when (error.NativeErrorCode == 1223)
         { ResultText.Text = UiText.Get("ElevationCanceled"); SetFeedback(CleanupFeedback.Warning, ResultText.Text); }
         catch (Exception error)
         { SetFeedback(CleanupFeedback.Failed, UiText.Get("ElevationFailed")); ReportIssue(UiText.Get("ElevationFailed"), error.Message); }
+        finally { _elevating = false; RefreshOptions(); }
     }
 
     private async Task ShowForConfirmationAsync()

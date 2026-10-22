@@ -99,6 +99,9 @@
   <data name="ElevationFailed" xml:space="preserve">
     <value>Unable to run as administrator</value>
   </data>
+  <data name="ElevationSameUser" xml:space="preserve"><value>Use the same Windows account for authorization. Switching accounts would load different settings. The current window has been kept open.</value></data>
+  <data name="ElevationStarting" xml:space="preserve"><value>Checking permission…</value></data>
+  <data name="ElevationHandoffFailed" xml:space="preserve"><value>The administrator process did not complete its startup checks. The current window has been kept open; no cleanup was started.</value></data>
   <data name="EmptySettings" xml:space="preserve">
     <value>The settings file is empty. The original file has not been overwritten.</value>
   </data>

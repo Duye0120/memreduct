@@ -49,6 +49,17 @@ public partial class App : Application
                 Exit(); return;
             }
             string? startupResumeError = null;
+            AppSettings? elevatedSettings = null;
+            if (!checking && Arguments.Contains(ElevationHandoff.Argument))
+            {
+                Guid request;
+                try { request = ElevationHandoff.Validate(Arguments, WindowsIdentity.GetCurrent().User!.Value, MemoryEngine.IsAdministrator); }
+                catch (UnauthorizedAccessException)
+                { Environment.ExitCode = ElevationHandoff.WrongAccountExitCode; Exit(); return; }
+                // Read only after matching the caller; the original window stays alive until this succeeds.
+                elevatedSettings = SettingsStore.Load();
+                ElevationHandoff.WaitForTransfer(request, TimeSpan.FromSeconds(10));
+            }
             if (!checking && StartupRegistration.ShouldReuseStartup(Installation.IsInstalled, MemoryEngine.IsAdministrator, Arguments))
             {
                 try
@@ -57,7 +68,7 @@ public partial class App : Application
                     {
                         // Do not acquire the instance mutex while the elevated process is starting.
                         StartupRegistration.RunInstalled();
-                        if (await WaitForWindowAsync(TrayIcon.TryShowExistingWindow, TimeSpan.FromSeconds(10)))
+                        if (await WaitUntilAsync(TrayIcon.TryShowExistingWindow, TimeSpan.FromSeconds(10)))
                         { Exit(); return; }
                         throw new TimeoutException("The authorized startup task did not open a responsive window within 10 seconds.");
                     }
@@ -76,7 +87,7 @@ public partial class App : Application
                 if (Installation.IsInstalled && importIndex >= 0 && importIndex + 1 < Arguments.Length && Arguments[importIndex + 1].Length > 0)
                     SettingsStore.ImportIfMissing(Arguments[importIndex + 1], Installation.SettingsPath);
             }
-            var settings = checking ? new AppSettings { Language = "zh-CN" } : SettingsStore.Load();
+            var settings = checking ? new AppSettings { Language = "zh-CN" } : elevatedSettings ?? SettingsStore.Load();
             var languageIndex = Array.IndexOf(Arguments, "--check-language");
             if (checking && languageIndex >= 0 && languageIndex + 1 < Arguments.Length)
                 settings.Language = Arguments[languageIndex + 1];
@@ -94,7 +105,7 @@ public partial class App : Application
         }
         catch (Exception error)
         {
-            if (!Arguments.Contains("--self-check") && !Arguments.Contains("--configure-startup"))
+            if (!Arguments.Contains("--self-check") && !Arguments.Contains("--configure-startup") && !Arguments.Contains(ElevationHandoff.Argument))
                 MessageBox(IntPtr.Zero, error.Message + "\n" + UiText.Get("OriginalUntouched"), "Mem Reduct Fluent", 0x10);
             else if (Arguments.Contains("--self-check"))
             {
@@ -113,12 +124,12 @@ public partial class App : Application
         }
     }
 
-    internal static async Task<bool> WaitForWindowAsync(Func<bool> showWindow, TimeSpan timeout)
+    internal static async Task<bool> WaitUntilAsync(Func<bool> ready, TimeSpan timeout)
     {
         var timer = System.Diagnostics.Stopwatch.StartNew();
         while (true)
         {
-            if (showWindow()) return true;
+            if (ready()) return true;
             var remaining = timeout - timer.Elapsed;
             if (remaining <= TimeSpan.Zero) return false;
             await Task.Delay(remaining < TimeSpan.FromMilliseconds(100) ? remaining : TimeSpan.FromMilliseconds(100));

@@ -72,11 +72,11 @@ public sealed partial class MainWindow
             Require(checkCanceled, "Canceled release checks stop before starting a network request");
         }
         var attempts = 0;
-        Require(await App.WaitForWindowAsync(() => ++attempts == 3, TimeSpan.FromSeconds(2)) && attempts == 3,
+        Require(await App.WaitUntilAsync(() => ++attempts == 3, TimeSpan.FromSeconds(2)) && attempts == 3,
             "Startup waits for the destination window instead of dropping the first show request");
-        Require(!await App.WaitForWindowAsync(() => false, TimeSpan.FromMilliseconds(20)),
+        Require(!await App.WaitUntilAsync(() => false, TimeSpan.FromMilliseconds(20)),
             "An unavailable startup window times out and permits a normal launch");
-        Require(await App.WaitForWindowAsync(() => true, TimeSpan.Zero), "An already responsive window is accepted immediately");
+        Require(await App.WaitUntilAsync(() => true, TimeSpan.Zero), "An already responsive window is accepted immediately");
         var payload = Enumerable.Range(0, 200000).Select(x => (byte)x).ToArray();
         var hash = Convert.ToHexString(SHA256.HashData(payload)).ToLowerInvariant();
         var release = new AppRelease(new Version(0, 0, 1), new Uri(UpdateService.Repository), hash, payload.Length);

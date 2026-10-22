@@ -99,6 +99,9 @@
   <data name="ElevationFailed" xml:space="preserve">
     <value>无法以管理员运行</value>
   </data>
+  <data name="ElevationSameUser" xml:space="preserve"><value>请使用当前 Windows 账户授权。切换账户会读到另一份设置，已保留当前窗口。</value></data>
+  <data name="ElevationStarting" xml:space="preserve"><value>正在确认权限…</value></data>
+  <data name="ElevationHandoffFailed" xml:space="preserve"><value>管理员进程未完成启动检查，已保留当前窗口，本次未开始清理。</value></data>
   <data name="EmptySettings" xml:space="preserve">
     <value>配置文件内容为空；原文件未覆盖。</value>
   </data>

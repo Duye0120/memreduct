@@ -51,6 +51,8 @@ public sealed partial class MainWindow
             File.WriteAllText(Path.Combine(directory, "deferred-settings.json"), JsonSerializer.Serialize(new { loadMilliseconds = loadWatch.Elapsed.TotalMilliseconds }));
             checks.Add("Settings controls are deferred until first use; tray preferences stay functional before loading and initialize the retained page correctly.");
             CheckInstallationAndUpdates(directory);
+            await CheckElevationHandoffAsync();
+            checks.Add("Elevation handoff rejects another account, missing administrator permission and malformed requests; readiness uses a unique session-local event without changing settings or requesting UAC.");
             await CheckUserDataAccessAsync(directory);
             checks.Add("User-data access keeps the same ordinary-permission identity across await; atomic settings replacement preserves the original on failure and succeeds on retry.");
             await CheckUpdateCopyAsync(directory);

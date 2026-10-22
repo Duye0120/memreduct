@@ -23,7 +23,7 @@ public sealed partial class MainWindow
 
     private async Task CheckUpdateAsync()
     {
-        if (_exitRequested || _checking || _cleaning || _restartPromptOpen || _updateBusy) return;
+        if (_exitRequested || _checking || _cleaning || _restartPromptOpen || _elevating || _updateBusy) return;
         _updateBusy = true;
         _updateCancellation = new CancellationTokenSource();
         SettingsPage.UpdateButton.IsEnabled = false;
