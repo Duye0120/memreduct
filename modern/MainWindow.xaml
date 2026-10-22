@@ -251,40 +251,47 @@
                                     </Grid>
                                     <Grid Style="{StaticResource SettingRow}">
                                         <StackPanel Spacing="4">
-                                            <CheckBox x:Uid="ModifiedFileCheck" x:Name="ModifiedFileCheck" Content="已修改文件缓存" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
-                                            <TextBlock x:Uid="ModifiedFileDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
-                                        </StackPanel>
-                                    </Grid>
-                                    <Grid Style="{StaticResource SettingRow}">
-                                        <StackPanel Spacing="4">
-                                            <CheckBox x:Uid="ModifiedPagesCheck" x:Name="ModifiedPagesCheck" Content="已修改页面列表 *" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
-                                            <TextBlock x:Uid="ModifiedPagesDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
-                                        </StackPanel>
-                                    </Grid>
-                                    <Grid Style="{StaticResource SettingRow}">
-                                        <StackPanel Spacing="4">
-                                            <CheckBox x:Uid="FullStandbyCheck" x:Name="FullStandbyCheck" Content="全部备用列表 *" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
-                                            <TextBlock x:Uid="FullStandbyDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
-                                        </StackPanel>
-                                    </Grid>
-                                    <Grid Style="{StaticResource SettingRow}">
-                                        <StackPanel Spacing="4">
                                             <CheckBox x:Uid="StandbyCheck" x:Name="StandbyCheck" Content="低优先级备用列表" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
                                             <TextBlock x:Uid="StandbyDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
                                         </StackPanel>
                                     </Grid>
-                                    <Grid Style="{StaticResource SettingRow}">
-                                        <StackPanel Spacing="4">
-                                            <CheckBox x:Uid="RegistryCheck" x:Name="RegistryCheck" Content="注册表缓存" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
-                                            <TextBlock x:Uid="RegistryDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
-                                        </StackPanel>
-                                    </Grid>
-                                    <Grid Style="{StaticResource SettingRow}">
-                                        <StackPanel Spacing="4">
-                                            <CheckBox x:Uid="CombineCheck" x:Name="CombineCheck" Content="合并重复内存页" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
-                                            <TextBlock x:Uid="CombineDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
-                                        </StackPanel>
-                                    </Grid>
+                                    <Expander x:Name="AdvancedCleanup" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" MinWidth="0" Padding="0" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource OutlineBrush}" Background="Transparent" CornerRadius="{StaticResource AppControlCornerRadius}">
+                                        <Expander.Header>
+                                            <TextBlock x:Name="AdvancedCleanupSummary" Style="{StaticResource Body}" Text="更多清理区域" />
+                                        </Expander.Header>
+                                        <StackPanel>
+                                            <Grid Style="{StaticResource SettingRow}">
+                                                <StackPanel Spacing="4">
+                                                    <CheckBox x:Uid="ModifiedFileCheck" x:Name="ModifiedFileCheck" Content="已修改文件缓存" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
+                                                    <TextBlock x:Uid="ModifiedFileDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <Grid Style="{StaticResource SettingRow}">
+                                                <StackPanel Spacing="4">
+                                                    <CheckBox x:Uid="ModifiedPagesCheck" x:Name="ModifiedPagesCheck" Content="已修改页面列表 *" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
+                                                    <TextBlock x:Uid="ModifiedPagesDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <Grid Style="{StaticResource SettingRow}">
+                                                <StackPanel Spacing="4">
+                                                    <CheckBox x:Uid="FullStandbyCheck" x:Name="FullStandbyCheck" Content="全部备用列表 *" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
+                                                    <TextBlock x:Uid="FullStandbyDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <Grid Style="{StaticResource SettingRow}">
+                                                <StackPanel Spacing="4">
+                                                    <CheckBox x:Uid="RegistryCheck" x:Name="RegistryCheck" Content="注册表缓存" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
+                                                    <TextBlock x:Uid="RegistryDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <Grid Style="{StaticResource SettingRow}">
+                                                <StackPanel Spacing="4">
+                                                    <CheckBox x:Uid="CombineCheck" x:Name="CombineCheck" Content="合并重复内存页" Click="CleanupOption_Click" FontSize="13" MinHeight="0" />
+                                                    <TextBlock x:Uid="CombineDescription" Style="{StaticResource Muted}" Margin="28,0,0,0" />
+                                                </StackPanel>
+                                            </Grid>
+                                                </StackPanel>
+                                    </Expander>
                                     <Grid Style="{StaticResource SettingRow}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition />
@@ -360,6 +367,7 @@
                                         <StackPanel Spacing="{StaticResource Space8}" VerticalAlignment="Center">
                                             <TextBlock x:Name="VersionText" Style="{StaticResource Body}" Text="Mem Reduct Fluent" />
                                             <TextBlock x:Uid="UpdateStatus" x:Name="UpdateStatus" Text="从 GitHub 检查新版本。" Style="{StaticResource Muted}" />
+                                            <ProgressBar x:Name="UpdateProgress" x:Uid="UpdateProgress" Maximum="100" Height="3" Margin="0,4,0,0" Visibility="Collapsed" Foreground="{ThemeResource AccentBrush}" AutomationProperties.Name="更新下载进度" />
                                         </StackPanel>
                                         <Button x:Uid="UpdateButton" x:Name="UpdateButton" Grid.Column="1" Content="检查更新" CornerRadius="{StaticResource AppControlCornerRadius}" VerticalAlignment="Center" Click="Update_Click" />
                                     </Grid>

@@ -49,7 +49,6 @@ public sealed partial class MainWindow : Window
         UpdateCornerRadii();
         LoadSettings();
         VersionText.Text = "Mem Reduct Fluent · " + UpdateService.DisplayVersion;
-        if (Installation.IsInstalled) StartupNote.Text = UiText.Get("InstalledStartupNote");
         if (!checking)
         {
             Shell.SizeChanged += (_, _) => ReflowMetrics(Shell.ActualWidth, _uiSettings.TextScaleFactor);
@@ -117,6 +116,7 @@ public sealed partial class MainWindow : Window
         FullStandbyCheck.IsChecked = _settings.CleanStandby;
         RegistryCheck.IsChecked = _settings.CleanRegistryCache;
         CombineCheck.IsChecked = _settings.CombineMemoryPages;
+        AdvancedCleanup.IsExpanded = AdvancedCleanupCount() > 0;
         ThresholdSwitch.IsOn = _settings.AutoThreshold;
         IntervalSwitch.IsOn = _settings.AutoInterval;
         GameModeSwitch.IsOn = _settings.GameMode;
@@ -172,13 +172,15 @@ public sealed partial class MainWindow : Window
         PressureBadge.CornerRadius = controlRadius;
         foreach (var control in new Control[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab, PaneToggleButton,
             CleanButton, ElevateButton, ThemeChoice, LanguageChoice,
-            ThresholdNumber, IntervalNumber, SourceLink, ExitButton, UpdateButton, ReleasesLink })
+            ThresholdNumber, IntervalNumber, SourceLink, ExitButton, UpdateButton, ReleasesLink, AdvancedCleanup })
             control.CornerRadius = controlRadius;
         _cornerScale = scale;
     }
 
     private void RefreshOptions()
     {
+        if (_exitRequested) return;
+        SetText(AdvancedCleanupSummary, UiText.Get("AdvancedCleanupSummary", AdvancedCleanupCount()));
         if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.IsAlwaysOnTop = _settings.AlwaysOnTop;
         ThresholdNumber.IsEnabled = _settings.AutoThreshold;
         IntervalNumber.IsEnabled = _settings.AutoInterval;
@@ -186,6 +188,11 @@ public sealed partial class MainWindow : Window
         LanguageChoice.IsEnabled = !_cleaning && !_restartPromptOpen;
         if (!_cleaning) CleanButton.Content = UiText.Get(MemoryEngine.IsAdministrator ? "CleanMemory" : "AuthorizeClean");
         CleanDescription.Text = UiText.Get(MemoryEngine.IsAdministrator ? "CleanDescription" : "AuthorizeDescription");
+        if (Installation.IsInstalled)
+        {
+            StartupNote.Text = UiText.Get(StartupSwitch.IsOn ? "InstalledStartupOn" : "InstalledStartupNote");
+            if (!MemoryEngine.IsAdministrator && !StartupSwitch.IsOn) CleanDescription.Text = UiText.Get("AuthorizeSessionDescription");
+        }
         AdminBanner.IsOpen = !_gameActive && (_settings.AutoThreshold || _settings.AutoInterval)
             && _settings.AutomaticAreas != CleanAreas.None && !MemoryEngine.IsAdministrator;
         AdminBanner.Visibility = AdminBanner.IsOpen ? Visibility.Visible : Visibility.Collapsed;
@@ -201,6 +208,9 @@ public sealed partial class MainWindow : Window
         if (_gameActive) AutoStatusText.Text = UiText.Get("GameModeActive");
         GameModeStatus.Text = UiText.Get(_gameActive ? "GameModeActive" : _settings.GameMode ? "GameModeWatching" : "GameModeOff");
     }
+
+    private int AdvancedCleanupCount() => System.Numerics.BitOperations.PopCount((uint)(_settings.Areas
+        & (CleanAreas.ModifiedFileCache | CleanAreas.ModifiedPages | CleanAreas.Standby | CleanAreas.RegistryCache | CleanAreas.CombinePages)));
 
     internal void ReflowMetrics(double width, double textScale)
     {
@@ -643,6 +653,6 @@ public sealed partial class MainWindow : Window
         Activate(); Sample();
     }
     private void Exit_Click(object sender, RoutedEventArgs args) => ExitWindow();
-    internal void ExitWindow() { _exitRequested = true; _ready = false; Close(); }
+    internal void ExitWindow() { _exitRequested = true; _ready = false; _updateCancellation?.Cancel(); Close(); }
     [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr window);
 }

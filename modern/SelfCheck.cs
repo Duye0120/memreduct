@@ -244,10 +244,13 @@ public sealed partial class MainWindow
                 "New and legacy settings keep all five added cleanup areas off");
             var addedChecks = new[] { ModifiedFileCheck, ModifiedPagesCheck, FullStandbyCheck, RegistryCheck, CombineCheck };
             Require(addedChecks.All(x => x.IsChecked == false), "All five added checkboxes are initially unchecked");
+            Require(!AdvancedCleanup.IsExpanded && AdvancedCleanupCount() == 0, "Additional cleanup areas start collapsed when none are selected");
             foreach (var box in addedChecks) box.IsChecked = true;
             CleanupOption_Click(CombineCheck, new RoutedEventArgs());
             Require(_settings.Areas == (CleanAreas)255 && JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(_settings))!.Areas == (CleanAreas)255,
                 "Every added checkbox reaches settings and survives serialization");
+            Require(AdvancedCleanupCount() == 5 && AdvancedCleanupSummary.Text == UiText.Get("AdvancedCleanupSummary", 5),
+                "The collapsed group exposes its enabled option count");
             foreach (var box in addedChecks) box.IsChecked = false;
             CleanupOption_Click(CombineCheck, new RoutedEventArgs());
             Require(_settings.Areas == savedAreas, "Checking added options does not alter the existing selection");
@@ -398,12 +401,19 @@ public sealed partial class MainWindow
             RefreshOptions();
 
             // Layout is measured inside this hidden app window, without inspecting the user's desktop.
+            var originalStartupNote = StartupNote.Text;
+            var originalCleanDescription = CleanDescription.Text;
+            StartupNote.Text = UiText.Get("InstalledStartupNote");
+            CleanDescription.Text = UiText.Get("AuthorizeSessionDescription");
             Shell.RequestedTheme = ElementTheme.Light;
             SelectPage(false);
             Layout(680, 1600, 1);
             var fonts = Descendants(Shell).OfType<TextBlock>().ToDictionary(x => x, x => x.FontSize);
             var controlFonts = Descendants(OverviewPage).OfType<Control>().ToDictionary(x => x, x => x.FontSize);
             SelectPage(true); Layout(680, 3200, 1);
+            AdvancedCleanup.IsExpanded = true;
+            await Task.Delay(250);
+            Shell.UpdateLayout();
             foreach (var block in Descendants(Shell).OfType<TextBlock>()) fonts.TryAdd(block, block.FontSize);
             foreach (var control in Descendants(SettingsPage).OfType<Control>()) controlFonts.TryAdd(control, control.FontSize);
             foreach (var control in new[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab }) controlFonts.TryAdd(control, control.FontSize);
@@ -491,6 +501,8 @@ public sealed partial class MainWindow
             checks.Add("Automatic-cleaning inputs, units and switches align in all settings layout cases.");
             foreach (var (control, size) in controlFonts) control.FontSize = size;
             foreach (var (block, size) in fonts) block.FontSize = size;
+            StartupNote.Text = originalStartupNote;
+            CleanDescription.Text = originalCleanDescription;
             _settings.SidebarExpanded = false;
             Layout(700, 560, 1);
             SelectPage(true);
@@ -517,13 +529,47 @@ public sealed partial class MainWindow
             Require(PhysicalHistoryPath.Data is PathGeometry plot && plot.Figures.Count == 2,
                 "Missing sampling intervals are displayed as gaps");
             Require(HistoryEmpty.Visibility == Visibility.Collapsed, "Populated history replaces the empty state");
+            var samplingWatch = System.Diagnostics.Stopwatch.StartNew();
+            for (var sample = 0; sample < 100; sample++) _ = MemoryEngine.Read();
+            samplingWatch.Stop();
+            var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+            var geometryWatch = System.Diagnostics.Stopwatch.StartNew();
+            for (var frame = 0; frame < 100; frame++) RenderHistory();
+            geometryWatch.Stop();
+            File.WriteAllText(Path.Combine(directory, "performance-check.json"), JsonSerializer.Serialize(new
+            {
+                sampleMillisecondsPerCall = samplingWatch.Elapsed.TotalMilliseconds / 100,
+                geometryMillisecondsPerFrame = geometryWatch.Elapsed.TotalMilliseconds / 100,
+                managedBytesPerGeometryFrame = (GC.GetAllocatedBytesForCurrentThread() - allocatedBefore) / 100,
+                historySamples = _history.Samples.Count,
+                scope = "Read-only sampling and populated graph geometry preparation; excludes compositor time and is not an idle-process benchmark."
+            }, new JsonSerializerOptions { WriteIndented = true }));
             Layout(700, 760, 1);
             await WritePreview(directory, "memory-history-fixture.png");
             await WritePreview(directory, "history-fixture.png", HistoryCard);
             SelectPage(true); Layout(700, 1600, 1);
+            await WritePreview(directory, "settings-expanded.png");
+            AdvancedCleanup.IsExpanded = false;
+            await Task.Delay(250);
             await WritePreview(directory, "settings-light.png");
             await WritePreview(directory, "automatic-settings.png", AutoSettingsCard);
             await WritePreview(directory, "update-settings.png", AboutCard);
+            UpdateButton.Content = UiText.Get("UpdateCancelDownload");
+            UpdateProgress.Visibility = Visibility.Visible;
+            UpdateProgress.Value = 42;
+            UpdateStatus.Text = UiText.Get("UpdateDownloadProgress", 42, "21 MB", "50 MB");
+            await WritePreview(directory, "update-download-fixture.png", AboutCard);
+            using (var cancellation = new CancellationTokenSource())
+            {
+                _updateCancellation = cancellation;
+                Update_Click(UpdateButton, new RoutedEventArgs());
+                Require(cancellation.IsCancellationRequested && !UpdateButton.IsEnabled, "The update button cancels an active download instead of starting another check");
+                _updateCancellation = null;
+            }
+            UpdateButton.IsEnabled = true;
+            UpdateButton.Content = UiText.Get("UpdateInstall");
+            UpdateStatus.Text = UiText.Get("UpdateReady");
+            UpdateProgress.Visibility = Visibility.Collapsed;
             Layout(700, 660, 1);
             await WritePreview(directory, "language-settings.png");
             var restartDialog = CreateLanguageRestartDialog();

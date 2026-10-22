@@ -315,7 +315,7 @@
   <data name="CleanupSucceeded" xml:space="preserve"><value>Memory cleanup complete</value></data>
   <data name="CleanupNotification" xml:space="preserve"><value>Available memory increased by {0}.</value></data>
   <data name="InstalledOnly" xml:space="preserve"><value>Install the app using its installer before enabling elevated startup or installing updates.</value></data>
-  <data name="InstalledStartupNote" xml:space="preserve"><value>An administrator-protected installation folder is required. Authorize once to start the elevated tray app at future sign-ins.</value></data>
+  <data name="InstalledStartupNote" xml:space="preserve"><value>With a protected installation folder, authorize once to reuse administrator permission at sign-in and when reopening.</value></data>
   <data name="StartupAdminFailed" xml:space="preserve"><value>Startup setup did not finish. Authorize with the currently signed-in administrator account, not another account.</value></data>
   <data name="UpdateButton.Content" xml:space="preserve"><value>Check for updates</value></data>
   <data name="ReleasesLink.Content" xml:space="preserve"><value>Downloads and release notes</value></data>
@@ -351,4 +351,11 @@
   <data name="PressureNormal" xml:space="preserve"><value>Normal usage</value></data>
   <data name="PressureElevated" xml:space="preserve"><value>Elevated usage</value></data>
   <data name="PressureHigh" xml:space="preserve"><value>High usage</value></data>
+  <data name="AdvancedCleanupSummary" xml:space="preserve"><value>More cleanup areas · {0} of 5 selected</value></data>
+  <data name="UpdateCancelDownload" xml:space="preserve"><value>Cancel download</value></data>
+  <data name="UpdateDownloadCanceled" xml:space="preserve"><value>Download canceled and partial file removed. Check for updates again when ready.</value></data>
+  <data name="UpdateDownloadProgress" xml:space="preserve"><value>Downloading {0:0}% · {1} / {2}</value></data>
+  <data name="UpdateProgress.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Update download progress</value></data>
+  <data name="InstalledStartupOn" xml:space="preserve"><value>Administrator startup is enabled. Sign-in starts the tray app; reopening also reuses authorization.</value></data>
+  <data name="AuthorizeSessionDescription" xml:space="preserve"><value>Authorization lasts for this session. Enable administrator startup to reuse it when reopening.</value></data>
 </root>

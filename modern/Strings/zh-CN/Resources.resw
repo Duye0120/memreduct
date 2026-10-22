@@ -315,7 +315,7 @@
   <data name="CleanupSucceeded" xml:space="preserve"><value>内存清理完成</value></data>
   <data name="CleanupNotification" xml:space="preserve"><value>可用内存增加 {0}。</value></data>
   <data name="InstalledOnly" xml:space="preserve"><value>请先使用安装包安装程序，再启用管理员开机启动或安装更新。</value></data>
-  <data name="InstalledStartupNote" xml:space="preserve"><value>安装目录受管理员保护时，开启并授权一次，之后登录自动以管理员权限在托盘运行。</value></data>
+  <data name="InstalledStartupNote" xml:space="preserve"><value>安装目录受管理员保护时，开启并授权一次；以后登录或重新打开程序可复用管理员授权。</value></data>
   <data name="StartupAdminFailed" xml:space="preserve"><value>未完成启动设置。请使用当前登录的管理员账户授权，不要切换到其他账户。</value></data>
   <data name="UpdateButton.Content" xml:space="preserve"><value>检查更新</value></data>
   <data name="ReleasesLink.Content" xml:space="preserve"><value>下载与发行说明</value></data>
@@ -351,4 +351,11 @@
   <data name="PressureNormal" xml:space="preserve"><value>用量正常</value></data>
   <data name="PressureElevated" xml:space="preserve"><value>用量较高</value></data>
   <data name="PressureHigh" xml:space="preserve"><value>用量很高</value></data>
+  <data name="AdvancedCleanupSummary" xml:space="preserve"><value>更多清理区域 · 已选 {0} / 5</value></data>
+  <data name="UpdateCancelDownload" xml:space="preserve"><value>取消下载</value></data>
+  <data name="UpdateDownloadCanceled" xml:space="preserve"><value>已取消下载，未完成的文件已移除。可以稍后重新检查更新。</value></data>
+  <data name="UpdateDownloadProgress" xml:space="preserve"><value>正在下载 {0:0}% · {1} / {2}</value></data>
+  <data name="UpdateProgress.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>更新下载进度</value></data>
+  <data name="InstalledStartupOn" xml:space="preserve"><value>已启用管理员启动；登录时进入托盘，手动重新打开也会复用授权。</value></data>
+  <data name="AuthorizeSessionDescription" xml:space="preserve"><value>授权对本次运行有效。开启管理员开机启动后，重新打开可复用授权。</value></data>
 </root>

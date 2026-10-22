@@ -61,7 +61,7 @@ internal static class UpdateService
         return new(version, new Uri(expected), digest[7..], size);
     }
 
-    internal static async Task<string> DownloadAsync(AppRelease release)
+    internal static async Task<string> DownloadAsync(AppRelease release, IProgress<long>? progress = null, CancellationToken cancellationToken = default)
     {
         var directory = Path.GetDirectoryName(DownloadPath)!;
         Directory.CreateDirectory(directory);
@@ -73,20 +73,21 @@ internal static class UpdateService
         // This cache is never executed. The elevated helper independently verifies a protected copy.
         if (File.Exists(target)) File.Delete(target);
         if (File.Exists(partial)) File.Delete(partial);
-        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(10));
         try
         {
             using var response = await GetDownloadAsync(release.Download, timeout.Token);
             if (response.Content.Headers.ContentLength is long length && length != release.Size) throw new InvalidDataException(UiText.Get("UpdateHashFailed"));
             await using (var source = await response.Content.ReadAsStreamAsync(timeout.Token))
-                await CopyVerifiedAsync(source, partial, release, timeout.Token);
+                await CopyVerifiedAsync(source, partial, release, timeout.Token, progress);
             File.Move(partial, target);
             return target;
         }
         catch { if (File.Exists(partial)) File.Delete(partial); throw; }
     }
 
-    internal static async Task CopyVerifiedAsync(Stream source, string destinationPath, AppRelease release, CancellationToken token)
+    internal static async Task CopyVerifiedAsync(Stream source, string destinationPath, AppRelease release, CancellationToken token, IProgress<long>? progress = null)
     {
         var created = false;
         try
@@ -96,6 +97,8 @@ internal static class UpdateService
             using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
             var buffer = new byte[81920];
             long total = 0;
+            var lastPercent = 0;
+            progress?.Report(0);
             int count;
             while ((count = await source.ReadAsync(buffer, token)) > 0)
             {
@@ -103,9 +106,17 @@ internal static class UpdateService
                 if (total > release.Size) throw new InvalidDataException(UiText.Get("UpdateHashFailed"));
                 hash.AppendData(buffer, 0, count);
                 await destination.WriteAsync(buffer.AsMemory(0, count), token);
+                var percent = (int)(total * 100 / release.Size);
+                if (percent > lastPercent && total < release.Size)
+                {
+                    lastPercent = percent;
+                    progress?.Report(total);
+                }
             }
+            token.ThrowIfCancellationRequested();
             if (total != release.Size || !DigestMatches(hash.GetHashAndReset(), release.Sha256))
                 throw new InvalidDataException(UiText.Get("UpdateHashFailed"));
+            progress?.Report(total);
         }
         catch { if (created && File.Exists(destinationPath)) File.Delete(destinationPath); throw; }
     }

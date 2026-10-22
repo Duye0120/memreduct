@@ -31,6 +31,12 @@ This is an ongoing improvement program, not a declaration that the product is co
 
 Next priorities: clearer settings hierarchy, download progress/cancellation, cleanup outcome history, and measured runtime/package costs. Keep new diagnostics read-only by default and avoid process-killing features.
 
+The settings hierarchy now keeps the three original cleanup areas visible and groups the five additional areas under an expander with a selected count. Existing enabled advanced choices expand automatically on launch. Download progress is bounded to percentage changes, reports size, and exposes cancellation without leaving an executable partial download. Permission descriptions distinguish session-only consent from an authorized startup task.
+
+Settings/update checks passed in Chinese and English, including 48 layout cases with the longer installed-permission descriptions. Real file-copy checks cover intermediate progress and cancellation after a partial write. The final shutdown guard and end-of-copy cancellation check were rebuilt and rechecked in Chinese. Download-state screenshots use a fixture; no network transfer or installer execution is implied.
+
+Initial microbenchmark on the development machine: native sampling averaged 0.104 ms per call; a populated 282-sample graph required 5.060 ms and approximately 335,751 managed bytes per geometry preparation. This excludes composition and is not an idle CPU benchmark. Reduce graph geometry allocations before adding more per-second visuals.
+
 Validation for this iteration: the incremental build completed with zero warnings/errors. Chinese and English self-checks passed 18 check groups and 48 layout cases each, including scrolling back from settings and a visible primary action at the default window size. Offscreen light/dark renders were generated; Chinese and English overview renders were inspected. The installed and portable settings hashes match the pre-iteration baseline. No real cleanup, task mutation, install or release occurred during these checks.
 
 ## Current validation boundary

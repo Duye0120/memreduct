@@ -16,14 +16,17 @@ public sealed partial class MainWindow
         Require(!await App.WaitForWindowAsync(() => false, TimeSpan.FromMilliseconds(20)),
             "An unavailable startup window times out and permits a normal launch");
         Require(await App.WaitForWindowAsync(() => true, TimeSpan.Zero), "An already responsive window is accepted immediately");
-        var payload = Encoding.UTF8.GetBytes("verified release payload");
+        var payload = Enumerable.Range(0, 200000).Select(x => (byte)x).ToArray();
         var hash = Convert.ToHexString(SHA256.HashData(payload)).ToLowerInvariant();
         var release = new AppRelease(new Version(0, 0, 1), new Uri(UpdateService.Repository), hash, payload.Length);
         var destination = Path.Combine(directory, "update-copy-check.bin");
         if (File.Exists(destination)) File.Delete(destination);
+        var progress = new List<long>();
         using (var source = new MemoryStream(payload))
-            await UpdateService.CopyVerifiedAsync(source, destination, release, CancellationToken.None);
+            await UpdateService.CopyVerifiedAsync(source, destination, release, CancellationToken.None, new CheckProgress(progress.Add));
         Require(File.ReadAllBytes(destination).SequenceEqual(payload), "Verified copy preserves the exact bytes");
+        Require(progress.Count > 2 && progress.Count <= 102 && progress[0] == 0 && progress[^1] == payload.Length
+            && progress.SequenceEqual(progress.OrderBy(x => x)), "Download progress is bounded, monotonic and completes after verification");
         var rejected = false;
         try
         {
@@ -54,6 +57,21 @@ public sealed partial class MainWindow
         }
         catch (OperationCanceledException) { rejected = true; }
         Require(rejected && !File.Exists(destination), "Canceled copies remove their partial payload");
+        using var midCopyCancellation = new CancellationTokenSource();
+        rejected = false;
+        try
+        {
+            using var source = new MemoryStream(payload);
+            await UpdateService.CopyVerifiedAsync(source, destination, release, midCopyCancellation.Token,
+                new CheckProgress(bytes => { if (bytes > 0) midCopyCancellation.Cancel(); }));
+        }
+        catch (OperationCanceledException) { rejected = true; }
+        Require(rejected && !File.Exists(destination), "Canceling after a partial write removes the incomplete file");
+    }
+
+    private sealed class CheckProgress(Action<long> report) : IProgress<long>
+    {
+        public void Report(long value) => report(value);
     }
 
     private static void CheckInstallationAndUpdates(string directory)
