@@ -4,10 +4,10 @@ This is a local acceptance candidate. It has not been installed over the user's 
 
 ## Candidate identity
 
-- Source: `e509b55c5b3d45d7f806d2166e28ba326c11d318`.
-- Installer: `MemReductFluent-0.0.3-win-x64-setup.exe`, 46,272,654 bytes (44.13 MiB).
-- SHA-256: `860838fe8c3648e1a486a1f236e81984ab896ff73ab3818c019bafcf5e8358b8`.
-- Both installer-stage language checks passed all 23 groups and 48 layout cases after final packaging; the fixed preview uses the same source.
+- Source: `16c45557a13a0ef731539cdeb6406c49b93af3eb`.
+- Installer: `MemReductFluent-0.0.3-win-x64-setup.exe`, 46,256,750 bytes (44.11 MiB).
+- SHA-256: `67b857f249c22b8a2aafdc1a774db2289cc1ddb732df357698203759a64d49bb`.
+- Both installer-stage language checks passed all 24 groups and 48 layout cases after final packaging; the fixed preview uses the same source.
 - Installed and portable settings hashes match the pre-iteration baseline.
 
 ## Changes since 0.0.2
@@ -16,6 +16,7 @@ This is a local acceptance candidate. It has not been installed over the user's 
 - A five-minute physical/committed memory chart uses bounded in-memory samples, shows sampling gaps, and stops preparing geometry while the overview is hidden, minimized or outside the scroll viewport.
 - Recent cleanup results retain five actual attempts for the current session, including duration and partial/failed outcomes. Available-memory changes are observations, not guaranteed reclaimed amounts.
 - The settings page groups additional cleanup areas under an expander; the two starred areas remain excluded from automatic cleaning.
+- Settings controls are created on the first visit and retained afterwards. Tray preferences continue to work before that visit, and the page initializes from the current preferences.
 - An optional process overview shows eight working sets on demand. It never terminates processes, scans in the background, saves process names, or adds shared working sets into a misleading system total.
 - Update downloads expose progress and cancellation. Both native window closing and tray Exit cancel pending release/download work and prevent late callbacks from updating disposed windows or starting cleanup.
 - User settings and downloaded update files are accessed with the same account's ordinary permissions. Settings writes use exclusive random temporary files and atomic replacement; failed replacement keeps the original, and reads reject files larger than 64 KiB.
@@ -24,15 +25,17 @@ This is a local acceptance candidate. It has not been installed over the user's 
 
 ## Evidence and limits
 
-The fixed preview builds without compiler warnings. Chinese and English self-checks exercise 23 groups and 48 layout cases each. Checks include real read-only memory/process APIs, task XML/query contracts, release parsing and verified-copy cancellation, atomic settings replacement and failure preservation, ordinary-token identity across asynchronous continuations, tray handle lifetime, input editing, text scaling and offscreen rendering. Fixture screenshots use synthetic history and process names.
+The fixed preview builds without compiler warnings. Chinese and English self-checks exercise 24 groups and 48 layout cases each. Checks include deferred settings initialization, real read-only memory/process APIs, task XML/query contracts, release parsing and verified-copy cancellation, atomic settings replacement and failure preservation, ordinary-token identity across asynchronous continuations, tray handle lifetime, input editing, text scaling and offscreen rendering. Fixture screenshots use synthetic history and process names.
 
-The [independent Windows CI build](https://github.com/Duye0120/memreduct-winui/actions/runs/39781122005) passed for this source with .NET 10.0.402, locked NuGet dependencies and resource-key parity checks. It produced a portable build artifact with seven-day retention; no desktop acceptance or installation is implied.
+The [independent Windows CI build](https://github.com/Duye0120/memreduct-winui/actions/runs/39783058671) passed for this source with .NET 10.0.402, locked NuGet dependencies and resource-key parity checks. It produced a portable build artifact with seven-day retention; no desktop acceptance or installation is implied.
 
 A local import-table inspection of 150 PE binaries found 167 unique imported modules. Non-API-set imports resolve either within staging or in the development machine's System32; no external `MSVCP`, `VCRUNTIME`, `VCCORLIB` or `CONCRT` DLL imports were found. This includes delay imports but does not cover dynamic loading or prove compatibility with a clean Windows 10 machine.
 
-A short real-process tray measurement is recorded in [the product roadmap](product-roadmap.md). CPU cost was low on the development machine, but the WinUI runtime's roughly 173 MiB working set is not comparable to the tiny native upstream application. A smaller trimmed build crashed and was rejected; normal candidates remain untrimmed.
+A short real-process tray measurement is recorded in [the product roadmap](product-roadmap.md). CPU cost was low on the development machine, but the WinUI runtime's roughly 172 MiB working set is not comparable to the tiny native upstream application. Deferred settings creation does not demonstrate a substantial memory reduction. A smaller trimmed build crashed and was rejected; normal candidates remain untrimmed.
 
 Both the installed and portable user settings are checked against their pre-iteration hashes. Builds and self-checks do not register startup tasks, run real cleanup, install software, or alter those settings.
+
+A read-only local check still found installed version 0.0.1. Task Scheduler returned `ERROR_FILE_NOT_FOUND` for this application's current-user task. No task was created and the installed application was not replaced; persistent consent is therefore not configured on this machine. This observation does not validate the candidate's real elevated relaunch path.
 
 ## Desktop acceptance still required
 
