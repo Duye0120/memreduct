@@ -45,7 +45,8 @@ Source: "..\..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignor
 Name: "{autoprograms}\Mem Reduct Fluent"; Filename: "{app}\MemReduct.Fluent.exe"; WorkingDir: "{app}"
 
 [Run]
-Filename: "{app}\MemReduct.Fluent.exe"; Parameters: "{code:ImportArguments}"; Description: "{cm:LaunchProgram,Mem Reduct Fluent}"; Flags: postinstall nowait skipifsilent runasoriginaluser
+Filename: "{app}\MemReduct.Fluent.exe"; Parameters: "{code:ImportArguments}"; Description: "{cm:LaunchProgram,Mem Reduct Fluent}"; Flags: postinstall nowait skipifsilent runasoriginaluser; Check: not IsAppUpdate
+Filename: "{app}\MemReduct.Fluent.exe"; Flags: nowait skipifsilent runasoriginaluser; Check: IsAppUpdate
 
 [UninstallDelete]
 ; Only our verified installer cache. User profiles in LocalAppData are deliberately retained.
@@ -115,6 +116,11 @@ begin
   Result := True;
 end;
 
+function IsAppUpdate: Boolean;
+begin
+  Result := ExpandConstant('{param:FROMAPP|0}') = '1';
+end;
+
 procedure InitializeWizard;
 begin
   ImportPage := CreateInputFilePage(wpSelectDir, CustomMessage('ImportTitle'), CustomMessage('ImportDescription'), CustomMessage('ImportNote'));
@@ -154,9 +160,16 @@ begin
   if CheckForMutexes('Local\MemReduct.Fluent.Running') then
   begin Result := CustomMessage('CloseFirst'); exit; end;
   if GetVersionNumbers(ExpandConstant('{app}\MemReduct.Fluent.exe'), VersionMS, VersionLS) then
+  begin
+#if VersionMajor == "0"
+    // Migrate only the published builds from before the 0.0.1 version reset.
+    if (VersionMS = (1 shl 16)) and
+      ((VersionLS = 0) or (VersionLS = (1 shl 16)) or (VersionLS = (2 shl 16))) then exit;
+#endif
     if (VersionMS > (({#VersionMajor} shl 16) or {#VersionMinor})) or
       ((VersionMS = (({#VersionMajor} shl 16) or {#VersionMinor})) and (VersionLS > ({#VersionPatch} shl 16))) then
       Result := CustomMessage('OlderInstaller');
+  end;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);

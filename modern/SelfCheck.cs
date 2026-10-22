@@ -26,6 +26,8 @@ public sealed partial class MainWindow
             await Task.Delay(250);
             var english = UiText.LanguageTag == "en-US";
             CheckInstallationAndUpdates(directory);
+            await CheckUpdateCopyAsync(directory);
+            checks.Add("Background-update copy accepts the exact release payload and rejects tampering, truncation, oversized data and cancellation without executing setup.");
             Require(UpdateButton.Content?.ToString() == (english ? "Check for updates" : "检查更新"), "Update controls are translated");
             checks.Add("Installed-path/ACL boundaries, task XML, non-overwriting settings import, release filtering, download-source and SHA-256 checks passed without creating tasks, downloading or installing anything.");
             Require(SettingsTab.Content?.ToString() == (english ? "Settings" : "设置"), "XAML loads the selected language");
@@ -184,6 +186,16 @@ public sealed partial class MainWindow
                 "Mouse-up and NIN_SELECT cannot clean twice; keyboard activation remains supported");
             Require(TrayIcon.IsContextMenu(0x7b, true) && !TrayIcon.IsContextMenu(0x205, true)
                 && TrayIcon.IsContextMenu(0x205, false), "Right-click dispatch follows the negotiated tray protocol");
+            AppWindow.Hide();
+            using (var menuOwner = new TrayIcon.MenuOwner())
+            {
+                Require(menuOwner.Handle != IntPtr.Zero && menuOwner.Handle != WinRT.Interop.WindowNative.GetWindowHandle(this),
+                    "Tray menu has an independent native owner");
+                menuOwner.Activate();
+                await Task.Delay(50);
+                Require(!AppWindow.IsVisible, "Activating the tray menu owner does not show the hidden main window");
+            }
+            AppWindow.Show(false);
             foreach (var dark in new[] { false, true })
             {
                 var normal = TrayIcon.StatusColor(69.9, CleanupFeedback.None, false, dark);
@@ -382,6 +394,8 @@ public sealed partial class MainWindow
             foreach (var control in Descendants(SettingsPage).OfType<Control>()) controlFonts.TryAdd(control, control.FontSize);
             foreach (var control in new[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab }) controlFonts.TryAdd(control, control.FontSize);
             var layouts = new List<object>();
+            UpdateButton.Content = UiText.Get("UpdateInstall");
+            UpdateStatus.Text = UiText.Get("UpdateReady");
             foreach (var sidebar in new[] { false, true })
             foreach (var scale in new[] { 1.0, 1.5, 2.0 })
             foreach (var width in new[] { 560.0, 680.0, 760.0, 880.0 })

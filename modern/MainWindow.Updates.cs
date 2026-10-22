@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -5,16 +6,28 @@ namespace MemReduct.Fluent;
 
 public sealed partial class MainWindow
 {
-    private async void Update_Click(object sender, RoutedEventArgs args) => await CheckUpdateAsync(false);
+    private bool _updateBusy;
+    private string? _downloadedInstaller;
 
-    private async Task CheckUpdateAsync(bool installRequested)
+    private async void Update_Click(object sender, RoutedEventArgs args) => await CheckUpdateAsync();
+
+    private async Task CheckUpdateAsync()
     {
-        if (_checking || _cleaning || _restartPromptOpen) return;
-        _restartPromptOpen = true;
+        if (_checking || _cleaning || _restartPromptOpen || _updateBusy) return;
+        _updateBusy = true;
         UpdateButton.IsEnabled = false;
-        RefreshOptions();
         try
         {
+            if (_downloadedInstaller is not null)
+            {
+                _restartPromptOpen = true;
+                RefreshOptions();
+                if (!SaveSettings()) return;
+                UpdateStatus.Text = UiText.Get("UpdateInstalling");
+                await UpdateService.RequestInstallAsync(_downloadedInstaller);
+                ExitWindow();
+                return;
+            }
             UpdateStatus.Text = UiText.Get("UpdateChecking");
             var release = await UpdateService.CheckAsync();
             if (release is null) { UpdateStatus.Text = UiText.Get("UpdateNone"); return; }
@@ -24,27 +37,37 @@ public sealed partial class MainWindow
                 UpdateStatus.Text += " " + UiText.Get("UpdatePortable");
                 return;
             }
-            if (!installRequested)
+            _restartPromptOpen = true;
+            RefreshOptions();
+            try
             {
                 var dialog = new ContentDialog
                 {
                     XamlRoot = Shell.XamlRoot, RequestedTheme = Shell.ActualTheme,
                     Title = UiText.Get("UpdateAvailable", release.Version), Content = UiText.Get("UpdateConfirm"),
-                    PrimaryButtonText = UiText.Get("UpdateInstall"), CloseButtonText = UiText.Get("Later"),
+                    PrimaryButtonText = UiText.Get("UpdateDownload"), CloseButtonText = UiText.Get("Later"),
                     DefaultButton = ContentDialogButton.Close, CornerRadius = new(10 / Shell.XamlRoot.RasterizationScale)
                 };
                 if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
             }
-            if (!MemoryEngine.IsAdministrator) { RelaunchElevated("--update"); return; }
+            finally { _restartPromptOpen = false; RefreshOptions(); }
             UpdateStatus.Text = UiText.Get("UpdateDownloading");
-            var installer = await UpdateService.DownloadAsync(release);
-            if (!SaveSettings()) return;
-            UpdateService.StartInstaller(installer);
-            ExitWindow();
+            _downloadedInstaller = await UpdateService.DownloadAsync(release);
+            UpdateButton.Content = UiText.Get("UpdateInstall");
+            UpdateStatus.Text = UiText.Get("UpdateReady");
         }
-        catch (Exception error) { UpdateStatus.Text = UiText.Get("UpdateFailed"); ReportIssue(UpdateStatus.Text, error.Message); }
+        catch (Win32Exception error) when (error.NativeErrorCode == 1223)
+        { UpdateStatus.Text = UiText.Get("UpdateCanceled"); }
+        catch (Exception error)
+        {
+            _downloadedInstaller = null;
+            UpdateButton.Content = UiText.Get("UpdateButton.Content");
+            UpdateStatus.Text = UiText.Get("UpdateFailed");
+            ReportIssue(UpdateStatus.Text, error.Message);
+        }
         finally
         {
+            _updateBusy = false;
             _restartPromptOpen = false;
             if (!_exitRequested) { UpdateButton.IsEnabled = true; RefreshOptions(); }
         }

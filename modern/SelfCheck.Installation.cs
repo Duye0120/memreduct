@@ -8,6 +8,48 @@ namespace MemReduct.Fluent;
 
 public sealed partial class MainWindow
 {
+    private static async Task CheckUpdateCopyAsync(string directory)
+    {
+        var payload = Encoding.UTF8.GetBytes("verified release payload");
+        var hash = Convert.ToHexString(SHA256.HashData(payload)).ToLowerInvariant();
+        var release = new AppRelease(new Version(0, 0, 1), new Uri(UpdateService.Repository), hash, payload.Length);
+        var destination = Path.Combine(directory, "update-copy-check.bin");
+        if (File.Exists(destination)) File.Delete(destination);
+        using (var source = new MemoryStream(payload))
+            await UpdateService.CopyVerifiedAsync(source, destination, release, CancellationToken.None);
+        Require(File.ReadAllBytes(destination).SequenceEqual(payload), "Verified copy preserves the exact bytes");
+        var rejected = false;
+        try
+        {
+            using var source = new MemoryStream(payload);
+            await UpdateService.CopyVerifiedAsync(source, destination, release, CancellationToken.None);
+        }
+        catch (IOException) { rejected = true; }
+        Require(rejected && File.ReadAllBytes(destination).SequenceEqual(payload), "Existing files are not overwritten or deleted");
+        File.Delete(destination);
+        foreach (var bytes in new[] { new byte[payload.Length], payload[..^1], payload.Concat(new byte[] { 0 }).ToArray() })
+        {
+            rejected = false;
+            try
+            {
+                using var source = new MemoryStream(bytes);
+                await UpdateService.CopyVerifiedAsync(source, destination, release, CancellationToken.None);
+            }
+            catch (InvalidDataException) { rejected = true; }
+            Require(rejected && !File.Exists(destination), "Tampered, truncated and oversized copies leave no executable payload");
+        }
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        rejected = false;
+        try
+        {
+            using var source = new MemoryStream(payload);
+            await UpdateService.CopyVerifiedAsync(source, destination, release, cancellation.Token);
+        }
+        catch (OperationCanceledException) { rejected = true; }
+        Require(rejected && !File.Exists(destination), "Canceled copies remove their partial payload");
+    }
+
     private static void CheckInstallationAndUpdates(string directory)
     {
         // Exercise the installed COM path inside WinUI even when this check runs from a portable build.
@@ -50,22 +92,28 @@ public sealed partial class MainWindow
         JsonDocument Release(string tag, string url, string hash, bool prerelease = false) => JsonDocument.Parse(JsonSerializer.Serialize(new
         {
             tag_name = tag, draft = false, prerelease,
-            assets = new[] { new { name = "MemReductFluent-1.0.1-win-x64-setup.exe", browser_download_url = url, digest = hash, size = 100 } }
+            assets = new[] { new { name = $"MemReductFluent-{tag.Replace("fluent-v", "")}-win-x64-setup.exe", browser_download_url = url, digest = hash, size = 100 } }
         }));
-        var expected = UpdateService.Repository + "/releases/download/fluent-v1.0.1/MemReductFluent-1.0.1-win-x64-setup.exe";
-        using var release = Release("fluent-v1.0.1", expected, "sha256:" + digest);
-        Require(UpdateService.ParseRelease(release.RootElement, new Version(1, 0, 0, 0))?.Version == new Version(1, 0, 1), "New stable release is recognized");
-        Require(UpdateService.ParseRelease(release.RootElement, new Version(1, 0, 1, 0)) is null, "Same-version reinstall is not offered");
-        Require(UpdateService.ParseRelease(release.RootElement, new Version(2, 0, 0, 0)) is null, "Downgrades are not offered");
+        var expected = UpdateService.Repository + "/releases/download/fluent-v0.0.2/MemReductFluent-0.0.2-win-x64-setup.exe";
+        using var release = Release("fluent-v0.0.2", expected, "sha256:" + digest);
+        Require(UpdateService.ParseRelease(release.RootElement, new Version(0, 0, 1, 0))?.Version == new Version(0, 0, 2), "New stable release is recognized");
+        Require(UpdateService.ParseRelease(release.RootElement, new Version(0, 0, 2, 0)) is null, "Same-version reinstall is not offered");
+        Require(UpdateService.ParseRelease(release.RootElement, new Version(0, 0, 3, 0)) is null, "Downgrades are not offered");
+        foreach (var tag in new[] { "fluent-v1.0.0", "fluent-v1.0.1", "fluent-v1.0.2" })
+        {
+            using var legacy = Release(tag, expected, "sha256:" + digest);
+            Require(UpdateService.ParseRelease(legacy.RootElement, new Version(0, 0, 1, 0)) is null,
+                "Releases from before the version reset are not offered");
+        }
         using var upstream = Release("v3.5", expected, "sha256:" + digest);
-        Require(UpdateService.ParseRelease(upstream.RootElement, new Version(1, 0, 0)) is null, "Upstream legacy tags are ignored");
-        using var preview = Release("fluent-v1.0.1", expected, "sha256:" + digest, true);
-        Require(UpdateService.ParseRelease(preview.RootElement, new Version(1, 0, 0)) is null, "Prereleases are ignored");
+        Require(UpdateService.ParseRelease(upstream.RootElement, new Version(0, 0, 1)) is null, "Upstream legacy tags are ignored");
+        using var preview = Release("fluent-v0.0.2", expected, "sha256:" + digest, true);
+        Require(UpdateService.ParseRelease(preview.RootElement, new Version(0, 0, 1)) is null, "Prereleases are ignored");
         foreach (var (url, hash) in new[] { ("https://example.org/setup.exe", "sha256:" + digest), (expected, "") })
         {
-            using var invalid = Release("fluent-v1.0.1", url, hash);
+            using var invalid = Release("fluent-v0.0.2", url, hash);
             rejected = false;
-            try { UpdateService.ParseRelease(invalid.RootElement, new Version(1, 0, 0)); } catch (InvalidDataException) { rejected = true; }
+            try { UpdateService.ParseRelease(invalid.RootElement, new Version(0, 0, 1)); } catch (InvalidDataException) { rejected = true; }
             Require(rejected, "Foreign download sources and missing digests are rejected");
         }
         Require(UpdateService.AllowedDownloadUri(new Uri(expected)) && !UpdateService.AllowedDownloadUri(new Uri("http://github.com/file"))

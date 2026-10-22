@@ -315,12 +315,17 @@
   <data name="ReleasesLink.Content" xml:space="preserve"><value>Downloads and release notes</value></data>
   <data name="UpdateAssetInvalid" xml:space="preserve"><value>The release asset is invalid or has no SHA-256 digest. Update stopped.</value></data>
   <data name="UpdateHashFailed" xml:space="preserve"><value>Download size or SHA-256 verification failed. The installer was not executed.</value></data>
-  <data name="UpdateChecking" xml:space="preserve"><value>Checking this fork for a stable release…</value></data>
+  <data name="UpdateChecking" xml:space="preserve"><value>Checking for a stable release…</value></data>
   <data name="UpdateNone" xml:space="preserve"><value>No newer stable release is available.</value></data>
   <data name="UpdateAvailable" xml:space="preserve"><value>Version {0} is available</value></data>
   <data name="UpdatePortable" xml:space="preserve"><value>For the portable version, use Downloads and release notes to get the installer and import existing settings.</value></data>
-  <data name="UpdateConfirm" xml:space="preserve"><value>After downloading and verifying the installer, this app will exit and open setup. Settings and startup preferences are preserved.</value></data>
-  <data name="UpdateInstall" xml:space="preserve"><value>Download and install</value></data>
+  <data name="UpdateConfirm" xml:space="preserve"><value>Download and verify in the background while you keep using the app. When ready, click Install update to authorize installation. The app reopens once after setup; settings and startup preferences are preserved.</value></data>
+  <data name="UpdateInstall" xml:space="preserve"><value>Install update</value></data>
+  <data name="UpdateDownload" xml:space="preserve"><value>Download</value></data>
+  <data name="UpdateReady" xml:space="preserve"><value>Download ready. Click Install update to authorize installation.</value></data>
+  <data name="UpdateInstalling" xml:space="preserve"><value>Preparing installation. The app will exit after verification…</value></data>
+  <data name="UpdateCanceled" xml:space="preserve"><value>Authorization canceled. The app is still running; install when ready.</value></data>
+  <data name="UpdateSameUser" xml:space="preserve"><value>Authorize in-app updates with the current account. To use another administrator account, download and run setup from the release page.</value></data>
   <data name="Later" xml:space="preserve"><value>Later</value></data>
   <data name="UpdateDownloading" xml:space="preserve"><value>Downloading and verifying the installer…</value></data>
   <data name="UpdateFailed" xml:space="preserve"><value>Update did not complete. The current version and settings are preserved.</value></data>

@@ -119,16 +119,19 @@ internal sealed class TrayIcon : IDisposable
                 {
                     try
                     {
+                        // A separate zero-size tool window owns the menu; never activate the main window on right-click.
+                        using var owner = new MenuOwner();
+                        if (owner.Handle == IntPtr.Zero) return IntPtr.Zero;
                         AppendMenu(menu, 0, 1, UiText.Get("TrayOpen"));
                         AppendMenu(menu, _gameModeEnabled() ? 8u : 0u, 3, UiText.Get("GameModeMenu"));
                         AppendMenu(menu, 0, 2, UiText.Get("TrayExit"));
                         GetCursorPos(out var point);
-                        SetForegroundWindow(window);
-                        var selected = TrackPopupMenuEx(menu, 0x100 | 0x80 | 2, point.X, point.Y, window, IntPtr.Zero);
+                        owner.Activate();
+                        var selected = TrackPopupMenuEx(menu, 0x100 | 0x80 | 2, point.X, point.Y, owner.Handle, IntPtr.Zero);
+                        PostMessage(owner.Handle, 0, UIntPtr.Zero, IntPtr.Zero);
                         if (selected == 1) _show();
                         if (selected == 2) _exit();
                         if (selected == 3) _toggleGameMode();
-                        PostMessage(window, 0, UIntPtr.Zero, IntPtr.Zero);
                     }
                     finally { DestroyMenu(menu); }
                 }
@@ -136,6 +139,14 @@ internal sealed class TrayIcon : IDisposable
             return IntPtr.Zero;
         }
         return DefSubclassProc(window, message, wparam, lparam);
+    }
+
+    internal sealed class MenuOwner : IDisposable
+    {
+        internal IntPtr Handle { get; } = CreateWindowEx(0x80, "STATIC", "", 0x80000000,
+            0, 0, 0, 0, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+        internal void Activate() { ShowWindow(Handle, 4); SetForegroundWindow(Handle); }
+        public void Dispose() { if (Handle != IntPtr.Zero) DestroyWindow(Handle); }
     }
 
     public void Dispose()
@@ -166,6 +177,10 @@ internal sealed class TrayIcon : IDisposable
     }
     [StructLayout(LayoutKind.Sequential)] private struct Point { public int X, Y; }
     private delegate IntPtr SubclassProc(IntPtr hwnd, uint msg, UIntPtr wparam, IntPtr lparam, UIntPtr id, UIntPtr reference);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr CreateWindowEx(uint extendedStyle, string className, string title,
+        uint style, int x, int y, int width, int height, IntPtr parent, IntPtr menu, IntPtr instance, IntPtr parameter);
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool DestroyWindow(IntPtr window);
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool ShowWindow(IntPtr window, int command);
     [DllImport("comctl32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetWindowSubclass(IntPtr hwnd, SubclassProc proc, UIntPtr id, UIntPtr reference);
     [DllImport("comctl32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool RemoveWindowSubclass(IntPtr hwnd, SubclassProc proc, UIntPtr id);

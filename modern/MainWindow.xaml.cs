@@ -97,7 +97,6 @@ public sealed partial class MainWindow : Window
             Shell.XamlRoot.Changed -= XamlRoot_Changed;
             Shell.XamlRoot.Changed += XamlRoot_Changed;
             if (App.Arguments.Contains("--clean") && !checking) await CleanAsync(true, confirm: false);
-            if (App.Arguments.Contains("--update") && !checking) await CheckUpdateAsync(true);
         };
     }
 

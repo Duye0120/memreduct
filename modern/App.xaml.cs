@@ -28,11 +28,19 @@ public partial class App : Application
             System.Text.Json.JsonSerializer.Serialize(new { passed = false, error = error.ToString() }));
     }
 
-    protected override void OnLaunched(LaunchActivatedEventArgs args)
+    protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
         try
         {
             var checking = Arguments.Contains("--self-check");
+            if (!checking && Arguments.Contains("--install-update"))
+            {
+                var index = Array.IndexOf(Arguments, "--install-update");
+                if (index + 1 >= Arguments.Length) throw new ArgumentException("Invalid update request.");
+                UiText.Initialize("System");
+                await UpdateService.InstallDownloadedAsync(Arguments[index + 1]);
+                Exit(); return;
+            }
             if (!checking && Arguments.Contains("--configure-startup"))
             {
                 var index = Array.IndexOf(Arguments, "--configure-startup");
