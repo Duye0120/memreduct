@@ -363,4 +363,12 @@
   <data name="CleanupHistoryErrors" xml:space="preserve"><value> · Errors: {0}</value></data>
   <data name="CleanupHistoryManual" xml:space="preserve"><value>{0:HH:mm:ss} · Manual</value></data>
   <data name="CleanupHistoryAutomatic" xml:space="preserve"><value>{0:HH:mm:ss} · Automatic</value></data>
+  <data name="ProcessesHeading.Text" xml:space="preserve"><value>Which processes use memory?</value></data>
+  <data name="ProcessesDescription.Text" xml:space="preserve"><value>Top 8 processes by working set, including shared memory. These values cannot be added to calculate total usage. Read on first expansion; refresh manually afterwards.</value></data>
+  <data name="ProcessRefreshButton.Content" xml:space="preserve"><value>Refresh processes</value></data>
+  <data name="ProcessStatus.Text" xml:space="preserve"><value>Expand to read. No background process scans.</value></data>
+  <data name="ProcessesReading" xml:space="preserve"><value>Reading process memory…</value></data>
+  <data name="ProcessesUpdated" xml:space="preserve"><value>Updated {0:HH:mm:ss} · Top {1} processes</value></data>
+  <data name="ProcessesUnavailable" xml:space="preserve"><value> · {0} exited or unavailable</value></data>
+  <data name="ProcessesFailed" xml:space="preserve"><value>Could not refresh processes. Previous results are retained.</value></data>
 </root>

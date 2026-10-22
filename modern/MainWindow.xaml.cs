@@ -172,7 +172,8 @@ public sealed partial class MainWindow : Window
         PressureBadge.CornerRadius = controlRadius;
         foreach (var control in new Control[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab, PaneToggleButton,
             CleanButton, ElevateButton, ThemeChoice, LanguageChoice,
-            ThresholdNumber, IntervalNumber, SourceLink, ExitButton, UpdateButton, ReleasesLink, AdvancedCleanup })
+            ThresholdNumber, IntervalNumber, SourceLink, ExitButton, UpdateButton, ReleasesLink, AdvancedCleanup,
+            ProcessesExpander, ProcessRefreshButton })
             control.CornerRadius = controlRadius;
         _cornerScale = scale;
     }

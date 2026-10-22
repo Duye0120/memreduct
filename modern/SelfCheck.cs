@@ -433,6 +433,27 @@ public sealed partial class MainWindow
             SelectPage(false);
             Layout(680, 1600, 1);
             await WritePreview(directory, "cleanup-history-fixture.png", CleanupHistoryCard);
+            var processFixture = Enumerable.Range(1, 12).Select(id => new ProcessMemoryEntry(
+                id == 12 ? "Example application with a long process name" : "Example " + id,
+                id, id * 512L * 1024 * 1024)).Append(new("Empty", 0, 0)).Append(new("Invalid", -1, -1));
+            var topProcesses = ProcessMemory.SelectTop(processFixture);
+            Require(topProcesses.Length == 8 && topProcesses[0].ProcessId == 12 && topProcesses[^1].ProcessId == 5,
+                "Process snapshots retain only the eight largest positive working sets");
+            Require(ProcessMemory.SelectTop([new("B", 2, 100), new("A", 1, 100)])[0].ProcessId == 1,
+                "Equal-sized process rows have a stable PID order");
+            var processWatch = System.Diagnostics.Stopwatch.StartNew();
+            var liveProcesses = await Task.Run(ProcessMemory.Read);
+            processWatch.Stop();
+            Require(liveProcesses.Entries.Count is > 0 and <= 8 && liveProcesses.Entries.All(entry => entry.WorkingSetBytes > 0),
+                "A read-only process snapshot succeeds without elevation or process modification");
+            File.WriteAllText(Path.Combine(directory, "process-read-check.json"), JsonSerializer.Serialize(new
+            { milliseconds = processWatch.Elapsed.TotalMilliseconds, count = liveProcesses.Entries.Count, unavailable = liveProcesses.Unavailable }));
+            foreach (var entry in topProcesses) _processRows.Add(entry);
+            ProcessStatus.Text = UiText.Get("ProcessesUpdated", DateTime.Now, topProcesses.Length);
+            ProcessesExpander.IsExpanded = true;
+            Layout(680, 2400, 1);
+            await WritePreview(directory, "processes-fixture.png", ProcessesExpander);
+            checks.Add("Read-only process snapshots are bounded, sorted and skip nonpositive values; long fixture names render without background scans or real process changes.");
             var fonts = Descendants(Shell).OfType<TextBlock>().ToDictionary(x => x, x => x.FontSize);
             var controlFonts = Descendants(OverviewPage).OfType<Control>().ToDictionary(x => x, x => x.FontSize);
             SelectPage(true); Layout(680, 3200, 1);

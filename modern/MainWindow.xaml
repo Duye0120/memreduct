@@ -188,6 +188,28 @@
                                 </ItemsControl>
                             </StackPanel>
                         </Border>
+                        <Expander x:Name="ProcessesExpander" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Background="{ThemeResource SurfaceBrush}" BorderBrush="{ThemeResource OutlineBrush}" Expanding="Processes_Expanding">
+                            <Expander.Header><TextBlock x:Uid="ProcessesHeading" Text="哪些进程占用内存？" Style="{StaticResource Body}" /></Expander.Header>
+                            <StackPanel Spacing="12">
+                                <TextBlock x:Uid="ProcessesDescription" Text="按工作集显示前 8 个进程，含共享内存，不能相加当作总用量。仅在展开或点击刷新时读取。" Style="{StaticResource Muted}" />
+                                <ItemsControl ItemsSource="{x:Bind _processRows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="local:ProcessMemoryEntry">
+                                            <Grid Padding="0,10" BorderBrush="{ThemeResource OutlineBrush}" BorderThickness="0,0,0,1" ColumnSpacing="12">
+                                                <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                                <StackPanel Spacing="2">
+                                                    <TextBlock Text="{x:Bind Name}" Style="{StaticResource Body}" />
+                                                    <TextBlock Text="{x:Bind IdText}" Style="{StaticResource Muted}" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1" Text="{x:Bind MemoryText}" Style="{StaticResource Body}" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button x:Name="ProcessRefreshButton" x:Uid="ProcessRefreshButton" Content="刷新进程" Click="RefreshProcesses_Click" />
+                                <TextBlock x:Name="ProcessStatus" x:Uid="ProcessStatus" Text="展开后读取，不在后台扫描进程。" Style="{StaticResource Muted}" AutomationProperties.LiveSetting="Polite" />
+                            </StackPanel>
+                        </Expander>
                     </StackPanel>
                     <StackPanel x:Name="SettingsPage" Visibility="Collapsed" Spacing="{StaticResource Space20}">
                         <StackPanel Spacing="{StaticResource Space8}">
