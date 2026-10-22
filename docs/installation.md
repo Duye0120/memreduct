@@ -80,4 +80,6 @@ SHA-256 用于检查下载完整性，信任根是 GitHub 仓库/Release；它�
 
 `MemReductFluent-1.0.2-win-x64-setup.exe` 已经 Inno Setup 7.1.0 实编译，大小 47,137,366 字节，SHA-256 为 `2fc7d8b4ae7dfe1a6814dac6311eec311a84fde31c15303d1dc385374ed7a02c`。构建前后安装版与便携版设置文件哈希均一致，未修改用户登录任务或原版安装目录。
 
+经用户确认已发布 [fluent-v1.0.2](https://github.com/Duye0120/memreduct-winui/releases/tag/fluent-v1.0.2)，源码提交 `3134e8356dab23b2ddb577197cc020cf7a503e07`。两项附件上传成功，服务端 digest 和大小与本地一致，latest API 指向 1.0.2。使用真实发布 JSON 调用应用 `ParseRelease`，确认当前 1.0.1 可识别更新，当前 1.0.2 不提示重复安装；未代用户安装。
+
 仓库已脱离 GitHub fork 网络，默认分支和当前本地维护分支均为 `master`。原有分支、标签和 1.0.1 Release 仍可访问，README 保留 Henry++ 来源署名。
