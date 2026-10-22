@@ -127,22 +127,22 @@ VOID _app_generate_menu (
 
 ULONG _app_getlimitvalue ()
 {
-	return _r_calc_clamp (_r_config_getulong (L"AutoreductValue", DEFAULT_AUTOREDUCT_VAL, NULL), 0, 100);
+	return _r_calc_clamp (_r_config_getulong_ex (L"AutoreductValue", DEFAULT_AUTOREDUCT_VAL, NULL), 0, 100);
 }
 
 ULONG _app_getintervalvalue ()
 {
-	return _r_calc_clamp (_r_config_getulong (L"AutoreductIntervalValue", DEFAULT_AUTOREDUCTINTERVAL_VAL, NULL), 1, 1440);
+	return _r_calc_clamp (_r_config_getulong_ex (L"AutoreductIntervalValue", DEFAULT_AUTOREDUCTINTERVAL_VAL, NULL), 1, 1440);
 }
 
 ULONG _app_getdangervalue ()
 {
-	return _r_calc_clamp (_r_config_getulong (L"TrayLevelDanger", DEFAULT_DANGER_LEVEL, NULL), 0, 100);
+	return _r_calc_clamp (_r_config_getulong_ex (L"TrayLevelDanger", DEFAULT_DANGER_LEVEL, NULL), 0, 100);
 }
 
 ULONG _app_getwarningvalue ()
 {
-	return _r_calc_clamp (_r_config_getulong (L"TrayLevelWarning", DEFAULT_WARNING_LEVEL, NULL), 0, 100);
+	return _r_calc_clamp (_r_config_getulong_ex (L"TrayLevelWarning", DEFAULT_WARNING_LEVEL, NULL), 0, 100);
 }
 
 ULONG64 _app_getmemoryinfo (
@@ -282,7 +282,7 @@ VOID _app_memoryclean (
 	ULONG flags = NIIF_WARNING;
 	NTSTATUS status;
 
-	if (!_r_config_getboolean (L"IsNotificationsSound", TRUE, NULL))
+	if (!_r_config_getboolean_ex (L"IsNotificationsSound", TRUE, NULL))
 		flags |= NIIF_NOSOUND;
 
 	if (!_r_sys_iselevated ())
@@ -310,11 +310,11 @@ VOID _app_memoryclean (
 	}
 
 	if (mask == 0)
-		mask = _r_config_getulong (L"ReductMask2", REDUCT_MASK_DEFAULT, NULL);
+		mask = _r_config_getulong_ex (L"ReductMask2", REDUCT_MASK_DEFAULT, NULL);
 
 	if (src == SOURCE_AUTO)
 	{
-		if (!_r_config_getboolean (L"IsAllowStandbyListCleanup", FALSE, NULL))
+		if (!_r_config_getboolean_ex (L"IsAllowStandbyListCleanup", FALSE, NULL))
 			mask &= ~REDUCT_MASK_FREEZES; // exclude freezes from autoclean feature ;)
 	}
 
@@ -473,7 +473,7 @@ VOID _app_memoryclean (
 	reduct_after = (reduct_after < reduct_before) ? (reduct_before - reduct_after) : 0;
 
 	// time of last cleaning
-	_r_config_setlong64 (L"StatisticLastReduct", _r_unixtime_now (), NULL);
+	_r_config_setlong64_ex (L"StatisticLastReduct", _r_unixtime_now (), NULL);
 
 	_r_format_bytesize64 (buffer_cleaned_result, RTL_NUMBER_OF (buffer_cleaned_result), reduct_after);
 
@@ -482,7 +482,7 @@ VOID _app_memoryclean (
 
 	if (src == SOURCE_CMDLINE)
 	{
-		if (_r_config_getboolean (L"BalloonCleanResults", TRUE, NULL))
+		if (_r_config_getboolean_ex (L"BalloonCleanResults", TRUE, NULL))
 		{
 			if (!_r_tray_popup (hwnd, &GUID_TrayIcon, flags, _r_app_getname (), buffer_result))
 				_r_show_message (hwnd, MB_OK | MB_ICONINFORMATION, _r_locale_getstring (IDS_SETTINGS_MEMORY), buffer_result);
@@ -494,11 +494,11 @@ VOID _app_memoryclean (
 	}
 	else
 	{
-		if (hwnd && _r_config_getboolean (L"BalloonCleanResults", TRUE, NULL))
+		if (hwnd && _r_config_getboolean_ex (L"BalloonCleanResults", TRUE, NULL))
 			_r_tray_popup (hwnd, &GUID_TrayIcon, flags, _r_app_getname (), buffer_result);
 	}
 
-	if (_r_config_getboolean (L"LogCleanResults", FALSE, NULL))
+	if (_r_config_getboolean_ex (L"LogCleanResults", FALSE, NULL))
 		_r_log_v (LOG_LEVEL_INFO, NULL, _app_getcleanupreason (src), 0, buffer_cleaned_result);
 }
 
@@ -514,10 +514,10 @@ VOID _app_fontinit (
 	logfont->lfHeight = _r_dc_fontsizetoheight (8, dpi_value);
 	logfont->lfWeight = FW_NORMAL;
 
-	_r_config_getfont (L"TrayFont", logfont, dpi_value, NULL);
+	_r_config_getfont_ex (L"TrayFont", logfont, dpi_value, NULL);
 
 	logfont->lfCharSet = DEFAULT_CHARSET;
-	logfont->lfQuality = _r_config_getboolean (L"TrayUseAntialiasing", FALSE, NULL) ? CLEARTYPE_QUALITY : NONANTIALIASED_QUALITY;
+	logfont->lfQuality = _r_config_getboolean_ex (L"TrayUseAntialiasing", FALSE, NULL) ? CLEARTYPE_QUALITY : NONANTIALIASED_QUALITY;
 }
 
 VOID _app_drawbackground (
@@ -573,12 +573,12 @@ HICON _app_iconcreate (
 	INT prev_mode;
 	BOOLEAN is_border, is_round, is_transparent, has_danger;
 
-	text_color = _r_config_getulong (L"TrayColorText", TRAY_COLOR_TEXT, NULL);
-	bg_color = _r_config_getulong (L"TrayColorBg", TRAY_COLOR_BG, NULL);
+	text_color = _r_config_getulong_ex (L"TrayColorText", TRAY_COLOR_TEXT, NULL);
+	bg_color = _r_config_getulong_ex (L"TrayColorBg", TRAY_COLOR_BG, NULL);
 
-	is_transparent = _r_config_getboolean (L"TrayUseTransparency", FALSE, NULL);
-	is_border = _r_config_getboolean (L"TrayShowBorder", FALSE, NULL);
-	is_round = _r_config_getboolean (L"TrayRoundCorners", FALSE, NULL);
+	is_transparent = _r_config_getboolean_ex (L"TrayUseTransparency", FALSE, NULL);
+	is_border = _r_config_getboolean_ex (L"TrayShowBorder", FALSE, NULL);
+	is_round = _r_config_getboolean_ex (L"TrayRoundCorners", FALSE, NULL);
 
 	if (percent == 0)
 	{
@@ -591,15 +591,15 @@ HICON _app_iconcreate (
 
 	if (has_danger || percent >= _app_getwarningvalue ())
 	{
-		if (_r_config_getboolean (L"TrayChangeBg", TRUE, NULL))
+		if (_r_config_getboolean_ex (L"TrayChangeBg", TRUE, NULL))
 		{
-			bg_color = has_danger ? _r_config_getulong (L"TrayColorDanger", TRAY_COLOR_DANGER, NULL) : _r_config_getulong (L"TrayColorWarning", TRAY_COLOR_WARNING, NULL);
+			bg_color = has_danger ? _r_config_getulong_ex (L"TrayColorDanger", TRAY_COLOR_DANGER, NULL) : _r_config_getulong_ex (L"TrayColorWarning", TRAY_COLOR_WARNING, NULL);
 
 			is_transparent = FALSE;
 		}
 		else
 		{
-			text_color = has_danger ? _r_config_getulong (L"TrayColorDanger", TRAY_COLOR_DANGER, NULL) : _r_config_getulong (L"TrayColorWarning", TRAY_COLOR_WARNING, NULL);
+			text_color = has_danger ? _r_config_getulong_ex (L"TrayColorDanger", TRAY_COLOR_DANGER, NULL) : _r_config_getulong_ex (L"TrayColorWarning", TRAY_COLOR_WARNING, NULL);
 		}
 	}
 
@@ -651,6 +651,169 @@ HICON _app_iconcreate (
 	return hicon;
 }
 
+typedef struct _DASHBOARD_COLORS
+{
+	COLORREF background;
+	COLORREF surface;
+	COLORREF border;
+	COLORREF text;
+	COLORREF muted;
+	COLORREF accent;
+} DASHBOARD_COLORS;
+
+DASHBOARD_COLORS _app_dashboard_colors ()
+{
+	HIGHCONTRAST high_contrast = {sizeof (HIGHCONTRAST)};
+	DASHBOARD_COLORS colors;
+	BOOLEAN is_dark = _r_theme_isenabled ();
+
+	colors.background = is_dark ? RGB (24, 24, 24) : RGB (245, 246, 248);
+	colors.surface = is_dark ? WND_BACKGROUND_CLR : RGB (255, 255, 255);
+	colors.border = is_dark ? RGB (57, 57, 57) : RGB (225, 228, 233);
+	colors.text = is_dark ? RGB (245, 245, 245) : RGB (26, 29, 35);
+	colors.muted = is_dark ? RGB (187, 191, 198) : RGB (92, 101, 114);
+	colors.accent = is_dark ? RGB (96, 205, 255) : RGB (0, 103, 192);
+
+	if (SystemParametersInfoW (SPI_GETHIGHCONTRAST, sizeof (high_contrast), &high_contrast, 0) && (high_contrast.dwFlags & HCF_HIGHCONTRASTON))
+	{
+		colors.background = GetSysColor (COLOR_WINDOW);
+		colors.surface = GetSysColor (COLOR_WINDOW);
+		colors.border = GetSysColor (COLOR_WINDOWTEXT);
+		colors.text = GetSysColor (COLOR_WINDOWTEXT);
+		colors.muted = GetSysColor (COLOR_WINDOWTEXT);
+		colors.accent = GetSysColor (COLOR_HIGHLIGHT);
+	}
+
+	return colors;
+}
+
+VOID _app_dashboard_fonts (
+	_In_ HWND hwnd
+)
+{
+	LONG sizes[] = {30, 20, 10};
+	LONG dpi = _r_dc_getwindowdpi (hwnd);
+
+	for (INT i = 0; i < 3; i++)
+	{
+		SAFE_DELETE_OBJECT (config.dashboard_fonts[i]);
+		config.dashboard_fonts[i] = CreateFontW (-MulDiv (sizes[i], dpi, 72), 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
+			DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+	}
+}
+
+VOID _app_dashboard_theme (
+	_In_ HWND hwnd
+)
+{
+	if (_r_config_getboolean_ex (L"FollowSystemTheme", TRUE, NULL))
+		_r_theme_enable (hwnd, _r_wnd_isdarkmodeenabled ());
+
+	_r_menu_checkitem (GetMenu (hwnd), IDM_FOLLOW_SYSTEM_THEME, 0, MF_BYCOMMAND, _r_config_getboolean_ex (L"FollowSystemTheme", TRUE, NULL));
+	_r_menu_checkitem (GetMenu (hwnd), IDM_USEDARKTHEME, 0, MF_BYCOMMAND, _r_theme_isenabled ());
+
+	if (_r_sys_isosversiongreaterorequal (WINDOWS_11))
+		DwmSetWindowAttribute (hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &(DWM_WINDOW_CORNER_PREFERENCE){DWMWCP_ROUND}, sizeof (DWM_WINDOW_CORNER_PREFERENCE));
+
+	RedrawWindow (hwnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
+}
+
+VOID _app_dashboard_paint (
+	_In_ HWND hwnd,
+	_In_ HDC hdc
+)
+{
+	const RECT cards[] = {{12, 12, 308, 130}, {12, 142, 154, 254}, {166, 142, 308, 254}};
+	const RECT bars[] = {{24, 84, 296, 89}, {24, 205, 142, 210}, {178, 205, 296, 210}};
+	DASHBOARD_COLORS colors = _app_dashboard_colors ();
+	COLORREF accent;
+	RECT rect;
+	LONG radius = MulDiv (8, _r_dc_getwindowdpi (hwnd), 96);
+	INT saved_dc = SaveDC (hdc);
+
+	GetClientRect (hwnd, &rect);
+	_r_dc_fillrect (hdc, &rect, colors.background);
+	SelectObject (hdc, GetStockObject (DC_BRUSH));
+	SelectObject (hdc, GetStockObject (DC_PEN));
+
+	for (INT i = 0; i < 3; i++)
+	{
+		rect = cards[i];
+		MapDialogRect (hwnd, &rect);
+		SetDCBrushColor (hdc, colors.surface);
+		SetDCPenColor (hdc, colors.border);
+		RoundRect (hdc, rect.left, rect.top, rect.right, rect.bottom, radius * 2, radius * 2);
+
+		rect = bars[i];
+		MapDialogRect (hwnd, &rect);
+		SetDCBrushColor (hdc, colors.border);
+		SetDCPenColor (hdc, colors.border);
+		RoundRect (hdc, rect.left, rect.top, rect.right, rect.bottom, radius, radius);
+
+		if (!config.memory_percent[i])
+			continue;
+
+		accent = colors.accent;
+
+		if (config.memory_percent[i] >= _app_getdangervalue ())
+			accent = _r_config_getulong_ex (L"TrayColorDanger", TRAY_COLOR_DANGER, NULL);
+		else if (config.memory_percent[i] >= _app_getwarningvalue ())
+			accent = _r_config_getulong_ex (L"TrayColorWarning", TRAY_COLOR_WARNING, NULL);
+
+		rect.right = rect.left + max (1, MulDiv (rect.right - rect.left, min (100, config.memory_percent[i]), 100));
+		SetDCBrushColor (hdc, accent);
+		SetDCPenColor (hdc, accent);
+		RoundRect (hdc, rect.left, rect.top, rect.right, rect.bottom, radius, radius);
+	}
+
+	RestoreDC (hdc, saved_dc);
+}
+
+BOOLEAN _app_dashboard_drawitem (
+	_In_ HWND hwnd,
+	_In_ LPDRAWITEMSTRUCT item
+)
+{
+	DASHBOARD_COLORS colors = _app_dashboard_colors ();
+	WCHAR text[0x100];
+	HFONT font = (HFONT)SendMessageW (hwnd, WM_GETFONT, 0, 0);
+	BOOLEAN is_value;
+	INT saved_dc;
+
+	if (item->CtlType != ODT_STATIC)
+		return FALSE;
+
+	if (item->CtlID >= IDC_MEMORY_HEADING_FIRST && item->CtlID < IDC_MEMORY_HEADING_FIRST + 3)
+	{
+		font = config.dashboard_fonts[2];
+		is_value = TRUE;
+	}
+	else if (item->CtlID >= IDC_MEMORY_USAGE_FIRST && item->CtlID < IDC_MEMORY_USAGE_FIRST + 9)
+	{
+		is_value = (item->CtlID - IDC_MEMORY_USAGE_FIRST) % 3 == 0;
+
+		if (is_value)
+			font = config.dashboard_fonts[item->CtlID == IDC_MEMORY_USAGE_FIRST ? 0 : 1];
+	}
+	else
+	{
+		return FALSE;
+	}
+
+	GetWindowTextW (item->hwndItem, text, RTL_NUMBER_OF (text));
+	saved_dc = SaveDC (item->hDC);
+	_r_dc_fillrect (item->hDC, &item->rcItem, colors.surface);
+	SetBkMode (item->hDC, TRANSPARENT);
+	SetTextColor (item->hDC, is_value ? colors.text : colors.muted);
+
+	if (font)
+		SelectObject (item->hDC, font);
+
+	DrawTextW (item->hDC, text, -1, &item->rcItem, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
+	RestoreDC (item->hDC, saved_dc);
+	return TRUE;
+}
+
 VOID CALLBACK _app_timercallback (
 	_In_ HWND hwnd,
 	_In_ UINT msg,
@@ -662,7 +825,9 @@ VOID CALLBACK _app_timercallback (
 	WCHAR buffer[0x80];
 	HICON hicon = NULL;
 	LONG64 timestamp;
-	ULONG percent;
+	DOUBLE percentages[3];
+	ULONG64 free_bytes[3];
+	ULONG64 total_bytes[3];
 	BOOLEAN is_clean = FALSE;
 
 	if (id_event != UID)
@@ -673,21 +838,21 @@ VOID CALLBACK _app_timercallback (
 	// autocleanup functional
 	if (_r_sys_iselevated ())
 	{
-		if (_r_config_getboolean (L"AutoreductEnable", FALSE, NULL))
+		if (_r_config_getboolean_ex (L"AutoreductEnable", FALSE, NULL))
 		{
 			if (mem_info.physical_memory.percent >= _app_getlimitvalue ())
 			{
 				// cooldown prevents cleaning loop when memory usage stays above the limit (issue #191)
-				timestamp = _r_unixtime_now () - _r_config_getlong64 (L"StatisticLastReduct", 0, NULL);
+				timestamp = _r_unixtime_now () - _r_config_getlong64_ex (L"StatisticLastReduct", 0, NULL);
 
 				if (timestamp >= AUTOREDUCT_COOLDOWN)
 					is_clean = TRUE;
 			}
 		}
 
-		if (!is_clean && _r_config_getboolean (L"AutoreductIntervalEnable", FALSE, NULL))
+		if (!is_clean && _r_config_getboolean_ex (L"AutoreductIntervalEnable", FALSE, NULL))
 		{
-			timestamp = _r_unixtime_now () - _r_config_getlong64 (L"StatisticLastReduct", 0, NULL);
+			timestamp = _r_unixtime_now () - _r_config_getlong64_ex (L"StatisticLastReduct", 0, NULL);
 
 			if (timestamp >= (_app_getintervalvalue () * 60))
 				is_clean = TRUE;
@@ -721,56 +886,27 @@ VOID CALLBACK _app_timercallback (
 	if (!_r_wnd_isvisible (hwnd, FALSE))
 		return;
 
-	// set item lparam information
-	for (INT i = 0; i < _r_listview_getitemcount (hwnd, IDC_LISTVIEW); i++)
-	{
-		if (i < 3)
-		{
-			percent = mem_info.physical_memory.percent;
-		}
-		else if (i < 6)
-		{
-			percent = mem_info.page_file.percent;
-		}
-		else if (i < 9)
-		{
-			percent = mem_info.system_cache.percent;
-		}
+	percentages[0] = mem_info.physical_memory.percent_f;
+	percentages[1] = mem_info.page_file.percent_f;
+	percentages[2] = mem_info.system_cache.percent_f;
+	free_bytes[0] = mem_info.physical_memory.free_bytes;
+	free_bytes[1] = mem_info.page_file.free_bytes;
+	free_bytes[2] = mem_info.system_cache.free_bytes;
+	total_bytes[0] = mem_info.physical_memory.total_bytes;
+	total_bytes[1] = mem_info.page_file.total_bytes;
+	total_bytes[2] = mem_info.system_cache.total_bytes;
 
-		_r_listview_setitem (hwnd, IDC_LISTVIEW, i, 0, NULL, I_DEFAULT, I_DEFAULT, (LPARAM)percent);
+	for (INT i = 0; i < 3; i++)
+	{
+		config.memory_percent[i] = (ULONG)percentages[i];
+		_r_ctrl_setstringformat (hwnd, IDC_MEMORY_USAGE_FIRST + i * 3, L"%" TEXT (PR_DOUBLE) L"%%", percentages[i]);
+		_r_format_bytesize64 (buffer, RTL_NUMBER_OF (buffer), free_bytes[i]);
+		_r_ctrl_setstringformat (hwnd, IDC_MEMORY_USAGE_FIRST + i * 3 + 1, L"%s: %s", _r_locale_getstring (IDS_ITEM_2), buffer);
+		_r_format_bytesize64 (buffer, RTL_NUMBER_OF (buffer), total_bytes[i]);
+		_r_ctrl_setstringformat (hwnd, IDC_MEMORY_USAGE_FIRST + i * 3 + 2, L"%s: %s", _r_locale_getstring (IDS_ITEM_3), buffer);
 	}
 
-	// physical memory
-	_r_str_printf (buffer, RTL_NUMBER_OF (buffer), L"%" TEXT (PR_DOUBLE) L"%%", mem_info.physical_memory.percent_f);
-	_r_listview_setitem (hwnd, IDC_LISTVIEW, 0, 1, buffer, I_DEFAULT, I_DEFAULT, I_DEFAULT);
-
-	_r_format_bytesize64 (buffer, RTL_NUMBER_OF (buffer), mem_info.physical_memory.free_bytes);
-	_r_listview_setitem (hwnd, IDC_LISTVIEW, 1, 1, buffer, I_DEFAULT, I_DEFAULT, I_DEFAULT);
-
-	_r_format_bytesize64 (buffer, RTL_NUMBER_OF (buffer), mem_info.physical_memory.total_bytes);
-	_r_listview_setitem (hwnd, IDC_LISTVIEW, 2, 1, buffer, I_DEFAULT, I_DEFAULT, I_DEFAULT);
-
-	// pagefile
-	_r_str_printf (buffer, RTL_NUMBER_OF (buffer), L"%" TEXT (PR_DOUBLE) L"%%", mem_info.page_file.percent_f);
-	_r_listview_setitem (hwnd, IDC_LISTVIEW, 3, 1, buffer, I_DEFAULT, I_DEFAULT, I_DEFAULT);
-
-	_r_format_bytesize64 (buffer, RTL_NUMBER_OF (buffer), mem_info.page_file.free_bytes);
-	_r_listview_setitem (hwnd, IDC_LISTVIEW, 4, 1, buffer, I_DEFAULT, I_DEFAULT, I_DEFAULT);
-
-	_r_format_bytesize64 (buffer, RTL_NUMBER_OF (buffer), mem_info.page_file.total_bytes);
-	_r_listview_setitem (hwnd, IDC_LISTVIEW, 5, 1, buffer, I_DEFAULT, I_DEFAULT, I_DEFAULT);
-
-	// system cache
-	_r_str_printf (buffer, RTL_NUMBER_OF (buffer), L"%" TEXT (PR_DOUBLE) L"%%", mem_info.system_cache.percent_f);
-	_r_listview_setitem (hwnd, IDC_LISTVIEW, 6, 1, buffer, I_DEFAULT, I_DEFAULT, I_DEFAULT);
-
-	_r_format_bytesize64 (buffer, RTL_NUMBER_OF (buffer), mem_info.system_cache.free_bytes);
-	_r_listview_setitem (hwnd, IDC_LISTVIEW, 7, 1, buffer, I_DEFAULT, I_DEFAULT, I_DEFAULT);
-
-	_r_format_bytesize64 (buffer, RTL_NUMBER_OF (buffer), mem_info.system_cache.total_bytes);
-	_r_listview_setitem (hwnd, IDC_LISTVIEW, 8, 1, buffer, I_DEFAULT, I_DEFAULT, I_DEFAULT);
-
-	_r_listview_redraw (hwnd, IDC_LISTVIEW);
+	InvalidateRect (hwnd, NULL, FALSE);
 }
 
 VOID _app_iconredraw (
@@ -830,10 +966,10 @@ VOID _app_hotkeyinit (
 
 	UnregisterHotKey (hwnd, UID);
 
-	if (!_r_config_getboolean (L"HotkeyCleanEnable", FALSE, NULL))
+	if (!_r_config_getboolean_ex (L"HotkeyCleanEnable", FALSE, NULL))
 		return;
 
-	hotkey = _r_config_getlong (L"HotkeyClean", MAKEWORD (VK_F1, HOTKEYF_CONTROL), NULL);
+	hotkey = _r_config_getlong_ex (L"HotkeyClean", MAKEWORD (VK_F1, HOTKEYF_CONTROL), NULL);
 
 	if (!hotkey)
 		return;
@@ -869,16 +1005,16 @@ INT_PTR CALLBACK SettingsProc (
 			{
 				case IDD_SETTINGS_GENERAL:
 				{
-					_r_button_setcheck (hwnd, IDC_ALWAYSONTOP_CHK, _r_config_getboolean (L"AlwaysOnTop", FALSE, NULL));
-					_r_button_setcheck (hwnd, IDC_LOADONSTARTUP_CHK, _r_autorun_isenabled ());
-					_r_button_setcheck (hwnd, IDC_STARTMINIMIZED_CHK, _r_config_getboolean (L"IsStartMinimized", FALSE, NULL));
-					_r_button_setcheck (hwnd, IDC_REDUCTCONFIRMATION_CHK, _r_config_getboolean (L"IsShowReductConfirmation", TRUE, NULL));
+					_r_ctrl_checkbutton (hwnd, IDC_ALWAYSONTOP_CHK, _r_config_getboolean_ex (L"AlwaysOnTop", FALSE, NULL));
+					_r_ctrl_checkbutton (hwnd, IDC_LOADONSTARTUP_CHK, _r_autorun_isenabled ());
+					_r_ctrl_checkbutton (hwnd, IDC_STARTMINIMIZED_CHK, _r_config_getboolean_ex (L"IsStartMinimized", FALSE, NULL));
+					_r_ctrl_checkbutton (hwnd, IDC_REDUCTCONFIRMATION_CHK, _r_config_getboolean_ex (L"IsShowReductConfirmation", TRUE, NULL));
 
 					if (!_r_sys_iselevated ())
 						_r_ctrl_enable (hwnd, IDC_SKIPUACWARNING_CHK, FALSE);
 
-					_r_button_setcheck (hwnd, IDC_SKIPUACWARNING_CHK, _r_skipuac_isenabled ());
-					_r_button_setcheck (hwnd, IDC_CHECKUPDATES_CHK, _r_update_isenabled (FALSE));
+					_r_ctrl_checkbutton (hwnd, IDC_SKIPUACWARNING_CHK, _r_skipuac_isenabled ());
+					_r_ctrl_checkbutton (hwnd, IDC_CHECKUPDATES_CHK, _r_update_isenabled (FALSE));
 
 					_r_locale_enum (hwnd, IDC_LANGUAGE, 0);
 
@@ -920,7 +1056,7 @@ INT_PTR CALLBACK SettingsProc (
 
 					_r_listview_setcolumn (hwnd, IDC_REGIONS, 0, NULL, -100);
 
-					mask = _r_config_getulong (L"ReductMask2", REDUCT_MASK_DEFAULT, NULL);
+					mask = _r_config_getulong_ex (L"ReductMask2", REDUCT_MASK_DEFAULT, NULL);
 
 					_r_listview_setitemcheck (hwnd, IDC_REGIONS, 0, (mask & REDUCT_WORKINGSET) == REDUCT_WORKINGSET);
 					_r_listview_setitemcheck (hwnd, IDC_REGIONS, 1, (mask & REDUCT_SYSTEMFILECACHE) == REDUCT_SYSTEMFILECACHE);
@@ -942,28 +1078,28 @@ INT_PTR CALLBACK SettingsProc (
 						_r_ctrl_enable (hwnd, IDC_HOTKEY_CLEAN, FALSE);
 					}
 
-					_r_button_setcheck (hwnd, IDC_AUTOREDUCTENABLE_CHK, _r_config_getboolean (L"AutoreductEnable", FALSE, NULL));
+					_r_ctrl_checkbutton (hwnd, IDC_AUTOREDUCTENABLE_CHK, _r_config_getboolean_ex (L"AutoreductEnable", FALSE, NULL));
 
 					_r_updown_setrange (hwnd, IDC_AUTOREDUCTVALUE, 0, 100);
 
 					_r_updown_setvalue (hwnd, IDC_AUTOREDUCTVALUE, _app_getlimitvalue ());
 
-					_r_button_setcheck (hwnd, IDC_AUTOREDUCTINTERVALENABLE_CHK, _r_config_getboolean (L"AutoreductIntervalEnable", FALSE, NULL));
+					_r_ctrl_checkbutton (hwnd, IDC_AUTOREDUCTINTERVALENABLE_CHK, _r_config_getboolean_ex (L"AutoreductIntervalEnable", FALSE, NULL));
 
 					_r_updown_setrange (hwnd, IDC_AUTOREDUCTINTERVALVALUE, 1, 1440);
 
 					_r_updown_setvalue (hwnd, IDC_AUTOREDUCTINTERVALVALUE, _app_getintervalvalue ());
 
-					_r_button_setcheck (hwnd, IDC_HOTKEY_CLEAN_CHK, _r_config_getboolean (L"HotkeyCleanEnable", FALSE, NULL));
+					_r_ctrl_checkbutton (hwnd, IDC_HOTKEY_CLEAN_CHK, _r_config_getboolean_ex (L"HotkeyCleanEnable", FALSE, NULL));
 
-					if (!_r_button_ischecked (hwnd, IDC_HOTKEY_CLEAN_CHK))
+					if (!_r_ctrl_isbuttonchecked (hwnd, IDC_HOTKEY_CLEAN_CHK))
 						_r_ctrl_enable (hwnd, IDC_HOTKEY_CLEAN, FALSE);
 
-					_r_hotkey_set (hwnd, IDC_HOTKEY_CLEAN, _r_config_getlong (L"HotkeyClean", MAKEWORD (VK_F1, HOTKEYF_CONTROL), NULL));
+					_r_hotkey_set (hwnd, IDC_HOTKEY_CLEAN, _r_config_getlong_ex (L"HotkeyClean", MAKEWORD (VK_F1, HOTKEYF_CONTROL), NULL));
 
-					_r_wnd_sendcommand (hwnd, IDC_AUTOREDUCTENABLE_CHK, 0);
-					_r_wnd_sendcommand (hwnd, IDC_AUTOREDUCTINTERVALENABLE_CHK, 0);
-					_r_wnd_sendcommand (hwnd, IDC_HOTKEY_CLEAN_CHK, 0);
+					_r_ctrl_sendcommand (hwnd, IDC_AUTOREDUCTENABLE_CHK, 0);
+					_r_ctrl_sendcommand (hwnd, IDC_AUTOREDUCTINTERVALENABLE_CHK, 0);
+					_r_ctrl_sendcommand (hwnd, IDC_HOTKEY_CLEAN_CHK, 0);
 
 					break;
 				}
@@ -973,11 +1109,11 @@ INT_PTR CALLBACK SettingsProc (
 					LOGFONT logfont;
 					LONG dpi_value;
 
-					_r_button_setcheck (hwnd, IDC_TRAYUSETRANSPARENCY_CHK, _r_config_getboolean (L"TrayUseTransparency", FALSE, NULL));
-					_r_button_setcheck (hwnd, IDC_TRAYSHOWBORDER_CHK, _r_config_getboolean (L"TrayShowBorder", FALSE, NULL));
-					_r_button_setcheck (hwnd, IDC_TRAYROUNDCORNERS_CHK, _r_config_getboolean (L"TrayRoundCorners", FALSE, NULL));
-					_r_button_setcheck (hwnd, IDC_TRAYCHANGEBG_CHK, _r_config_getboolean (L"TrayChangeBg", TRUE, NULL));
-					_r_button_setcheck (hwnd, IDC_TRAYUSEANTIALIASING_CHK, _r_config_getboolean (L"TrayUseAntialiasing", FALSE, NULL));
+					_r_ctrl_checkbutton (hwnd, IDC_TRAYUSETRANSPARENCY_CHK, _r_config_getboolean_ex (L"TrayUseTransparency", FALSE, NULL));
+					_r_ctrl_checkbutton (hwnd, IDC_TRAYSHOWBORDER_CHK, _r_config_getboolean_ex (L"TrayShowBorder", FALSE, NULL));
+					_r_ctrl_checkbutton (hwnd, IDC_TRAYROUNDCORNERS_CHK, _r_config_getboolean_ex (L"TrayRoundCorners", FALSE, NULL));
+					_r_ctrl_checkbutton (hwnd, IDC_TRAYCHANGEBG_CHK, _r_config_getboolean_ex (L"TrayChangeBg", TRUE, NULL));
+					_r_ctrl_checkbutton (hwnd, IDC_TRAYUSEANTIALIASING_CHK, _r_config_getboolean_ex (L"TrayUseAntialiasing", FALSE, NULL));
 
 					dpi_value = _r_dc_gettaskbardpi ();
 
@@ -992,10 +1128,10 @@ INT_PTR CALLBACK SettingsProc (
 
 					_r_listview_addcolumn (hwnd, IDC_COLORS, 0, NULL, -100, LVCFMT_LEFT);
 
-					_r_listview_additem (hwnd, IDC_COLORS, 0, _r_locale_getstring (IDS_COLOR_TEXT_HINT), I_DEFAULT, I_DEFAULT, _r_config_getulong (L"TrayColorText", TRAY_COLOR_TEXT, NULL));
-					_r_listview_additem (hwnd, IDC_COLORS, 1, _r_locale_getstring (IDS_COLOR_BACKGROUND_HINT), I_DEFAULT, I_DEFAULT, _r_config_getulong (L"TrayColorBg", TRAY_COLOR_BG, NULL));
-					_r_listview_additem (hwnd, IDC_COLORS, 2, _r_locale_getstring (IDS_COLOR_WARNING_HINT), I_DEFAULT, I_DEFAULT, _r_config_getulong (L"TrayColorWarning", TRAY_COLOR_WARNING, NULL));
-					_r_listview_additem (hwnd, IDC_COLORS, 3, _r_locale_getstring (IDS_COLOR_DANGER_HINT), I_DEFAULT, I_DEFAULT, _r_config_getulong (L"TrayColorDanger", TRAY_COLOR_DANGER, NULL));
+					_r_listview_additem (hwnd, IDC_COLORS, 0, _r_locale_getstring (IDS_COLOR_TEXT_HINT), I_DEFAULT, I_DEFAULT, _r_config_getulong_ex (L"TrayColorText", TRAY_COLOR_TEXT, NULL));
+					_r_listview_additem (hwnd, IDC_COLORS, 1, _r_locale_getstring (IDS_COLOR_BACKGROUND_HINT), I_DEFAULT, I_DEFAULT, _r_config_getulong_ex (L"TrayColorBg", TRAY_COLOR_BG, NULL));
+					_r_listview_additem (hwnd, IDC_COLORS, 2, _r_locale_getstring (IDS_COLOR_WARNING_HINT), I_DEFAULT, I_DEFAULT, _r_config_getulong_ex (L"TrayColorWarning", TRAY_COLOR_WARNING, NULL));
+					_r_listview_additem (hwnd, IDC_COLORS, 3, _r_locale_getstring (IDS_COLOR_DANGER_HINT), I_DEFAULT, I_DEFAULT, _r_config_getulong_ex (L"TrayColorDanger", TRAY_COLOR_DANGER, NULL));
 
 					break;
 				}
@@ -1008,19 +1144,19 @@ INT_PTR CALLBACK SettingsProc (
 					_r_updown_setrange (hwnd, IDC_TRAYLEVELDANGER, 0, 100);
 					_r_updown_setvalue (hwnd, IDC_TRAYLEVELDANGER, _app_getdangervalue ());
 
-					_r_combobox_setcurrentitem (hwnd, IDC_TRAYACTIONSC, _r_config_getlong (L"TrayActionDc", 0, NULL));
-					_r_combobox_setcurrentitem (hwnd, IDC_TRAYACTIONMC, _r_config_getlong (L"TrayActionMc", 1, NULL));
+					_r_combobox_setcurrentitem (hwnd, IDC_TRAYACTIONSC, _r_config_getlong_ex (L"TrayActionDc", 0, NULL));
+					_r_combobox_setcurrentitem (hwnd, IDC_TRAYACTIONMC, _r_config_getlong_ex (L"TrayActionMc", 1, NULL));
 
-					_r_button_setcheck (hwnd, IDC_SHOW_CLEAN_RESULT_CHK, _r_config_getboolean (L"BalloonCleanResults", TRUE, NULL));
-					_r_button_setcheck (hwnd, IDC_NOTIFICATIONSOUND_CHK, _r_config_getboolean (L"IsNotificationsSound", TRUE, NULL));
+					_r_ctrl_checkbutton (hwnd, IDC_SHOW_CLEAN_RESULT_CHK, _r_config_getboolean_ex (L"BalloonCleanResults", TRUE, NULL));
+					_r_ctrl_checkbutton (hwnd, IDC_NOTIFICATIONSOUND_CHK, _r_config_getboolean_ex (L"IsNotificationsSound", TRUE, NULL));
 
 					break;
 				}
 
 				case IDD_SETTINGS_ADVANCED:
 				{
-					_r_button_setcheck (hwnd, IDC_ALLOWSTANDBYLISTCLEANUP_CHK, _r_config_getboolean (L"IsAllowStandbyListCleanup", FALSE, NULL));
-					_r_button_setcheck (hwnd, IDC_LOGRESULTS_CHK, _r_config_getboolean (L"LogCleanResults", FALSE, NULL));
+					_r_ctrl_checkbutton (hwnd, IDC_ALLOWSTANDBYLISTCLEANUP_CHK, _r_config_getboolean_ex (L"IsAllowStandbyListCleanup", FALSE, NULL));
+					_r_ctrl_checkbutton (hwnd, IDC_LOGRESULTS_CHK, _r_config_getboolean_ex (L"LogCleanResults", FALSE, NULL));
 
 					break;
 				}
@@ -1106,8 +1242,8 @@ INT_PTR CALLBACK SettingsProc (
 						_r_combobox_insertitem (hwnd, IDC_TRAYACTIONMC, i, string, i);
 					}
 
-					_r_combobox_setcurrentitembylparam (hwnd, IDC_TRAYACTIONSC, _r_config_getlong (L"TrayActionDc", 0, NULL));
-					_r_combobox_setcurrentitembylparam (hwnd, IDC_TRAYACTIONMC, _r_config_getlong (L"TrayActionMc", 1, NULL));
+					_r_combobox_setcurrentitembylparam (hwnd, IDC_TRAYACTIONSC, _r_config_getlong_ex (L"TrayActionDc", 0, NULL));
+					_r_combobox_setcurrentitembylparam (hwnd, IDC_TRAYACTIONMC, _r_config_getlong_ex (L"TrayActionMc", 1, NULL));
 
 					_r_ctrl_setstring (hwnd, IDC_SHOW_CLEAN_RESULT_CHK, _r_locale_getstring (IDS_SHOW_CLEAN_RESULT_CHK));
 					_r_ctrl_setstring (hwnd, IDC_NOTIFICATIONSOUND_CHK, _r_locale_getstring (IDS_NOTIFICATIONSOUND_CHK));
@@ -1215,19 +1351,19 @@ INT_PTR CALLBACK SettingsProc (
 					{
 						if (lpnmlv->iItem == 0)
 						{
-							_r_config_setulong (L"TrayColorText", cc.rgbResult, NULL);
+							_r_config_setulong_ex (L"TrayColorText", cc.rgbResult, NULL);
 						}
 						else if (lpnmlv->iItem == 1)
 						{
-							_r_config_setulong (L"TrayColorBg", cc.rgbResult, NULL);
+							_r_config_setulong_ex (L"TrayColorBg", cc.rgbResult, NULL);
 						}
 						else if (lpnmlv->iItem == 2)
 						{
-							_r_config_setulong (L"TrayColorWarning", cc.rgbResult, NULL);
+							_r_config_setulong_ex (L"TrayColorWarning", cc.rgbResult, NULL);
 						}
 						else if (lpnmlv->iItem == 3)
 						{
-							_r_config_setulong (L"TrayColorDanger", cc.rgbResult, NULL);
+							_r_config_setulong_ex (L"TrayColorDanger", cc.rgbResult, NULL);
 						}
 
 						_r_listview_setitem (hwnd, IDC_COLORS, lpnmlv->iItem, lpnmlv->iSubItem, NULL, I_DEFAULT, I_DEFAULT, cc.rgbResult);
@@ -1259,7 +1395,7 @@ INT_PTR CALLBACK SettingsProc (
 					{
 						value = (ULONG)lpnmlv->lParam;
 
-						mask = _r_config_getulong (L"ReductMask2", REDUCT_MASK_DEFAULT, NULL);
+						mask = _r_config_getulong_ex (L"ReductMask2", REDUCT_MASK_DEFAULT, NULL);
 
 						if ((lpnmlv->uNewState & LVIS_STATEIMAGEMASK) == INDEXTOSTATEIMAGEMASK (2))
 						{
@@ -1297,7 +1433,7 @@ INT_PTR CALLBACK SettingsProc (
 							mask &= ~value;
 						}
 
-						_r_config_setulong (L"ReductMask2", mask, NULL);
+						_r_config_setulong_ex (L"ReductMask2", mask, NULL);
 					}
 
 					break;
@@ -1320,19 +1456,19 @@ INT_PTR CALLBACK SettingsProc (
 			{
 				value = _r_updown_getvalue (hwnd, ctrl_id);
 
-				_r_config_setlong (L"AutoreductValue", value, NULL);
+				_r_config_setlong_ex (L"AutoreductValue", value, NULL);
 			}
 			else if (ctrl_id == IDC_AUTOREDUCTINTERVALVALUE)
 			{
 				value = _r_updown_getvalue (hwnd, ctrl_id);
 
-				_r_config_setlong (L"AutoreductIntervalValue", value, NULL);
+				_r_config_setlong_ex (L"AutoreductIntervalValue", value, NULL);
 			}
 			else if (ctrl_id == IDC_TRAYLEVELWARNING)
 			{
 				value = _r_updown_getvalue (hwnd, ctrl_id);
 
-				_r_config_setlong (L"TrayLevelWarning", value, NULL);
+				_r_config_setlong_ex (L"TrayLevelWarning", value, NULL);
 
 				is_stylechanged = TRUE;
 			}
@@ -1340,7 +1476,7 @@ INT_PTR CALLBACK SettingsProc (
 			{
 				value = _r_updown_getvalue (hwnd, ctrl_id);
 
-				_r_config_setlong (L"TrayLevelDanger", value, NULL);
+				_r_config_setlong_ex (L"TrayLevelDanger", value, NULL);
 
 				is_stylechanged = TRUE;
 			}
@@ -1349,7 +1485,7 @@ INT_PTR CALLBACK SettingsProc (
 			{
 				_app_iconredraw (_r_app_gethwnd ());
 
-				_r_listview_redraw (_r_app_gethwnd (), IDC_LISTVIEW);
+				RedrawWindow (_r_app_gethwnd (), NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
 			}
 
 			break;
@@ -1370,7 +1506,7 @@ INT_PTR CALLBACK SettingsProc (
 					{
 						value = _r_updown_getvalue (hwnd, IDC_AUTOREDUCTVALUE);
 
-						_r_config_setlong (L"AutoreductValue", value, NULL);
+						_r_config_setlong_ex (L"AutoreductValue", value, NULL);
 					}
 
 					break;
@@ -1384,7 +1520,7 @@ INT_PTR CALLBACK SettingsProc (
 					{
 						value = _r_updown_getvalue (hwnd, IDC_AUTOREDUCTINTERVALVALUE);
 
-						_r_config_setlong (L"AutoreductIntervalValue", value, NULL);
+						_r_config_setlong_ex (L"AutoreductIntervalValue", value, NULL);
 					}
 
 					break;
@@ -1397,16 +1533,16 @@ INT_PTR CALLBACK SettingsProc (
 					{
 						if (ctrl_id == IDC_TRAYLEVELWARNING_CTRL)
 						{
-							_r_config_setlong (L"TrayLevelWarning", _r_updown_getvalue (hwnd, IDC_TRAYLEVELWARNING), NULL);
+							_r_config_setlong_ex (L"TrayLevelWarning", _r_updown_getvalue (hwnd, IDC_TRAYLEVELWARNING), NULL);
 						}
 						else if (ctrl_id == IDC_TRAYLEVELDANGER_CTRL)
 						{
-							_r_config_setlong (L"TrayLevelDanger", _r_updown_getvalue (hwnd, IDC_TRAYLEVELDANGER), NULL);
+							_r_config_setlong_ex (L"TrayLevelDanger", _r_updown_getvalue (hwnd, IDC_TRAYLEVELDANGER), NULL);
 						}
 
 						_app_iconredraw (_r_app_gethwnd ());
 
-						_r_listview_redraw (_r_app_gethwnd (), IDC_LISTVIEW);
+					RedrawWindow (_r_app_gethwnd (), NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
 					}
 
 					break;
@@ -1414,9 +1550,9 @@ INT_PTR CALLBACK SettingsProc (
 
 				case IDC_ALWAYSONTOP_CHK:
 				{
-					BOOLEAN is_enable = _r_button_ischecked (hwnd, ctrl_id);
+					BOOLEAN is_enable = _r_ctrl_isbuttonchecked (hwnd, ctrl_id);
 
-					_r_config_setboolean (L"AlwaysOnTop", is_enable, NULL);
+					_r_config_setboolean_ex (L"AlwaysOnTop", is_enable, NULL);
 
 					_r_menu_checkitem (GetMenu (_r_app_gethwnd ()), IDM_ALWAYSONTOP_CHK, 0, MF_BYCOMMAND, is_enable);
 
@@ -1425,7 +1561,7 @@ INT_PTR CALLBACK SettingsProc (
 
 				case IDC_LOADONSTARTUP_CHK:
 				{
-					BOOLEAN is_enable = _r_button_ischecked (hwnd, ctrl_id);
+					BOOLEAN is_enable = _r_ctrl_isbuttonchecked (hwnd, ctrl_id);
 
 					_r_autorun_enable (hwnd, is_enable);
 
@@ -1433,16 +1569,16 @@ INT_PTR CALLBACK SettingsProc (
 
 					_r_menu_checkitem (GetMenu (_r_app_gethwnd ()), IDM_LOADONSTARTUP_CHK, 0, MF_BYCOMMAND, is_enable);
 
-					_r_button_setcheck (hwnd, ctrl_id, is_enable);
+					_r_ctrl_checkbutton (hwnd, ctrl_id, is_enable);
 
 					break;
 				}
 
 				case IDC_STARTMINIMIZED_CHK:
 				{
-					BOOLEAN is_enable = _r_button_ischecked (hwnd, ctrl_id);
+					BOOLEAN is_enable = _r_ctrl_isbuttonchecked (hwnd, ctrl_id);
 
-					_r_config_setboolean (L"IsStartMinimized", is_enable, NULL);
+					_r_config_setboolean_ex (L"IsStartMinimized", is_enable, NULL);
 
 					_r_menu_checkitem (GetMenu (_r_app_gethwnd ()), IDM_STARTMINIMIZED_CHK, 0, MF_BYCOMMAND, is_enable);
 
@@ -1451,9 +1587,9 @@ INT_PTR CALLBACK SettingsProc (
 
 				case IDC_REDUCTCONFIRMATION_CHK:
 				{
-					BOOLEAN is_enable = _r_button_ischecked (hwnd, ctrl_id);
+					BOOLEAN is_enable = _r_ctrl_isbuttonchecked (hwnd, ctrl_id);
 
-					_r_config_setboolean (L"IsShowReductConfirmation", is_enable, NULL);
+					_r_config_setboolean_ex (L"IsShowReductConfirmation", is_enable, NULL);
 
 					_r_menu_checkitem (GetMenu (_r_app_gethwnd ()), IDM_REDUCTCONFIRMATION_CHK, 0, MF_BYCOMMAND, is_enable);
 
@@ -1462,7 +1598,7 @@ INT_PTR CALLBACK SettingsProc (
 
 				case IDC_SKIPUACWARNING_CHK:
 				{
-					BOOLEAN is_enable = _r_button_ischecked (hwnd, ctrl_id);
+					BOOLEAN is_enable = _r_ctrl_isbuttonchecked (hwnd, ctrl_id);
 
 					_r_skipuac_enable (hwnd, is_enable);
 
@@ -1470,14 +1606,14 @@ INT_PTR CALLBACK SettingsProc (
 
 					_r_menu_checkitem (GetMenu (_r_app_gethwnd ()), IDM_SKIPUACWARNING_CHK, 0, MF_BYCOMMAND, is_enable);
 
-					_r_button_setcheck (hwnd, ctrl_id, is_enable);
+					_r_ctrl_checkbutton (hwnd, ctrl_id, is_enable);
 
 					break;
 				}
 
 				case IDC_CHECKUPDATES_CHK:
 				{
-					BOOLEAN is_enable = _r_button_ischecked (hwnd, ctrl_id);
+					BOOLEAN is_enable = _r_ctrl_isbuttonchecked (hwnd, ctrl_id);
 
 					_r_update_enable (is_enable);
 
@@ -1507,7 +1643,7 @@ INT_PTR CALLBACK SettingsProc (
 						_r_ctrl_enable (hbuddy, 0, is_enabled);
 
 					if (is_enabled)
-						_r_config_setboolean (L"AutoreductEnable", _r_button_ischecked (hwnd, ctrl_id), NULL);
+						_r_config_setboolean_ex (L"AutoreductEnable", _r_ctrl_isbuttonchecked (hwnd, ctrl_id), NULL);
 
 					break;
 				}
@@ -1523,18 +1659,18 @@ INT_PTR CALLBACK SettingsProc (
 						_r_ctrl_enable (hbuddy, 0, is_enabled);
 
 					if (is_enabled)
-						_r_config_setboolean (L"AutoreductIntervalEnable", _r_button_ischecked (hwnd, ctrl_id), NULL);
+						_r_config_setboolean_ex (L"AutoreductIntervalEnable", _r_ctrl_isbuttonchecked (hwnd, ctrl_id), NULL);
 
 					break;
 				}
 
 				case IDC_HOTKEY_CLEAN_CHK:
 				{
-					BOOLEAN is_checked = _r_button_ischecked (hwnd, ctrl_id);
+					BOOLEAN is_checked = _r_ctrl_isbuttonchecked (hwnd, ctrl_id);
 
 					_r_ctrl_enable (hwnd, IDC_HOTKEY_CLEAN, is_checked);
 
-					_r_config_setboolean (L"HotkeyCleanEnable", is_checked, NULL);
+					_r_config_setboolean_ex (L"HotkeyCleanEnable", is_checked, NULL);
 
 					_app_hotkeyinit (_r_app_gethwnd ());
 
@@ -1543,12 +1679,12 @@ INT_PTR CALLBACK SettingsProc (
 
 				case IDC_HOTKEY_CLEAN:
 				{
-					if (!_r_button_ischecked (hwnd, IDC_HOTKEY_CLEAN_CHK))
+					if (!_r_ctrl_isbuttonchecked (hwnd, IDC_HOTKEY_CLEAN_CHK))
 						break;
 
 					if (notify_code == EN_CHANGE)
 					{
-						_r_config_setlong (L"HotkeyClean", _r_hotkey_get (hwnd, ctrl_id), NULL);
+						_r_config_setlong_ex (L"HotkeyClean", _r_hotkey_get (hwnd, ctrl_id), NULL);
 
 						_app_hotkeyinit (_r_app_gethwnd ());
 					}
@@ -1562,37 +1698,37 @@ INT_PTR CALLBACK SettingsProc (
 				case IDC_TRAYCHANGEBG_CHK:
 				case IDC_TRAYUSEANTIALIASING_CHK:
 				{
-					BOOLEAN is_enabled = _r_button_ischecked (hwnd, ctrl_id);
+					BOOLEAN is_enabled = _r_ctrl_isbuttonchecked (hwnd, ctrl_id);
 
 					switch (ctrl_id)
 					{
 						case IDC_TRAYUSETRANSPARENCY_CHK:
 						{
-							_r_config_setboolean (L"TrayUseTransparency", is_enabled, NULL);
+							_r_config_setboolean_ex (L"TrayUseTransparency", is_enabled, NULL);
 							break;
 						}
 
 						case IDC_TRAYSHOWBORDER_CHK:
 						{
-							_r_config_setboolean (L"TrayShowBorder", is_enabled, NULL);
+							_r_config_setboolean_ex (L"TrayShowBorder", is_enabled, NULL);
 							break;
 						}
 
 						case IDC_TRAYROUNDCORNERS_CHK:
 						{
-							_r_config_setboolean (L"TrayRoundCorners", is_enabled, NULL);
+							_r_config_setboolean_ex (L"TrayRoundCorners", is_enabled, NULL);
 							break;
 						}
 
 						case IDC_TRAYCHANGEBG_CHK:
 						{
-							_r_config_setboolean (L"TrayChangeBg", is_enabled, NULL);
+							_r_config_setboolean_ex (L"TrayChangeBg", is_enabled, NULL);
 							break;
 						}
 
 						case IDC_TRAYUSEANTIALIASING_CHK:
 						{
-							_r_config_setboolean (L"TrayUseAntialiasing", is_enabled, NULL);
+							_r_config_setboolean_ex (L"TrayUseAntialiasing", is_enabled, NULL);
 							break;
 						}
 					}
@@ -1606,7 +1742,7 @@ INT_PTR CALLBACK SettingsProc (
 				case IDC_TRAYACTIONSC:
 				{
 					if (notify_code == CBN_SELCHANGE)
-						_r_config_setlong (L"TrayActionDc", _r_combobox_getcurrentitem (hwnd, ctrl_id), NULL);
+						_r_config_setlong_ex (L"TrayActionDc", _r_combobox_getcurrentitem (hwnd, ctrl_id), NULL);
 
 					break;
 				}
@@ -1614,20 +1750,20 @@ INT_PTR CALLBACK SettingsProc (
 				case IDC_TRAYACTIONMC:
 				{
 					if (notify_code == CBN_SELCHANGE)
-						_r_config_setlong (L"TrayActionMc", _r_combobox_getcurrentitem (hwnd, ctrl_id), NULL);
+						_r_config_setlong_ex (L"TrayActionMc", _r_combobox_getcurrentitem (hwnd, ctrl_id), NULL);
 
 					break;
 				}
 
 				case IDC_SHOW_CLEAN_RESULT_CHK:
 				{
-					_r_config_setboolean (L"BalloonCleanResults", _r_button_ischecked (hwnd, ctrl_id), NULL);
+					_r_config_setboolean_ex (L"BalloonCleanResults", _r_ctrl_isbuttonchecked (hwnd, ctrl_id), NULL);
 					break;
 				}
 
 				case IDC_NOTIFICATIONSOUND_CHK:
 				{
-					_r_config_setboolean (L"IsNotificationsSound", _r_button_ischecked (hwnd, ctrl_id), NULL);
+					_r_config_setboolean_ex (L"IsNotificationsSound", _r_ctrl_isbuttonchecked (hwnd, ctrl_id), NULL);
 					break;
 				}
 
@@ -1649,7 +1785,7 @@ INT_PTR CALLBACK SettingsProc (
 
 					if (ChooseFontW (&cf))
 					{
-						_r_config_setfont (L"TrayFont", &logfont, dpi_value, NULL);
+						_r_config_setfont_ex (L"TrayFont", &logfont, dpi_value, NULL);
 
 						_app_setfontcontrol (hwnd, IDC_FONT, &logfont, dpi_value);
 
@@ -1662,13 +1798,13 @@ INT_PTR CALLBACK SettingsProc (
 
 				case IDC_ALLOWSTANDBYLISTCLEANUP_CHK:
 				{
-					_r_config_setboolean (L"IsAllowStandbyListCleanup", _r_button_ischecked (hwnd, ctrl_id), NULL);
+					_r_config_setboolean_ex (L"IsAllowStandbyListCleanup", _r_ctrl_isbuttonchecked (hwnd, ctrl_id), NULL);
 					break;
 				}
 
 				case IDC_LOGRESULTS_CHK:
 				{
-					_r_config_setboolean (L"LogCleanResults", _r_button_ischecked (hwnd, ctrl_id), NULL);
+					_r_config_setboolean_ex (L"LogCleanResults", _r_ctrl_isbuttonchecked (hwnd, ctrl_id), NULL);
 					break;
 				}
 			}
@@ -1678,14 +1814,6 @@ INT_PTR CALLBACK SettingsProc (
 	}
 
 	return FALSE;
-}
-
-VOID _app_resizecolumns (
-	_In_ HWND hwnd
-)
-{
-	_r_listview_setcolumn (hwnd, IDC_LISTVIEW, 0, NULL, -50);
-	_r_listview_setcolumn (hwnd, IDC_LISTVIEW, 1, NULL, -50);
 }
 
 VOID _app_initialize (
@@ -1704,32 +1832,15 @@ VOID _app_initialize (
 	else
 	{
 		if (hwnd)
-			_r_button_setshield (hwnd, IDC_CLEAN, TRUE);
+			_r_ctrl_setbuttonshield (hwnd, IDC_CLEAN, TRUE);
 	}
 
 	if (!hwnd)
 		return;
 
-	_r_button_setmargins (hwnd, IDC_CLEAN, _r_dc_getwindowdpi (hwnd));
+	_r_ctrl_setbuttonmargins (hwnd, IDC_CLEAN, _r_dc_getwindowdpi (hwnd));
 
-	// configure listview
-	_r_listview_setstyle (hwnd, IDC_LISTVIEW, LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP | LVS_EX_LABELTIP | LVS_EX_DOUBLEBUFFER, TRUE);
-
-	_r_listview_addcolumn (hwnd, IDC_LISTVIEW, 1, NULL, 10, LVCFMT_RIGHT);
-	_r_listview_addcolumn (hwnd, IDC_LISTVIEW, 2, NULL, 10, LVCFMT_LEFT);
-
-	_app_resizecolumns (hwnd);
-
-	// configure listview
-	for (INT i = 0, k = 0; i < 3; i++)
-	{
-		_r_listview_addgroup (hwnd, IDC_LISTVIEW, i, _r_locale_getstring (IDS_GROUP_1 + i), 0, LVGS_COLLAPSIBLE, LVGS_COLLAPSIBLE);
-
-		for (INT j = 0; j < 3; j++)
-		{
-			_r_listview_additem (hwnd, IDC_LISTVIEW, k++, _r_locale_getstring (IDS_ITEM_1 + j), I_DEFAULT, i, 0);
-		}
-	}
+	_app_dashboard_fonts (hwnd);
 
 	// settings
 	_r_settings_addpage (IDD_SETTINGS_GENERAL, IDS_SETTINGS_GENERAL);
@@ -1754,7 +1865,7 @@ INT_PTR CALLBACK DlgProc (
 
 			_app_initialize (hwnd);
 
-			_r_sys_settimer (hwnd, UID, TIMER, &_app_timercallback);
+			SetTimer (hwnd, UID, TIMER, &_app_timercallback);
 
 			break;
 		}
@@ -1762,6 +1873,9 @@ INT_PTR CALLBACK DlgProc (
 		case WM_DESTROY:
 		{
 			KillTimer (hwnd, UID);
+
+			for (INT i = 0; i < 3; i++)
+				SAFE_DELETE_OBJECT (config.dashboard_fonts[i]);
 
 			_r_tray_destroy (hwnd, &GUID_TrayIcon);
 
@@ -1774,15 +1888,17 @@ INT_PTR CALLBACK DlgProc (
 		{
 			HMENU hmenu;
 
+			_app_dashboard_theme (hwnd);
+
 			hmenu = GetMenu (hwnd);
 
 			if (hmenu)
 			{
-				_r_menu_checkitem (hmenu, IDM_ALWAYSONTOP_CHK, 0, MF_BYCOMMAND, _r_config_getboolean (L"AlwaysOnTop", FALSE, NULL));
+				_r_menu_checkitem (hmenu, IDM_ALWAYSONTOP_CHK, 0, MF_BYCOMMAND, _r_config_getboolean_ex (L"AlwaysOnTop", FALSE, NULL));
 				_r_menu_checkitem (hmenu, IDM_USEDARKTHEME, 0, MF_BYCOMMAND, _r_theme_isenabled ());
 				_r_menu_checkitem (hmenu, IDM_LOADONSTARTUP_CHK, 0, MF_BYCOMMAND, _r_autorun_isenabled ());
-				_r_menu_checkitem (hmenu, IDM_STARTMINIMIZED_CHK, 0, MF_BYCOMMAND, _r_config_getboolean (L"IsStartMinimized", FALSE, NULL));
-				_r_menu_checkitem (hmenu, IDM_REDUCTCONFIRMATION_CHK, 0, MF_BYCOMMAND, _r_config_getboolean (L"IsShowReductConfirmation", TRUE, NULL));
+				_r_menu_checkitem (hmenu, IDM_STARTMINIMIZED_CHK, 0, MF_BYCOMMAND, _r_config_getboolean_ex (L"IsStartMinimized", FALSE, NULL));
+				_r_menu_checkitem (hmenu, IDM_REDUCTCONFIRMATION_CHK, 0, MF_BYCOMMAND, _r_config_getboolean_ex (L"IsShowReductConfirmation", TRUE, NULL));
 				_r_menu_checkitem (hmenu, IDM_SKIPUACWARNING_CHK, 0, MF_BYCOMMAND, _r_skipuac_isenabled ());
 				_r_menu_checkitem (hmenu, IDM_CHECKUPDATES_CHK, 0, MF_BYCOMMAND, _r_update_isenabled (FALSE));
 
@@ -1847,19 +1963,16 @@ INT_PTR CALLBACK DlgProc (
 				_r_menu_setitemtextformat (hmenu, IDM_ABOUT, FALSE, L"%s\tF1", _r_locale_getstring (IDS_ABOUT));
 			}
 
-			// configure listview
-			for (INT i = 0, k = 0; i < 3; i++)
-			{
-				_r_listview_setgroup (hwnd, IDC_LISTVIEW, i, _r_locale_getstring (IDS_GROUP_1 + i), 0, 0);
+			for (INT i = 0; i < 3; i++)
+				_r_ctrl_setstring (hwnd, IDC_MEMORY_HEADING_FIRST + i, _r_locale_getstring (IDS_GROUP_1 + i));
 
-				for (INT j = 0; j < 3; j++)
-				{
-					_r_listview_setitem (hwnd, IDC_LISTVIEW, k++, 0, _r_locale_getstring (IDS_ITEM_1 + j), I_DEFAULT, I_DEFAULT, I_DEFAULT);
-				}
-			}
+			if (hmenu)
+				_r_menu_setitemtext (hmenu, IDM_FOLLOW_SYSTEM_THEME, FALSE, _r_locale_getstring (IDS_FOLLOW_SYSTEM_THEME));
 
 			// configure button
 			_r_ctrl_setstring (hwnd, IDC_CLEAN, _r_locale_getstring (IDS_CLEAN));
+			_r_ctrl_setstring (hwnd, IDC_DASHBOARD_SETTINGS, _r_locale_getstring (IDS_SETTINGS));
+			_app_iconredraw (hwnd);
 
 			// enum localizations
 			if (hmenu)
@@ -1873,10 +1986,30 @@ INT_PTR CALLBACK DlgProc (
 			_app_iconinit (_r_dc_gettaskbardpi ());
 			_app_iconredraw (hwnd);
 
-			_app_resizecolumns (hwnd);
+			_app_dashboard_fonts (hwnd);
+			RedrawWindow (hwnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
 
 			if (!_r_sys_iselevated ())
-				_r_button_setmargins (hwnd, IDC_CLEAN, LOWORD (wparam));
+				_r_ctrl_setbuttonmargins (hwnd, IDC_CLEAN, LOWORD (wparam));
+
+			break;
+		}
+
+		case WM_SETTINGCHANGE:
+		{
+			_app_dashboard_theme (hwnd);
+			break;
+		}
+
+		case WM_ERASEBKGND:
+		{
+			return TRUE;
+		}
+
+		case WM_DRAWITEM:
+		{
+			if (_app_dashboard_drawitem (hwnd, (LPDRAWITEMSTRUCT)lparam))
+				return TRUE;
 
 			break;
 		}
@@ -1891,7 +2024,7 @@ INT_PTR CALLBACK DlgProc (
 			if (!hdc)
 				break;
 
-			_r_dc_drawwindow (hdc, hwnd, TRUE);
+			_app_dashboard_paint (hwnd, hdc);
 
 			EndPaint (hwnd, &ps);
 
@@ -1972,48 +2105,7 @@ INT_PTR CALLBACK DlgProc (
 					break;
 				}
 
-				case NM_CUSTOMDRAW:
-				{
-					LPNMLVCUSTOMDRAW lpnmlv = (LPNMLVCUSTOMDRAW)lparam;
-					LONG_PTR result = CDRF_DODEFAULT;
-					ULONG value;
 
-					if (nmlp->idFrom != IDC_LISTVIEW)
-						break;
-
-					switch (lpnmlv->nmcd.dwDrawStage)
-					{
-						case CDDS_PREPAINT:
-						{
-							result = (CDRF_NOTIFYPOSTPAINT | CDRF_NOTIFYITEMDRAW);
-							break;
-						}
-
-						case CDDS_ITEMPREPAINT:
-						{
-							value = (ULONG)lpnmlv->nmcd.lItemlParam;
-
-							if (value >= _app_getdangervalue ())
-							{
-								lpnmlv->clrText = _r_config_getulong (L"TrayColorDanger", TRAY_COLOR_DANGER, NULL);
-
-								result = (CDRF_NOTIFYPOSTPAINT | CDRF_NEWFONT);
-							}
-							else if (value >= _app_getwarningvalue ())
-							{
-								lpnmlv->clrText = _r_config_getulong (L"TrayColorWarning", TRAY_COLOR_WARNING, NULL);
-
-								result = (CDRF_NOTIFYPOSTPAINT | CDRF_NEWFONT);
-							}
-
-							break;
-						}
-					}
-
-					SetWindowLongPtrW (hwnd, DWLP_MSGRESULT, result);
-
-					return result;
-				}
 			}
 
 			break;
@@ -2039,11 +2131,11 @@ INT_PTR CALLBACK DlgProc (
 
 					if (LOWORD (lparam) == WM_MBUTTONDOWN)
 					{
-						action = _r_config_getlong (L"TrayActionMc", 1, NULL);
+						action = _r_config_getlong_ex (L"TrayActionMc", 1, NULL);
 					}
 					else
 					{
-						action = _r_config_getlong (L"TrayActionDc", 0, NULL);
+						action = _r_config_getlong_ex (L"TrayActionDc", 0, NULL);
 					}
 
 					switch (action)
@@ -2107,7 +2199,7 @@ INT_PTR CALLBACK DlgProc (
 					// configure submenu #1
 					if (hsubmenu_region)
 					{
-						mask = _r_config_getulong (L"ReductMask2", REDUCT_MASK_DEFAULT, NULL);
+						mask = _r_config_getulong_ex (L"ReductMask2", REDUCT_MASK_DEFAULT, NULL);
 
 						_r_menu_setitemtext (hsubmenu_region, IDM_WORKINGSET_CHK, FALSE, _r_locale_getstring (IDS_MEMREGION_WORKINGSET));
 						_r_menu_setitemtext (hsubmenu_region, IDM_SYSTEMFILECACHE_CHK, FALSE, _r_locale_getstring (IDS_MEMREGION_SYSTEMFILECACHE));
@@ -2159,7 +2251,7 @@ INT_PTR CALLBACK DlgProc (
 							L"%" TEXT (PR_ULONG) L"%%",
 							_app_getlimitvalue (),
 							99,
-							_r_config_getboolean (L"AutoreductEnable", FALSE, NULL)
+							_r_config_getboolean_ex (L"AutoreductEnable", FALSE, NULL)
 						);
 					}
 
@@ -2174,7 +2266,7 @@ INT_PTR CALLBACK DlgProc (
 							L"%" TEXT (PR_LONG64) L" min.",
 							_app_getintervalvalue (),
 							1440,
-							_r_config_getboolean (L"AutoreductIntervalEnable", FALSE, NULL)
+							_r_config_getboolean_ex (L"AutoreductIntervalEnable", FALSE, NULL)
 						);
 					}
 
@@ -2214,8 +2306,8 @@ INT_PTR CALLBACK DlgProc (
 			{
 				ULONG_PTR idx = (ULONG_PTR)(ctrl_id - IDX_TRAY_POPUP_1);
 
-				_r_config_setboolean (L"AutoreductEnable", TRUE, NULL);
-				_r_config_setlong (L"AutoreductValue", limits_arr[idx], NULL);
+				_r_config_setboolean_ex (L"AutoreductEnable", TRUE, NULL);
+				_r_config_setlong_ex (L"AutoreductValue", limits_arr[idx], NULL);
 
 				return FALSE;
 			}
@@ -2223,8 +2315,8 @@ INT_PTR CALLBACK DlgProc (
 			{
 				ULONG_PTR idx = (ULONG_PTR)(ctrl_id - IDX_TRAY_POPUP_2);
 
-				_r_config_setboolean (L"AutoreductIntervalEnable", TRUE, NULL);
-				_r_config_setlong (L"AutoreductIntervalValue", intervals_arr[idx], NULL);
+				_r_config_setboolean_ex (L"AutoreductIntervalEnable", TRUE, NULL);
+				_r_config_setlong_ex (L"AutoreductIntervalValue", intervals_arr[idx], NULL);
 
 				return FALSE;
 			}
@@ -2233,7 +2325,8 @@ INT_PTR CALLBACK DlgProc (
 			{
 				case IDM_ALWAYSONTOP_CHK:
 				{
-					BOOLEAN new_val = _r_config_invertboolean (L"AlwaysOnTop", FALSE, NULL);
+					BOOLEAN new_val = !_r_config_getboolean_ex (L"AlwaysOnTop", FALSE, NULL);
+					_r_config_setboolean_ex (L"AlwaysOnTop", new_val, NULL);
 
 					_r_menu_checkitem (GetMenu (hwnd), ctrl_id, 0, MF_BYCOMMAND, new_val);
 
@@ -2244,7 +2337,8 @@ INT_PTR CALLBACK DlgProc (
 
 				case IDM_STARTMINIMIZED_CHK:
 				{
-					BOOLEAN new_val = _r_config_invertboolean (L"IsStartMinimized", FALSE, NULL);
+					BOOLEAN new_val = !_r_config_getboolean_ex (L"IsStartMinimized", FALSE, NULL);
+					_r_config_setboolean_ex (L"IsStartMinimized", new_val, NULL);
 
 					_r_menu_checkitem (GetMenu (hwnd), ctrl_id, 0, MF_BYCOMMAND, new_val);
 
@@ -2253,7 +2347,8 @@ INT_PTR CALLBACK DlgProc (
 
 				case IDM_REDUCTCONFIRMATION_CHK:
 				{
-					BOOLEAN new_val = _r_config_invertboolean (L"IsShowReductConfirmation", TRUE, NULL);
+					BOOLEAN new_val = !_r_config_getboolean_ex (L"IsShowReductConfirmation", TRUE, NULL);
+					_r_config_setboolean_ex (L"IsShowReductConfirmation", new_val, NULL);
 
 					_r_menu_checkitem (GetMenu (hwnd), ctrl_id, 0, MF_BYCOMMAND, new_val);
 
@@ -2272,8 +2367,19 @@ INT_PTR CALLBACK DlgProc (
 				{
 					BOOLEAN is_enabled = !_r_theme_isenabled ();
 
+					_r_config_setboolean_ex (L"FollowSystemTheme", FALSE, NULL);
+					_r_menu_checkitem (GetMenu (hwnd), IDM_FOLLOW_SYSTEM_THEME, 0, MF_BYCOMMAND, FALSE);
 					_r_theme_enable (hwnd, is_enabled);
 					_r_menu_checkitem (GetMenu (hwnd), ctrl_id, 0, MF_BYCOMMAND, is_enabled);
+					RedrawWindow (hwnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
+
+					break;
+				}
+
+				case IDM_FOLLOW_SYSTEM_THEME:
+				{
+					_r_config_setboolean_ex (L"FollowSystemTheme", TRUE, NULL);
+					_app_dashboard_theme (hwnd);
 
 					break;
 				}
@@ -2307,7 +2413,7 @@ INT_PTR CALLBACK DlgProc (
 				{
 					ULONG mask, new_mask = 0;
 
-					mask = _r_config_getulong (L"ReductMask2", REDUCT_MASK_DEFAULT, NULL);
+					mask = _r_config_getulong_ex (L"ReductMask2", REDUCT_MASK_DEFAULT, NULL);
 
 					switch (ctrl_id)
 					{
@@ -2371,7 +2477,7 @@ INT_PTR CALLBACK DlgProc (
 							return FALSE;
 					}
 
-					_r_config_setulong (L"ReductMask2", (mask & new_mask) != 0 ? (mask & ~new_mask) : (mask | new_mask), NULL);
+					_r_config_setulong_ex (L"ReductMask2", (mask & new_mask) != 0 ? (mask & ~new_mask) : (mask | new_mask), NULL);
 
 					break;
 				}
@@ -2446,16 +2552,17 @@ INT_PTR CALLBACK DlgProc (
 
 				case IDM_TRAY_DISABLE_1:
 				{
-					_r_config_invertboolean (L"AutoreductEnable", FALSE, NULL);
+					_r_config_setboolean_ex (L"AutoreductEnable", !_r_config_getboolean_ex (L"AutoreductEnable", FALSE, NULL), NULL);
 					break;
 				}
 
 				case IDM_TRAY_DISABLE_2:
 				{
-					_r_config_invertboolean (L"AutoreductIntervalEnable", FALSE, NULL);
+					_r_config_setboolean_ex (L"AutoreductIntervalEnable", !_r_config_getboolean_ex (L"AutoreductIntervalEnable", FALSE, NULL), NULL);
 					break;
 				}
 
+				case IDC_DASHBOARD_SETTINGS:
 				case IDM_SETTINGS:
 				case IDM_TRAY_SETTINGS:
 				{

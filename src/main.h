@@ -70,6 +70,8 @@ typedef struct _STATIC_DATA
 	HFONT hfont;
 	RECT icon_size;
 	ULONG ms_prev;
+	HFONT dashboard_fonts[3];
+	ULONG memory_percent[3];
 } STATIC_DATA, *PSTATIC_DATA;
 
 typedef enum _CLEANUP_SOURCE_ENUM

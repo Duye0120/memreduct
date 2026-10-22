@@ -1,0 +1,46 @@
+name: Windows UI build
+
+on:
+  push:
+    branches: [ui/windows11-refresh]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: memreduct
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: henrypp/routine
+          ref: 1acd9394395b7cee9e1ea7b985fb54e76be86b11
+          path: routine
+          persist-credentials: false
+      - name: Build x64 native application
+        shell: pwsh
+        run: |
+          $locator = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $msbuild = & $locator -latest -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
+          if (!$msbuild) { throw 'MSBuild was not found.' }
+          & $msbuild memreduct/memreduct.sln /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 /v:minimal /nologo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Package portable preview
+        shell: pwsh
+        run: |
+          $binary = @(Get-ChildItem memreduct/bin -Recurse -Filter memreduct.exe)
+          if ($binary.Count -ne 1) { throw 'Expected exactly one compiled executable.' }
+          New-Item -ItemType Directory -Path preview | Out-Null
+          Copy-Item -LiteralPath $binary[0].FullName -Destination preview
+          Copy-Item -LiteralPath memreduct/bin/memreduct.lng,memreduct/LICENSE,memreduct/UI-NOTES.md -Destination preview
+          Set-Content -LiteralPath preview/memreduct.ini -Encoding unicode -Value "[memreduct]`nIsStartMinimized=false`nCheckUpdatesPeriod=0"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: memreduct-windows11-x64
+          path: preview/
+          if-no-files-found: error
