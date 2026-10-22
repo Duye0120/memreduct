@@ -58,6 +58,10 @@ public sealed partial class MainWindow
             {
                 _settings.Theme = theme; ApplyTheme();
                 Require(AppWindow.TitleBar.PreferredTheme == captionTheme, "Caption buttons follow the app theme");
+                await Task.Delay(120);
+                var colorKey = Shell.ActualTheme == ElementTheme.Dark ? "SystemAccentColorLight2" : "SystemAccentColorDark1";
+                Require(CleanButton.Background is SolidColorBrush fill && fill.Color == (Windows.UI.Color)Application.Current.Resources[colorKey],
+                    "The actual cleaning button uses the app palette, not the system blue");
             }
             _settings.Theme = savedTheme; ApplyTheme();
             var displayScale = Shell.XamlRoot.RasterizationScale;
@@ -67,6 +71,7 @@ public sealed partial class MainWindow
             foreach (var card in new[] { MetricsCard, CleanCard, AppearanceCard, CleanupSettingsCard, AutoSettingsCard, AboutCard })
                 Require(Math.Abs(card.CornerRadius.TopLeft * displayScale - 12) < 0.01, "Cards must have 12 screen-pixel radii");
             checks.Add($"Light/dark/system caption themes and physical 12px card / 10px button radii passed at scale {displayScale}.");
+            checks.Add("Native cleaning button backgrounds use the muted violet palette in light, dark and system themes.");
             Require(Marshal.SizeOf<MemoryEngine.MemoryStatus>() == 64, "MEMORYSTATUSEX ABI");
             Require(Marshal.SizeOf<MemoryEngine.PerformanceInfo>() == 104, "PERFORMANCE_INFORMATION ABI");
             Require(Marshal.SizeOf<MemoryEngine.FileCacheInfo>() == 64, "SYSTEM_FILECACHE_INFORMATION ABI");

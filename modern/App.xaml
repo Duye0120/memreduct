@@ -12,36 +12,14 @@
                     <SolidColorBrush x:Key="SurfaceBrush" Color="White" />
                     <SolidColorBrush x:Key="OutlineBrush" Color="#E3E3E9" />
                     <SolidColorBrush x:Key="MutedBrush" Color="#747480" />
-                    <SolidColorBrush x:Key="AccentBrush" Color="#5948E9" />
-                    <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#5948E9" />
-                    <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#5141D8" />
-                    <SolidColorBrush x:Key="AccentFillColorTertiaryBrush" Color="#4939C7" />
-                    <SolidColorBrush x:Key="AccentButtonBackground" Color="#5948E9" />
-                    <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#5141D8" />
-                    <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#4939C7" />
-                    <SolidColorBrush x:Key="ToggleButtonBackground" Color="Transparent" />
-                    <SolidColorBrush x:Key="ToggleButtonBorderBrush" Color="Transparent" />
-                    <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="White" />
-                    <SolidColorBrush x:Key="ToggleButtonForegroundChecked" Color="#25252C" />
-                    <SolidColorBrush x:Key="ToggleButtonBorderBrushChecked" Color="#D3D3DC" />
+                    <SolidColorBrush x:Key="AccentBrush" Color="#7964AD" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Default">
                     <SolidColorBrush x:Key="CanvasBrush" Color="#19191D" />
                     <SolidColorBrush x:Key="SurfaceBrush" Color="#242429" />
                     <SolidColorBrush x:Key="OutlineBrush" Color="#3B3B44" />
                     <SolidColorBrush x:Key="MutedBrush" Color="#AFAFBB" />
-                    <SolidColorBrush x:Key="AccentBrush" Color="#B5A5FF" />
-                    <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#B5A5FF" />
-                    <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#A89AEE" />
-                    <SolidColorBrush x:Key="AccentFillColorTertiaryBrush" Color="#9B8DDD" />
-                    <SolidColorBrush x:Key="AccentButtonBackground" Color="#B5A5FF" />
-                    <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#A89AEE" />
-                    <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#9B8DDD" />
-                    <SolidColorBrush x:Key="ToggleButtonBackground" Color="Transparent" />
-                    <SolidColorBrush x:Key="ToggleButtonBorderBrush" Color="Transparent" />
-                    <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="#303037" />
-                    <SolidColorBrush x:Key="ToggleButtonForegroundChecked" Color="#EEEEF2" />
-                    <SolidColorBrush x:Key="ToggleButtonBorderBrushChecked" Color="#464650" />
+                    <SolidColorBrush x:Key="AccentBrush" Color="#BCA8DD" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
                     <SolidColorBrush x:Key="CanvasBrush" Color="{ThemeResource SystemColorWindowColor}" />
@@ -51,6 +29,13 @@
                     <SolidColorBrush x:Key="AccentBrush" Color="{ThemeResource SystemColorHighlightColor}" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
+            <Color x:Key="SystemAccentColor">#7964AD</Color>
+            <Color x:Key="SystemAccentColorDark1">#6E5A9C</Color>
+            <Color x:Key="SystemAccentColorDark2">#5C497F</Color>
+            <Color x:Key="SystemAccentColorDark3">#4C3A6E</Color>
+            <Color x:Key="SystemAccentColorLight1">#A994D0</Color>
+            <Color x:Key="SystemAccentColorLight2">#BCA8DD</Color>
+            <Color x:Key="SystemAccentColorLight3">#D7C8EB</Color>
             <CornerRadius x:Key="AppControlCornerRadius">10</CornerRadius>
             <CornerRadius x:Key="CardCornerRadius">12</CornerRadius>
             <Style x:Key="Card" TargetType="Border">
