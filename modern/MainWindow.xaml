@@ -154,7 +154,7 @@
                                         <TextBlock Text="50%" Style="{StaticResource Muted}" FontSize="10" VerticalAlignment="Center" />
                                         <TextBlock Text="0%" Style="{StaticResource Muted}" FontSize="10" VerticalAlignment="Bottom" />
                                     </Grid>
-                                    <Grid x:Name="HistoryPlot" Grid.Column="1" Height="112" SizeChanged="HistoryPlot_SizeChanged" AutomationProperties.Name="内存趋势">
+                                    <Grid x:Name="HistoryPlot" Grid.Column="1" Height="112" SizeChanged="HistoryPlot_SizeChanged" EffectiveViewportChanged="HistoryPlot_ViewportChanged" AutomationProperties.Name="内存趋势">
                                         <Border BorderBrush="{ThemeResource OutlineBrush}" BorderThickness="0,1,0,1" Opacity="0.55" />
                                         <Border Height="1" Background="{ThemeResource OutlineBrush}" VerticalAlignment="Center" Opacity="0.55" />
                                         <Path x:Name="CommitHistoryPath" Stroke="{ThemeResource MutedBrush}" StrokeThickness="1.5" StrokeDashArray="3,3" />

@@ -7,12 +7,24 @@ namespace MemReduct.Fluent;
 public sealed partial class MainWindow
 {
     private readonly MemoryHistory _history = new();
+    private bool _historyInViewport;
 
     private void HistoryPlot_SizeChanged(object sender, SizeChangedEventArgs args) => RenderHistory();
 
+    private void HistoryPlot_ViewportChanged(FrameworkElement sender, EffectiveViewportChangedEventArgs args)
+    {
+        var wasVisible = _historyInViewport;
+        var viewport = args.EffectiveViewport;
+        _historyInViewport = viewport.Width > 0 && viewport.Height > 0
+            && viewport.X < sender.ActualWidth && viewport.Y < sender.ActualHeight
+            && viewport.Right > 0 && viewport.Bottom > 0;
+        if (_historyInViewport && !wasVisible) RenderHistory();
+    }
+
     private void RenderHistory()
     {
-        if (HistoryPlot is null || OverviewPage.Visibility != Visibility.Visible || HistoryPlot.ActualWidth <= 0) return;
+        if (!CanRenderWindow || !_historyInViewport || HistoryPlot is null
+            || OverviewPage.Visibility != Visibility.Visible || HistoryPlot.ActualWidth <= 0) return;
         var samples = _history.Samples.ToArray();
         HistoryEmpty.Visibility = samples.Length < 2 ? Visibility.Visible : Visibility.Collapsed;
         var physical = new PathGeometry();

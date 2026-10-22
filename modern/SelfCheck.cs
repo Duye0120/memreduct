@@ -579,6 +579,34 @@ public sealed partial class MainWindow
             Require(PhysicalHistoryPath.Data is PathGeometry plot && plot.Figures.Count == 2,
                 "Missing sampling intervals are displayed as gaps");
             Require(HistoryEmpty.Visibility == Visibility.Collapsed, "Populated history replaces the empty state");
+            var cachedPlot = PhysicalHistoryPath.Data;
+            AppWindow.Hide();
+            Sample(); RenderHistory();
+            Require(!CanRenderWindow && ReferenceEquals(cachedPlot, PhysicalHistoryPath.Data),
+                "Hidden tray windows retain samples without preparing chart geometry");
+            AppWindow.Show(false);
+            var windowPresenter = (Microsoft.UI.Windowing.OverlappedPresenter)AppWindow.Presenter;
+            windowPresenter.Minimize();
+            await Task.Delay(100);
+            cachedPlot = PhysicalHistoryPath.Data;
+            Sample(); RenderHistory();
+            Require(windowPresenter.State == Microsoft.UI.Windowing.OverlappedPresenterState.Minimized
+                && !CanRenderWindow && ReferenceEquals(cachedPlot, PhysicalHistoryPath.Data),
+                "Minimized windows do not redraw the chart even when the native window is visible");
+            windowPresenter.Restore(false);
+            Layout(700, 560, 1);
+            await Task.Delay(150);
+            BodyScroll.ChangeView(null, BodyScroll.ScrollableHeight, null, true);
+            for (var retry = 0; retry < 10 && _historyInViewport; retry++) await Task.Delay(50);
+            cachedPlot = PhysicalHistoryPath.Data;
+            RenderHistory();
+            Require(!_historyInViewport && ReferenceEquals(cachedPlot, PhysicalHistoryPath.Data),
+                "Charts scrolled outside the viewport do not allocate replacement geometry");
+            BodyScroll.ChangeView(null, 0, null, true);
+            for (var retry = 0; retry < 10 && !_historyInViewport; retry++) await Task.Delay(50);
+            Require(_historyInViewport && CanRenderWindow && !ReferenceEquals(cachedPlot, PhysicalHistoryPath.Data),
+                "Bringing the chart back into view refreshes its cached geometry");
+            checks.Add("Hidden, minimized and scrolled-away charts skip geometry work; returning to the viewport refreshes immediately without losing samples.");
             var samplingWatch = System.Diagnostics.Stopwatch.StartNew();
             for (var sample = 0; sample < 100; sample++) _ = MemoryEngine.Read();
             samplingWatch.Stop();

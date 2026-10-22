@@ -30,6 +30,8 @@ public sealed partial class MainWindow : Window
     private readonly Windows.UI.ViewManagement.UISettings _uiSettings = new();
     private readonly Windows.UI.ViewManagement.AccessibilitySettings _accessibility = new();
     internal bool CanStayInTray => _tray?.IsVisible == true;
+    private bool CanRenderWindow => !_exitRequested && AppWindow.IsVisible
+        && AppWindow.Presenter is not OverlappedPresenter { State: OverlappedPresenterState.Minimized };
 
     public MainWindow(AppSettings settings, bool checking)
     {
@@ -261,7 +263,7 @@ public sealed partial class MainWindow : Window
             _history.Record(snapshot, DateTimeOffset.UtcNow);
             _lastPercent = snapshot.PhysicalPercent;
             ObserveThresholdRetry(snapshot.PhysicalPercent, DateTimeOffset.UtcNow);
-            if (AppWindow.IsVisible) { UpdateStats(snapshot); RenderHistory(); }
+            if (CanRenderWindow) { UpdateStats(snapshot); RenderHistory(); }
             UpdateTray();
             if (_sampleFailed) { _sampleFailed = false; if (IssueBanner.Title == UiText.Get("SampleFailed")) IssueBanner.IsOpen = false; }
             if (!_cleaning && !_restartPromptOpen && MemoryEngine.IsAdministrator && _settings.IsAutoDue(snapshot.PhysicalPercent, DateTimeOffset.UtcNow, _lastAttempt, _gameActive, _thresholdRetryAfter))
