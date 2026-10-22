@@ -7,24 +7,16 @@
 - 本项目只在用户自己的仓库 `https://github.com/Duye0120/memreduct` 维护，推送目标为 `origin`。不创建 PR，不向原作者仓库合并或推送；`upstream` 仅用于来源参考。用户已明确此长期约定，不重复询问。
 
 1. 先看 `git status --short`、当前分支与用户的新需求；保留他人未提交修改，不自动切分支、重置或新建工作树。
-2. 读 [README.md](README.md)，再按任务读 [modern/README.md](modern/README.md) 对应部分。
+2. 读 [README.md](README.md)，再按任务读 [docs/development.md](docs/development.md) 对应部分。
 3. 当前产品是 `modern/MemReduct.Fluent.csproj`。根目录 `memreduct.sln` 与 `src/` 是历史 Win32 路线，不能把改动做错项目。
-4. 交接基线为分支 `ui/winui3-rewrite`，最近应用代码提交 `b6e45bb`；这些是快照，开始时核对，不盲目 checkout。
+4. 在现有分支继续工作，当前分支和提交以 Git 状态为准，不依据历史交接快照切换分支。
 5. `UI-NOTES.md` 和现有 `windows-ui.yml` 描述/构建的是旧版；新版没有专用 WinUI CI。
 
-## 数字输入框高度：已修复，待用户验收
+## 文档分工
 
-**用户指出的问题是两个数字输入框的高度，不是黑色焦点下划线。2026-10-22 已修复，等用户在实际窗口验收。**
-
-- 证据：[用户截图](images/winui-numberbox-height-known-issue.png)。
-- 根因（自检实测）：两个 `NumberBox` 在水平 `StackPanel` 里默认垂直拉伸，被旁边 `ToggleSwitch` 撑到 40 DIP，
-  文字按 TextBox 规则顶对齐，框底留白、聚焦黑边脱离文字。与 DPI、文字缩放、WinUI 模板无关。
-- 修复：`MainWindow.xaml` 两个 `NumberBox` 加 `VerticalAlignment="Center"`，高度回到 32 DIP。
-  保留 112 DIP、`Padding="8,6"`、步进模式 `Hidden`（回滚到 80 DIP + Compact 会再挤没文字区）。
-- 自检新增聚焦/失焦等高（≤1.2 DIP）、上下边缘（≤0.5 DIP）、文字居中（≤1 DIP）与两行等高断言，
-  并在 100/150/200% 文字缩放布局循环复检；不放宽断言，不为通过测试掩盖问题。
-- 证据目录：`..\MemReduct-Fluent-验证\height-before-zh-CN`（修复前失败记录）与 `height-zh-CN` / `height-en-US`。
-- 隐藏窗口 150% DPI 自检通过不等于验收完成：实体键盘输入、其他 DPI/缩放组合、启用/禁用外观仍需用户实际确认。
+- 根 `README.md` 面向使用者，只保留项目介绍、功能、使用方式、原作者及许可；不写问题排查、验收记录、本机路径或交接快照。
+- 开发交接、已知问题和验证证据统一维护在 [docs/development.md](docs/development.md)，安装与发布记录维护在 [docs/installation.md](docs/installation.md)。
+- 输入框高度修复记录见 [开发指南](docs/development.md#当前待办与已知问题)；保持现有布局断言，实际桌面验收边界以该记录为准。
 
 ## 修改范围与沟通
 
@@ -59,12 +51,12 @@
 
 - 使用 .NET 10、Windows x64，直接构建 `modern/MemReduct.Fluent.csproj`，不先构建根 `.sln` 或初始化历史子模块。
 - 日常使用 `pwsh -File modern/build-dev.ps1` 增量构建到固定的仓库同级 `MemReduct-WinUI3-多语言预览`；不再每次 publish 或创建额外 bin/发布副本。
-- 复用 `D:\tmp\memreduct-tray-build` 的 SDK、NuGet、cli 与 obj 缓存；仅交付时发布。`-Restore` 仅用于有意更新依赖，资产缺失会自动锁定还原。具体命令见 [开发指南](modern/README.md)。
+- 复用 `D:\tmp\memreduct-tray-build` 的 SDK、NuGet、cli 与 obj 缓存；仅交付时发布。`-Restore` 仅用于有意更新依赖，资产缺失会自动锁定还原。具体命令见 [开发指南](docs/development.md)。
 - 自检只操作自己的隐藏窗口，不读写真实设置、不创建启动项、不清理内存；运行 EXE，不用 `dotnet .dll` 替代。
 - 对需要验证的 UI 修改，检查中英文、聚焦/失焦、输入/清空/失焦保存、禁用、主题、缩放与滚动，不只检查静态控件宽度。
 - 现有自检的输入方式是程序化设置真实 TextBox 文本和移动焦点，不是实体键盘测试；新增清理、实际语言重启、登录自启均需单独验证。
 - 真实内存清理、修改安装版、重装运行时、变更开机任务等不能作为 UI 修改的默认验证步骤。
-- 安装与更新见 [安装维护说明](modern/installer/README.md)。用户已自行安装 Inno Setup 7.1.0，编译器为 `D:\apps\Inno Setup 7\ISCC.exe`；2026-10-22 安装脚本已实编译并生成 1.0.0 安装包。实际安装、登录/升级/卸载仍需后续验收，不把编译成功当成运行验证。
+- 安装与更新见 [安装维护说明](docs/installation.md)。用户已自行安装 Inno Setup 7.1.0，编译器为 `D:\apps\Inno Setup 7\ISCC.exe`；2026-10-22 安装脚本已实编译并生成 1.0.0 安装包。实际安装、登录/升级/卸载仍需后续验收，不把编译成功当成运行验证。
 - 报告已检查内容和仍未验证的边界；自动检查通过不能替代用户对最新高度问题的验收。
 
 ## 更新预览时

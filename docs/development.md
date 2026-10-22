@@ -1,6 +1,6 @@
 # Mem Reduct Fluent 开发与交接指南
 
-当前应用为 C# / WinUI 3 桌面程序，项目文件是 [MemReduct.Fluent.csproj](MemReduct.Fluent.csproj)。
+当前应用为 C# / WinUI 3 桌面程序，项目文件是 [MemReduct.Fluent.csproj](../modern/MemReduct.Fluent.csproj)。
 请先读仓库 [README](../README.md) 和 [AGENTS.md](../AGENTS.md)。
 本文中的本机路径是 2026-10-22 的交接快照，执行前检查存在性和当前 Git 状态；
 在其他机器上使用通用构建命令，不要照搬本机绝对路径。
@@ -50,19 +50,19 @@ DPI 的 `SM_CXSMICON`。布局、间距、字体仍是 DIP（设计如此），�
 
 | 文件 | 职责与入口 |
 | --- | --- |
-| [App.xaml](App.xaml) | 浅深色资源、黑白强调色、字体、圆角与共享间距 |
-| [App.xaml.cs](App.xaml.cs) | 参数、单实例互斥、加载设置与语言、自检启动 |
-| [MainWindow.xaml](MainWindow.xaml) | 主窗口、顶部/侧栏导航、概览、全部设置控件 |
-| [MainWindow.xaml.cs](MainWindow.xaml.cs) | 1 秒采样、增量刷新、布局、设置事件、清理/UAC/语言重启 |
-| [AppSettings.cs](AppSettings.cs) | 默认值、数值范围、选中区域、自动计划、原子替换保存 |
-| [MemoryEngine.cs](MemoryEngine.cs) | 只读采样、原生清理、权限与逐项错误收集 |
-| [TrayIcon.cs](TrayIcon.cs) / [TrayGlyph.cs](TrayGlyph.cs) | 托盘消息、百分比数字图标、DPI/颜色、句柄释放 |
-| [StartupRegistration.cs](StartupRegistration.cs) | 便携版 Run 项；安装版同用户最高权限交互式登录任务 |
-| [Installation.cs](Installation.cs) / [UpdateService.cs](UpdateService.cs) | 固定安装路径及 ACL 校验、个人设置路径、本人仓库的 Release 检查与验证下载 |
-| [installer/README.md](installer/README.md) | Inno Setup 安装、升级、卸载及发布流程与验证边界 |
-| [UiText.cs](UiText.cs) / [Strings/](Strings/) | 启动时语言选择、ResourceLoader、简体中文与英文 `.resw` |
-| [SelfCheck.cs](SelfCheck.cs) | 内置开发者自检、隐藏窗口布局测量、PNG/JSON 导出 |
-| [app.manifest](app.manifest) | Windows 兼容声明、PerMonitorV2 DPI |
+| [App.xaml](../modern/App.xaml) | 浅深色资源、黑白强调色、字体、圆角与共享间距 |
+| [App.xaml.cs](../modern/App.xaml.cs) | 参数、单实例互斥、加载设置与语言、自检启动 |
+| [MainWindow.xaml](../modern/MainWindow.xaml) | 主窗口、顶部/侧栏导航、概览、全部设置控件 |
+| [MainWindow.xaml.cs](../modern/MainWindow.xaml.cs) | 1 秒采样、增量刷新、布局、设置事件、清理/UAC/语言重启 |
+| [AppSettings.cs](../modern/AppSettings.cs) | 默认值、数值范围、选中区域、自动计划、原子替换保存 |
+| [MemoryEngine.cs](../modern/MemoryEngine.cs) | 只读采样、原生清理、权限与逐项错误收集 |
+| [TrayIcon.cs](../modern/TrayIcon.cs) / [TrayGlyph.cs](../modern/TrayGlyph.cs) | 托盘消息、百分比数字图标、DPI/颜色、句柄释放 |
+| [StartupRegistration.cs](../modern/StartupRegistration.cs) | 便携版 Run 项；安装版同用户最高权限交互式登录任务 |
+| [Installation.cs](../modern/Installation.cs) / [UpdateService.cs](../modern/UpdateService.cs) | 固定安装路径及 ACL 校验、个人设置路径、本人仓库的 Release 检查与验证下载 |
+| [安装与发布指南](installation.md) | Inno Setup 安装、升级、卸载及发布流程与验证边界 |
+| [UiText.cs](../modern/UiText.cs) / [Strings/](../modern/Strings/) | 启动时语言选择、ResourceLoader、简体中文与英文 `.resw` |
+| [SelfCheck.cs](../modern/SelfCheck.cs) | 内置开发者自检、隐藏窗口布局测量、PNG/JSON 导出 |
+| [app.manifest](../modern/app.manifest) | Windows 兼容声明、PerMonitorV2 DPI |
 
 ## 依赖与系统
 
@@ -98,7 +98,7 @@ C 盘空间有限，优先复用 D 盘环境；不要在 C 盘重复下载工具
 
 ## 构建与运行
 
-日常只使用 [build-dev.ps1](build-dev.ps1)，从仓库根目录执行：
+日常只使用 [build-dev.ps1](../modern/build-dev.ps1)，从仓库根目录执行：
 
 ```powershell
 pwsh -File .\modern\build-dev.ps1
@@ -169,7 +169,7 @@ SDK、NuGet 与 obj 是下一次增量构建所需缓存，不属于重复安装
 便携版开机启动使用当前用户 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` 的
 `MemReduct.Fluent` 项，命令为当前 EXE 加 `--minimized`；移动目录后需重新设置。
 本项目安装版在用户授权后使用同账户的最高权限交互式登录任务，不保存密码；首次启用会切换到管理员托盘实例。
-具体安装路径、设置导入、升级和卸载约定见 [安装维护说明](installer/README.md)。
+具体安装路径、设置导入、升级和卸载约定见 [安装维护说明](installation.md)。
 
 尚未移植全局快捷键和托盘字体/颜色手动定制；当前数字托盘按内存阈值及清理状态变色，并适配任务栏主题和高对比度。
 
