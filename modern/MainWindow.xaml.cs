@@ -685,17 +685,11 @@ public sealed partial class MainWindow : Window
             var result = await Task.Run(() => MemoryEngine.Clean(areas, automatic: !manual));
             if (_exitRequested) return;
             cleanupDuration.Stop();
-            RecordCleanup(manual, result, cleanupDuration.Elapsed);
+            ApplyCleanupResult(manual, result, cleanupDuration.Elapsed);
             cleanupDuration = null;
-            _settings.LastCleanUtc = DateTimeOffset.UtcNow;
-            SaveSettings();
-            ResultText.Text = UiText.Get("FreedStatus", DateTime.Now, MemorySnapshot.Bytes(result.FreedBytes));
-            SetFeedback(result.Errors.Count == 0 ? CleanupFeedback.Success : CleanupFeedback.Warning,
-                result.Errors.Count == 0 ? ResultText.Text : UiText.Get("CleanupHasErrors"));
-            if (result.Errors.Count != 0) ReportIssue(UiText.Get("PartialCleanup"), string.Join("\n", result.Errors));
             Sample();
             CompleteCleanupAttempt(manual, _lastPercent, DateTimeOffset.UtcNow);
-            if (ShouldNotifyCleanup(_settings.NotifyAfterCleanup, result.Errors.Count, manual, _gameActive))
+            if (result.CompletedAreas != CleanAreas.None && ShouldNotifyCleanup(_settings.NotifyAfterCleanup, result.Errors.Count, manual, _gameActive))
             {
                 try { _tray?.NotifySuccess(MemorySnapshot.Bytes(result.FreedBytes)); }
                 catch (Exception error) { ReportIssue(UiText.Get("TrayUnavailable"), error.Message); }
@@ -713,6 +707,23 @@ public sealed partial class MainWindow : Window
 
     internal static bool ShouldNotifyCleanup(bool enabled, int errors, bool manual, bool gameActive)
         => enabled && errors == 0 && (manual || !gameActive);
+
+    private void ApplyCleanupResult(bool manual, CleanupResult result, TimeSpan duration)
+    {
+        RecordCleanup(manual, result, duration);
+        var completed = result.CompletedAreas != CleanAreas.None;
+        if (completed) { _settings.LastCleanUtc = DateTimeOffset.UtcNow; SaveSettings(); }
+        ResultText.Text = completed ? UiText.Get("FreedStatus", DateTime.Now, MemorySnapshot.Bytes(result.FreedBytes))
+            : UiText.Get("CleanupFailed");
+        SetFeedback(!completed ? CleanupFeedback.Failed : result.Errors.Count == 0 ? CleanupFeedback.Success : CleanupFeedback.Warning,
+            result.Errors.Count == 0 ? ResultText.Text : UiText.Get(CleanupOutcomeKey(result)));
+        if (result.Errors.Count != 0) ReportIssue(UiText.Get(CleanupOutcomeKey(result)), string.Join("\n", result.Errors));
+        else if (completed && (IssueBanner.Title == UiText.Get("CleanupFailed") || IssueBanner.Title == UiText.Get("PartialCleanup")))
+            IssueBanner.IsOpen = false;
+    }
+
+    private static string CleanupOutcomeKey(CleanupResult? result) => result is null || result.CompletedAreas == CleanAreas.None
+        ? "CleanupFailed" : result.Errors.Count == 0 ? "CleanupSucceeded" : "PartialCleanup";
 
     private async void Elevate_Click(object sender, RoutedEventArgs args) => await RelaunchElevatedAsync("");
     private async Task RelaunchElevatedAsync(string intent)

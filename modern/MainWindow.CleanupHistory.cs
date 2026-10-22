@@ -12,9 +12,9 @@ public sealed partial class MainWindow
     private void RecordCleanup(bool manual, CleanupResult? result, TimeSpan duration, string? failure = null)
     {
         if (_exitRequested) return;
-        var outcome = result is null ? UiText.Get("CleanupFailed")
-            : UiText.Get(result.Errors.Count == 0 ? "CleanupSucceeded" : "PartialCleanup");
-        var details = result is null ? failure ?? UiText.Get("CleanupFailed")
+        var outcome = UiText.Get(CleanupOutcomeKey(result));
+        var details = result is null || result.CompletedAreas == CleanAreas.None
+            ? UiText.Get("CleanupHistoryFailure", duration.TotalSeconds, result is null ? failure ?? UiText.Get("CleanupFailed") : string.Join("\n", result.Errors))
             : UiText.Get("CleanupHistoryResult", MemorySnapshot.Bytes(result.FreedBytes), duration.TotalSeconds)
                 + (result.Errors.Count == 0 ? "" : UiText.Get("CleanupHistoryErrors", result.Errors.Count));
         _cleanupHistory.Insert(0, new CleanupHistoryEntry(

@@ -26,7 +26,7 @@ public sealed record MemorySnapshot(ulong PhysicalTotal, ulong PhysicalAvailable
         : (bytes / (1024.0 * 1024)).ToString("0", CultureInfo.InvariantCulture) + " MB";
 }
 
-public sealed record CleanupResult(ulong FreedBytes, IReadOnlyList<string> Errors);
+public sealed record CleanupResult(ulong FreedBytes, IReadOnlyList<string> Errors, CleanAreas CompletedAreas);
 
 internal static class MemoryEngine
 {
@@ -67,43 +67,56 @@ internal static class MemoryEngine
     public static CleanupResult Clean(CleanAreas areas, bool automatic = false)
     {
         var operations = GetOperations(areas, automatic);
-        if (operations.Length == 0) return new(0, Array.Empty<string>());
-        areas = operations.Aggregate(CleanAreas.None, (selected, operation) => selected | operation.Area);
+        if (operations.Length == 0) return new(0, Array.Empty<string>(), CleanAreas.None);
         if (!IsAdministrator) throw new UnauthorizedAccessException(UiText.Get("PermissionRequired"));
-        var errors = new List<string>();
         var before = ReadPhysical();
-        using var profile = (areas & (CleanAreas.WorkingSets | CleanAreas.LowPriorityStandby | ManualOnlyAreas | CleanAreas.CombinePages)) != 0
-            ? new PrivilegeScope("SeProfileSingleProcessPrivilege") : null;
-        using var quota = areas.HasFlag(CleanAreas.SystemCache) ? new PrivilegeScope("SeIncreaseQuotaPrivilege") : null;
+        var (completed, errors) = RunOperations(operations, CleanOperation);
+        var after = ReadPhysical();
+        // RAM changes concurrently; only report an observed increase in available memory.
+        return new(after.AvailablePhysical > before.AvailablePhysical ? after.AvailablePhysical - before.AvailablePhysical : 0, errors, completed);
+    }
 
+    internal static (CleanAreas Completed, List<string> Errors) RunOperations(
+        (CleanAreas Area, string Key)[] operations, Action<CleanAreas, string, List<string>> execute)
+    {
+        var completed = CleanAreas.None;
+        var errors = new List<string>();
         foreach (var (area, key) in operations)
         {
             var name = UiText.Get(key);
+            var previousErrors = errors.Count;
             try
             {
-                switch (area)
-                {
-                    case CleanAreas.WorkingSets: RunListCommand(2, name, errors); break;
-                    case CleanAreas.SystemCache:
-                        if (!SetSystemFileCacheSize(UIntPtr.MaxValue, UIntPtr.MaxValue, 0)) throw new Win32Exception(Marshal.GetLastWin32Error());
-                        break;
-                    case CleanAreas.ModifiedFileCache: FlushVolumeCaches(name, errors); break;
-                    case CleanAreas.ModifiedPages: RunListCommand(3, name, errors); break;
-                    case CleanAreas.Standby: RunListCommand(4, name, errors); break;
-                    case CleanAreas.LowPriorityStandby: RunListCommand(5, name, errors); break;
-                    case CleanAreas.RegistryCache: CheckStatus(NtSetSystemInformation(155, IntPtr.Zero, 0)); break;
-                    case CleanAreas.CombinePages:
-                        var combine = new CombineInfo();
-                        CheckStatus(NtSetSystemInformation(130, ref combine, Marshal.SizeOf<CombineInfo>()));
-                        break;
-                }
+                execute(area, name, errors);
+                if (errors.Count == previousErrors) completed |= area;
             }
             catch (Win32Exception error) { errors.Add(name + ": " + error.Message); }
         }
+        return (completed, errors);
+    }
 
-        var after = ReadPhysical();
-        // RAM changes concurrently; only report an observed increase in available memory.
-        return new(after.AvailablePhysical > before.AvailablePhysical ? after.AvailablePhysical - before.AvailablePhysical : 0, errors);
+    private static void CleanOperation(CleanAreas area, string name, List<string> errors)
+    {
+        // Each operation owns its privilege scope, so a denied privilege cannot prevent unrelated cleanup.
+        using var profile = (area & (CleanAreas.WorkingSets | CleanAreas.LowPriorityStandby | ManualOnlyAreas | CleanAreas.CombinePages)) != 0
+            ? new PrivilegeScope("SeProfileSingleProcessPrivilege") : null;
+        using var quota = area == CleanAreas.SystemCache ? new PrivilegeScope("SeIncreaseQuotaPrivilege") : null;
+        switch (area)
+        {
+            case CleanAreas.WorkingSets: RunListCommand(2, name, errors); break;
+            case CleanAreas.SystemCache:
+                if (!SetSystemFileCacheSize(UIntPtr.MaxValue, UIntPtr.MaxValue, 0)) throw new Win32Exception(Marshal.GetLastWin32Error());
+                break;
+            case CleanAreas.ModifiedFileCache: FlushVolumeCaches(name, errors); break;
+            case CleanAreas.ModifiedPages: RunListCommand(3, name, errors); break;
+            case CleanAreas.Standby: RunListCommand(4, name, errors); break;
+            case CleanAreas.LowPriorityStandby: RunListCommand(5, name, errors); break;
+            case CleanAreas.RegistryCache: CheckStatus(NtSetSystemInformation(155, IntPtr.Zero, 0)); break;
+            case CleanAreas.CombinePages:
+                var combine = new CombineInfo();
+                CheckStatus(NtSetSystemInformation(130, ref combine, Marshal.SizeOf<CombineInfo>()));
+                break;
+        }
     }
 
     internal static void ValidateAreas(CleanAreas areas)

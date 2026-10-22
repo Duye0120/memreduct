@@ -364,6 +364,7 @@
   <data name="CleanupHistoryHeading.Text" xml:space="preserve"><value>Recent cleanups · This session</value></data>
   <data name="CleanupHistoryResult" xml:space="preserve"><value>Available memory increased by {0} · {1:0.0} seconds</value></data>
   <data name="CleanupHistoryErrors" xml:space="preserve"><value> · Errors: {0}</value></data>
+  <data name="CleanupHistoryFailure" xml:space="preserve"><value>{0:0.0} seconds · {1}</value></data>
   <data name="CleanupHistoryManual" xml:space="preserve"><value>{0:HH:mm:ss} · Manual</value></data>
   <data name="CleanupHistoryAutomatic" xml:space="preserve"><value>{0:HH:mm:ss} · Automatic</value></data>
   <data name="ProcessesHeading.Text" xml:space="preserve"><value>Which processes use memory?</value></data>

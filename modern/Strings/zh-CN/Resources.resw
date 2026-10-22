@@ -364,6 +364,7 @@
   <data name="CleanupHistoryHeading.Text" xml:space="preserve"><value>最近清理 · 本次运行</value></data>
   <data name="CleanupHistoryResult" xml:space="preserve"><value>可用内存增加 {0} · 耗时 {1:0.0} 秒</value></data>
   <data name="CleanupHistoryErrors" xml:space="preserve"><value> · {0} 项错误</value></data>
+  <data name="CleanupHistoryFailure" xml:space="preserve"><value>耗时 {0:0.0} 秒 · {1}</value></data>
   <data name="CleanupHistoryManual" xml:space="preserve"><value>{0:HH:mm:ss} · 手动</value></data>
   <data name="CleanupHistoryAutomatic" xml:space="preserve"><value>{0:HH:mm:ss} · 自动</value></data>
   <data name="ProcessesHeading.Text" xml:space="preserve"><value>哪些进程占用内存？</value></data>

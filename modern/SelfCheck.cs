@@ -294,8 +294,27 @@ public sealed partial class MainWindow
             Require(automaticOperations.Length == 6 && automaticOperations.All(x => (x.Area & MemoryEngine.ManualOnlyAreas) == 0),
                 "Both starred areas are removed at the native dispatch boundary");
             var skipped = MemoryEngine.Clean(MemoryEngine.ManualOnlyAreas, automatic: true);
-            Require(skipped.FreedBytes == 0 && skipped.Errors.Count == 0,
+            Require(skipped.FreedBytes == 0 && skipped.Errors.Count == 0 && skipped.CompletedAreas == CleanAreas.None,
                 "An automatic request containing only starred areas returns before privilege checks or native cleanup");
+            var visited = new List<CleanAreas>();
+            var dispatch = MemoryEngine.GetOperations(CleanAreas.WorkingSets | CleanAreas.SystemCache | CleanAreas.LowPriorityStandby, false);
+            var (completed, dispatchErrors) = MemoryEngine.RunOperations(dispatch, (area, name, errors) =>
+            {
+                visited.Add(area);
+                if (area == CleanAreas.WorkingSets) throw new System.ComponentModel.Win32Exception(1300);
+                if (area == CleanAreas.SystemCache) errors.Add(name + ": self-check native failure");
+            });
+            Require(visited.SequenceEqual(dispatch.Select(operation => operation.Area))
+                && completed == CleanAreas.LowPriorityStandby && dispatchErrors.Count == 2
+                && dispatchErrors[0].StartsWith(UiText.Get("WorkingSetCheck.Content"), StringComparison.Ordinal),
+                "A privilege or native failure is labeled per operation and does not stop later selected operations");
+            var (allFailed, allErrors) = MemoryEngine.RunOperations(dispatch, (_, _, _) => throw new System.ComponentModel.Win32Exception(5));
+            Require(allFailed == CleanAreas.None && allErrors.Count == dispatch.Length,
+                "All failed operations retain every error without recording a completed area");
+            var (allCompleted, noErrors) = MemoryEngine.RunOperations(dispatch, (_, _, _) => { });
+            Require(allCompleted == (CleanAreas.WorkingSets | CleanAreas.SystemCache | CleanAreas.LowPriorityStandby) && noErrors.Count == 0,
+                "Successful operations remain successful even when available memory does not increase");
+            checks.Add("Cleanup dispatch isolates per-operation failures and reports completed areas without invoking native cleanup or changing token privileges.");
             var defaults = JsonSerializer.Deserialize<AppSettings>("{}")!;
             Require(defaults.Areas == (CleanAreas.WorkingSets | CleanAreas.SystemCache | CleanAreas.LowPriorityStandby),
                 "New and legacy settings keep all five added cleanup areas off");
@@ -460,13 +479,29 @@ public sealed partial class MainWindow
             // Layout is measured inside this hidden app window, without inspecting the user's desktop.
             Require(CleanupHistoryCard.Visibility == Visibility.Collapsed && _cleanupHistory.Count == 0, "A new session has no fabricated cleanup records");
             for (var index = 0; index < 7; index++)
-                RecordCleanup(true, new CleanupResult((ulong)index * 1024 * 1024, []), TimeSpan.FromSeconds(1));
+                RecordCleanup(true, new CleanupResult((ulong)index * 1024 * 1024, [], CleanAreas.WorkingSets), TimeSpan.FromSeconds(1));
             Require(_cleanupHistory.Count == 5 && _cleanupHistory[0].Details.Contains("6 MB"), "Cleanup history keeps only the five most recent attempts, newest first");
-            RecordCleanup(false, new CleanupResult(0, ["self-check failure"]), TimeSpan.FromSeconds(2));
+            RecordCleanup(false, new CleanupResult(0, ["self-check failure"], CleanAreas.SystemCache), TimeSpan.FromSeconds(2));
             Require(_cleanupHistory[0].Outcome == UiText.Get("PartialCleanup") && _cleanupHistory[0].Details.Contains(UiText.Get("CleanupHistoryErrors", 1)),
                 "Partial cleanup records keep the error count and observed zero-byte result");
+            var previousCleanup = _settings.LastCleanUtc;
+            ApplyCleanupResult(false, new CleanupResult(123 * 1024 * 1024, ["Every selected operation failed"], CleanAreas.None), TimeSpan.FromSeconds(2));
+            Require(_cleanupHistory[0].Outcome == UiText.Get("CleanupFailed") && !_cleanupHistory[0].Details.Contains("123 MB")
+                && _cleanupHistory[0].Details.Contains("Every selected operation failed")
+                && _settings.LastCleanUtc == previousCleanup && _feedback == CleanupFeedback.Failed
+                && ResultText.Text == UiText.Get("CleanupFailed") && IssueBanner.Title == UiText.Get("CleanupFailed"),
+                "An unsuccessful cleanup preserves the previous timestamp and reports failure without attributing unrelated memory changes to cleanup");
+            ApplyCleanupResult(true, new CleanupResult(0, [], CleanAreas.WorkingSets), TimeSpan.FromSeconds(1));
+            Require(_settings.LastCleanUtc is not null && _feedback == CleanupFeedback.Success
+                && _cleanupHistory[0].Outcome == UiText.Get("CleanupSucceeded") && !IssueBanner.IsOpen,
+                "A completed zero-byte cleanup records its real completion rather than treating it as an error");
+            _settings.LastCleanUtc = previousCleanup;
+            IssueBanner.IsOpen = false;
+            IssueBanner.Visibility = Visibility.Collapsed;
+            SetFeedback(CleanupFeedback.None, "");
             RecordCleanup(true, null, TimeSpan.FromSeconds(1), "Self-check fixture: access denied");
-            Require(_cleanupHistory[0].Outcome == UiText.Get("CleanupFailed") && _cleanupHistory[0].Details == "Self-check fixture: access denied",
+            Require(_cleanupHistory[0].Outcome == UiText.Get("CleanupFailed")
+                && _cleanupHistory[0].Details == UiText.Get("CleanupHistoryFailure", 1.0, "Self-check fixture: access denied"),
                 "Failed cleanup records preserve the error without inventing reclaimed memory");
             checks.Add("Session-only cleanup history is bounded to five attempts and preserves manual/automatic, partial and failed results without invoking cleanup.");
             var originalStartupNote = SettingsPage.StartupNote.Text;
