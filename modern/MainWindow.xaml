@@ -76,7 +76,7 @@
                 </StackPanel>
                 <ScrollViewer x:Name="NotificationScroll" Grid.Row="1" Grid.ColumnSpan="3" MaxHeight="200" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                        <InfoBar x:Name="IssueBanner" IsOpen="False" Visibility="Collapsed" IsClosable="True" Severity="Warning" Closed="IssueBanner_Closed" Margin="0,12,0,0" CornerRadius="{StaticResource CardCornerRadius}" />
+                        <InfoBar x:Name="IssueBanner" IsOpen="False" Visibility="Collapsed" IsClosable="True" Severity="Warning" Margin="0,12,0,0" CornerRadius="{StaticResource CardCornerRadius}" />
                         <InfoBar x:Uid="AdminBanner" x:Name="AdminBanner" Title="自动清理已暂停" Message="自动清理需要管理员权限。" IsOpen="False" Visibility="Collapsed" IsClosable="False" Severity="Informational" Margin="0,12,0,0" CornerRadius="{StaticResource CardCornerRadius}">
                             <InfoBar.ActionButton>
                                 <Button x:Uid="ElevateButton" x:Name="ElevateButton" Content="以管理员运行" CornerRadius="{StaticResource AppControlCornerRadius}" Click="Elevate_Click" />

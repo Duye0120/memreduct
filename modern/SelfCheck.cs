@@ -60,10 +60,17 @@ public sealed partial class MainWindow
             await CheckUpdateCopyAsync(directory);
             checks.Add("Background-update copy accepts the exact release payload and rejects tampering, truncation, oversized data and cancellation without executing setup.");
             var initialCleanupTime = _settings.LastCleanUtc;
+            _startupCleanupPending = true;
+            Require(!CanStartAutomaticCleanup, "A pending explicit startup cleanup takes priority over an already-due automatic cleanup");
+            await RunStartupCleanupAsync();
+            Require(!_startupCleanupPending && CanStartAutomaticCleanup,
+                "The explicit startup intent is consumed once before regular scheduling resumes");
+            await RunStartupCleanupAsync();
             await CleanAsync(true, confirm: false);
             await CleanAsync(false);
             Require(!_cleaning && _settings.LastCleanUtc == initialCleanupTime && _cleanupHistory.Count == 0,
                 "Developer checks never start native cleanup through the main window");
+            checks.Add("An explicit startup cleanup blocks automatic scheduling until consumed once; developer checks do not execute native cleanup.");
             var initialReady = _ready;
             _updateCancellation = new CancellationTokenSource();
             PrepareToExit();

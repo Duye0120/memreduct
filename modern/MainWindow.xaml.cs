@@ -18,6 +18,7 @@ public sealed partial class MainWindow : Window
     private int _animationFrame;
     private readonly TrayIcon? _tray;
     private bool _ready, _cleaning, _exitRequested, _sampleFailed, _restartPromptOpen, _elevating;
+    private bool _startupCleanupPending;
     private bool _startupEnabled;
     private SettingsView SettingsPage { get; set; } = null!;
     private bool _startupReadable = true;
@@ -36,11 +37,13 @@ public sealed partial class MainWindow : Window
     internal bool CanStayInTray => _tray?.IsVisible == true;
     private bool CanRenderWindow => !_exitRequested && AppWindow.IsVisible
         && AppWindow.Presenter is not OverlappedPresenter { State: OverlappedPresenterState.Minimized };
+    private bool CanStartAutomaticCleanup => !_exitRequested && !_cleaning && !_restartPromptOpen && !_elevating && !_startupCleanupPending;
 
     public MainWindow(AppSettings settings, bool checking)
     {
         _settings = settings;
         _checking = checking;
+        _startupCleanupPending = !checking && App.Arguments.Contains("--clean");
         _lastAttempt = settings.LastCleanUtc is { } last && last <= DateTimeOffset.UtcNow ? last : DateTimeOffset.UtcNow;
         InitializeComponent();
         Shell.Language = UiText.LanguageTag;
@@ -105,7 +108,7 @@ public sealed partial class MainWindow : Window
             UpdateCornerRadii();
             Shell.XamlRoot.Changed -= XamlRoot_Changed;
             Shell.XamlRoot.Changed += XamlRoot_Changed;
-            if (App.Arguments.Contains("--clean") && !checking) await CleanAsync(true, confirm: false);
+            await RunStartupCleanupAsync();
         };
     }
 
@@ -329,7 +332,7 @@ public sealed partial class MainWindow : Window
             if (CanRenderWindow) { UpdateStats(snapshot); RenderHistory(); }
             UpdateTray();
             if (_sampleFailed) { _sampleFailed = false; if (IssueBanner.Title == UiText.Get("SampleFailed")) IssueBanner.IsOpen = false; }
-            if (!_cleaning && !_restartPromptOpen && MemoryEngine.IsAdministrator && _settings.IsAutoDue(snapshot.PhysicalPercent, DateTimeOffset.UtcNow, _lastAttempt, _gameActive, _thresholdRetryAfter))
+            if (CanStartAutomaticCleanup && MemoryEngine.IsAdministrator && _settings.IsAutoDue(snapshot.PhysicalPercent, DateTimeOffset.UtcNow, _lastAttempt, _gameActive, _thresholdRetryAfter))
                 _ = CleanAsync(false);
         }
         catch (Exception error)
@@ -417,8 +420,6 @@ public sealed partial class MainWindow : Window
         IssueBanner.Title = title; IssueBanner.Message = message; IssueBanner.Severity = severity;
         IssueBanner.Visibility = Visibility.Visible; IssueBanner.IsOpen = true;
     }
-
-    private void IssueBanner_Closed(InfoBar sender, InfoBarClosedEventArgs args) => sender.Visibility = Visibility.Collapsed;
 
     private void OverviewTab_Click(object sender, RoutedEventArgs args) => SelectPage(false);
     private void SettingsTab_Click(object sender, RoutedEventArgs args) => SelectPage(true);
@@ -599,6 +600,12 @@ public sealed partial class MainWindow : Window
     }
 
     private async void CleanButton_Click(object sender, RoutedEventArgs args) => await CleanAsync(true);
+    private async Task RunStartupCleanupAsync()
+    {
+        if (_exitRequested || !_startupCleanupPending) return;
+        _startupCleanupPending = false;
+        await CleanAsync(true, confirm: false);
+    }
     internal void ReportStartupResumeFailure(string detail) => ReportIssue(UiText.Get("StartupResumeFailed"), detail);
     private void ConfirmSwitch_Toggled(object sender, RoutedEventArgs args)
     {
