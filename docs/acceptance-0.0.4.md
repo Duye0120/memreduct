@@ -1,6 +1,6 @@
 # 0.0.4 settings hotfix acceptance
 
-This is a local installer candidate, not a published Release. It includes the preceding 0.0.3 features and preserves Henry++ attribution and GPL terms. The user's installed copy and startup tasks were not replaced or changed.
+Published on 2026-10-23 as the [latest stable Release](https://github.com/Duye0120/memreduct-winui/releases/tag/fluent-v0.0.4). It includes the preceding 0.0.3 features and preserves Henry++ attribution and GPL terms. The user's installed copy and startup tasks were not replaced or changed.
 
 ## Identity
 
@@ -30,6 +30,7 @@ A fresh isolated process linking the actual settings and user-access source repr
 - The same staged executable passed English checks from an ordinary process: 30 groups and 48 layouts. Atomic-save failure preservation, import behavior and cold tray-preference persistence remain covered.
 - A separate elevated read-only probe loaded the user's existing installed profile and compared all normalized settings with the original file. No writes were requested.
 - Installed and portable settings hashes match the pre-fix baseline. No cleanup, startup registration, installation or update execution was performed.
+- Publication verification confirmed that `fluent-v0.0.4` points to the source commit above, both uploaded asset digests match their local files, and the repository's latest-release endpoint returns this stable, non-draft release. Previous releases were retained.
 
 Local evidence directories are `settings-fix-staged-zh-CN` and `settings-fix-staged-en-US` under the verification folder. The cold-process probes are development scratch tools and do not ship in the application.
 
