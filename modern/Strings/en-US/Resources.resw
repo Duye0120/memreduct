@@ -342,7 +342,6 @@
     <value> · Still above threshold; threshold retry deferred for 5 minutes</value>
   </data>
   <data name="UpdateStatus.Text" xml:space="preserve"><value>Check GitHub for a new version.</value></data>
-  <data name="UpdateUnprotected" xml:space="preserve"><value>This installation folder is user-writable. Use Downloads and release notes to download and run the installer manually.</value></data>
   <data name="StartupResumeFailed" xml:space="preserve"><value>The authorized startup task could not be reused. The app opened normally; you can still authorize cleanup manually.</value></data>
   <data name="HistoryHeading.Text" xml:space="preserve"><value>Memory trend · Last 5 minutes</value></data>
   <data name="HistoryPhysicalLegend.Text" xml:space="preserve"><value>Solid · Physical memory</value></data>

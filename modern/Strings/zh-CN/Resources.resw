@@ -342,7 +342,6 @@
     <value> · 清理后仍超阈值，阈值重试暂缓 5 分钟</value>
   </data>
   <data name="UpdateStatus.Text" xml:space="preserve"><value>从 GitHub 检查新版本。</value></data>
-  <data name="UpdateUnprotected" xml:space="preserve"><value>当前安装目录可被普通用户修改，请通过“下载与发行说明”手动下载安装包更新。</value></data>
   <data name="StartupResumeFailed" xml:space="preserve"><value>无法复用管理员启动任务，已以普通权限打开；清理时仍可手动授权。</value></data>
   <data name="HistoryHeading.Text" xml:space="preserve"><value>内存趋势 · 最近 5 分钟</value></data>
   <data name="HistoryPhysicalLegend.Text" xml:space="preserve"><value>实线 · 物理内存</value></data>

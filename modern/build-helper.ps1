@@ -10,7 +10,8 @@ New-Item -ItemType Directory -Force -Path $OutputDirectory, $IntermediateDirecto
 [xml]$project = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'MemReduct.Fluent.csproj') -Raw
 $version = [string]$project.Project.PropertyGroup.Version
 $keys = @('WorkingSetCheck.Content','SystemCacheCheck.Content','ModifiedFileCheck.Content','ModifiedPagesCheck.Content',
-    'FullStandbyCheck.Content','StandbyCheck.Content','RegistryCheck.Content','CombineCheck.Content','InvalidAreas','PermissionRequired','UserAccessUnavailable')
+    'FullStandbyCheck.Content','StandbyCheck.Content','RegistryCheck.Content','CombineCheck.Content','InvalidAreas','PermissionRequired','UserAccessUnavailable',
+    'UpdateAssetInvalid','UpdateHashFailed','UpdateNone','UpdateFailed')
 $maps = foreach ($language in @('en-US', 'zh-CN')) {
     [xml]$document = Get-Content -LiteralPath (Join-Path $PSScriptRoot "Strings/$language/Resources.resw") -Raw
     $map = @{}
@@ -22,6 +23,7 @@ $cases = foreach ($key in $keys) { 'case ' + (Quote-CSharp $key) + ': return Chi
 $operationCases = for ($i = 0; $i -lt 8; $i++) { 'case ' + @(1,2,8,16,32,4,64,128)[$i] + ': return Get(' + (Quote-CSharp $keys[$i]) + ');' }
 $source = @"
 using System;
+[assembly: System.Runtime.Versioning.TargetFramework(".NETFramework,Version=v4.8")]
 [assembly: System.Reflection.AssemblyVersion("$version.0")]
 [assembly: System.Reflection.AssemblyFileVersion("$version.0")]
 namespace MemReduct.Fluent {
@@ -34,9 +36,9 @@ internal static string OperationName(CleanAreas area) { switch((int)area) { $($o
 $generated = Join-Path $IntermediateDirectory 'HelperText.g.cs'
 Set-Content -LiteralPath $generated -Value $source -Encoding utf8BOM
 $executable = Join-Path $OutputDirectory 'MemReduct.Helper.exe'
-$files = @('MemoryEngine.cs','HelperTrust.cs','HelperProtocol.cs','HelperTasks.cs','UserDataAccess.cs','helper/Program.cs') |
+$files = @('MemoryEngine.cs','HelperTrust.cs','HelperProtocol.cs','HelperTasks.cs','UserDataAccess.cs','UpdatePackage.cs','HelperUpdates.cs','helper/Program.cs') |
     ForEach-Object { Join-Path $PSScriptRoot $_ }
-$references = @('mscorlib','System','System.Core','System.Xml','System.Xml.Linq','Microsoft.CSharp') |
+$references = @('mscorlib','System','System.Core','System.Xml','System.Xml.Linq','System.Net.Http','System.Runtime.Serialization','Microsoft.CSharp') |
     ForEach-Object { '/reference:' + (Join-Path $framework ($_ + '.dll')) }
 & $DotNet $compiler /nologo /nostdlib+ /target:winexe /platform:x64 /optimize+ /define:HELPER /langversion:6 @references `
     ('/win32manifest:' + (Join-Path $PSScriptRoot 'app.manifest')) ('/out:' + $executable) @files $generated

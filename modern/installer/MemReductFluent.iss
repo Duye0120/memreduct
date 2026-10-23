@@ -49,13 +49,15 @@ Name: "{autoprograms}\Mem Reduct Fluent"; Filename: "{app}\MemReduct.Fluent.exe"
 
 [Run]
 Filename: "{app}\MemReduct.Fluent.exe"; Parameters: "{code:ImportArguments}"; Description: "{cm:LaunchProgram,Mem Reduct Fluent}"; Flags: postinstall nowait skipifsilent runasoriginaluser; Check: not IsAppUpdate
-Filename: "{app}\MemReduct.Fluent.exe"; Flags: nowait skipifsilent runasoriginaluser; Check: IsAppUpdate
 
 [UninstallDelete]
 ; Only our verified installer cache. User profiles in LocalAppData are deliberately retained.
 Type: files; Name: "{app}\Updates\update.exe"
 Type: files; Name: "{app}\Updates\update.exe.partial"
 Type: dirifempty; Name: "{app}\Updates"
+Type: files; Name: "{commonpf64}\MemReduct Helper\Updates\update.exe"
+Type: files; Name: "{commonpf64}\MemReduct Helper\Updates\update.exe.partial"
+Type: dirifempty; Name: "{commonpf64}\MemReduct Helper\Updates"
 Type: dirifempty; Name: "{commonpf64}\MemReduct Helper"
 
 [CustomMessages]
@@ -67,6 +69,7 @@ zhcn.InvalidDirectory=请选择独立的本地程序目录，不能使用磁盘�
 zhcn.MoveInstallation=升级需沿用原安装目录。如需迁移，请先卸载旧版本再选择新目录；个人设置会保留。
 zhcn.OlderInstaller=已安装的版本更新，请使用最新安装包。
 zhcn.CloseFirst=请先从 Mem Reduct 的托盘菜单退出，再继续安装或卸载。
+zhcn.RelaunchFailed=未能重新打开程序。请从开始菜单手动打开，现有设置已保留。
 zhcn.InvalidSettings=请选择一个不大于 64 KB 的 settings.json 文件，或留空跳过。
 en.ImportTitle=Import portable settings (optional)
 en.ImportDescription=Select settings.json from your portable app folder, or leave this blank.
@@ -76,6 +79,7 @@ en.InvalidDirectory=Choose a dedicated local application folder, not a drive roo
 en.MoveInstallation=Upgrade in the existing folder. To move the app, uninstall it first, then select a new folder. Your settings are preserved.
 en.OlderInstaller=A newer version is already installed. Use the latest installer.
 en.CloseFirst=Exit Mem Reduct from its tray menu before installing or uninstalling.
+en.RelaunchFailed=The app could not be reopened. Open it from the Start menu; your settings are preserved.
 en.InvalidSettings=Choose a settings.json file no larger than 64 KB, or leave the field blank.
 
 [Code]
@@ -185,6 +189,17 @@ end;
 function IsAppUpdate: Boolean;
 begin
   Result := ExpandConstant('{param:FROMAPP|0}') = '1';
+end;
+
+procedure DeinitializeSetup;
+var ResultCode: Integer;
+    Directory: String;
+begin
+  if not IsAppUpdate then exit;
+  Directory := ExpandConstant('{commonpf64}\MemReduct Helper');
+  // Also restore the old app after cancelling the wizard; the protected helper drops privileges.
+  if not Exec(Directory + '\MemReduct.Helper.exe', '--launch-ui', Directory, SW_HIDE, ewWaitUntilTerminated, ResultCode) or (ResultCode <> 0) then
+    MsgBox(CustomMessage('RelaunchFailed'), mbError, MB_OK);
 end;
 
 procedure InitializeWizard;

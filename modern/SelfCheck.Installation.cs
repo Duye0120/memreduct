@@ -162,6 +162,11 @@ public sealed partial class MainWindow
 
     private static void CheckInstallationAndUpdates(string directory)
     {
+        var installStart = UpdateService.CreateInstallStartInfo();
+        Require(installStart.FileName == HelperTrust.ExecutablePath && installStart.WorkingDirectory == HelperTrust.DirectoryPath
+            && installStart.UseShellExecute && installStart.Verb == "runas"
+            && installStart.ArgumentList.SequenceEqual(new[] { "--install-update", HelperTrust.UserSid }),
+            "Updates elevate only the protected helper, including for a user-writable D-drive installation");
         // Exercise the installed COM path inside WinUI even when this check runs from a portable build.
         var startupEnabled = HelperTasks.StartupEnabled();
         File.WriteAllText(Path.Combine(directory, "startup-read.json"), JsonSerializer.Serialize(new { startupEnabled }));
@@ -230,10 +235,10 @@ public sealed partial class MainWindow
         Require(rejected && !File.Exists(invalidTarget), "Invalid imported JSON is rejected before writing a profile");
 
         var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("installer fixture"))).ToLowerInvariant();
-        JsonDocument Release(string tag, string url, string hash, bool prerelease = false) => JsonDocument.Parse(JsonSerializer.Serialize(new
+        JsonDocument Release(string tag, string url, string hash, bool prerelease = false, long size = 100, int count = 1) => JsonDocument.Parse(JsonSerializer.Serialize(new
         {
             tag_name = tag, draft = false, prerelease,
-            assets = new[] { new { name = $"MemReductFluent-{tag.Replace("fluent-v", "")}-win-x64-setup.exe", browser_download_url = url, digest = hash, size = 100 } }
+            assets = Enumerable.Repeat(new { name = $"MemReductFluent-{tag.Replace("fluent-v", "")}-win-x64-setup.exe", browser_download_url = url, digest = hash, size }, count).ToArray()
         }));
         var expected = UpdateService.Repository + "/releases/download/fluent-v0.0.2/MemReductFluent-0.0.2-win-x64-setup.exe";
         using var release = Release("fluent-v0.0.2", expected, "sha256:" + digest);
@@ -256,6 +261,13 @@ public sealed partial class MainWindow
             rejected = false;
             try { UpdateService.ParseRelease(invalid.RootElement, new Version(0, 0, 1)); } catch (InvalidDataException) { rejected = true; }
             Require(rejected, "Foreign download sources and missing digests are rejected");
+        }
+        foreach (var (size, count) in new[] { (0L, 1), (UpdatePackage.MaximumDownload + 1, 1), (100L, 0), (100L, 2) })
+        {
+            using var invalid = Release("fluent-v0.0.2", expected, "sha256:" + digest, size: size, count: count);
+            rejected = false;
+            try { UpdateService.ParseRelease(invalid.RootElement, new Version(0, 0, 1)); } catch (InvalidDataException) { rejected = true; }
+            Require(rejected, "Both runtimes reject missing/duplicate installers and invalid asset sizes");
         }
         Require(UpdateService.AllowedDownloadUri(new Uri(expected)) && !UpdateService.AllowedDownloadUri(new Uri("http://github.com/file"))
             && !UpdateService.AllowedDownloadUri(new Uri("https://github.com.evil.example/file")), "Download redirects require HTTPS and approved GitHub hosts");

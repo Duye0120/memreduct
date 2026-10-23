@@ -12,7 +12,7 @@
 
 管理员自启要求当前登录账户本身属于管理员；用另一管理员账户的凭据替普通账户授权会被拒绝，避免创建到错误账户。程序不是 SYSTEM 服务，不保存登录密码。安装和升级自身仍可能需要 UAC，不能保证所有未来操作都完全免确认。
 
-安装身份读取 HKLM 64 位卸载项 `{5B9D5C89-F01C-4AB6-A593-DA69B3835832}_is1` 的 `InstallLocation`，不读取用户可写的路径标记。设置位置不随安装目录移动。助手目录、文件和祖先必须通过 ACL、所有者及非链接检查；D 盘 UI 的文件不再进入清理提权入口。应用内安装更新仍沿用原受保护 UI 目录要求，普通用户可写目录请从 Releases 手动下载安装包。安装器仅收紧自己的固定助手目录，绝不修改 `D:\apps` 或其他父目录 ACL。
+安装身份读取 HKLM 64 位卸载项 `{5B9D5C89-F01C-4AB6-A593-DA69B3835832}_is1` 的 `InstallLocation`，不读取用户可写的路径标记。设置位置不随安装目录移动。助手目录、文件和祖先必须通过 ACL、所有者及非链接检查；D 盘 UI 的文件不进入清理或更新提权入口。0.0.7 起可写的主程序目录也支持应用内更新；0.0.6 及以下的旧程序需先手动覆盖安装一次修复版。安装器仅收紧自己的固定助手目录，绝不修改 `D:\apps` 或其他父目录 ACL。
 
 ### 0.0.6 清理动画与状态显示
 
@@ -81,9 +81,11 @@ pwsh -File .\modern\build-installer.ps1 -Compiler 'D:\apps\Inno Setup 7\ISCC.exe
 
 更新只在用户点击时检查，不轮询、不后台静默安装。便携版提供发布页入口；安装版确认后在当前进程后台下载到 `%LOCALAPPDATA%\MemReductFluent\Updates\update.exe`，期间不提权、不重启。来源固定为本人仓库的精确资产地址，重定向只允许 HTTPS GitHub 下载域，下载校验大小及 SHA-256。
 
-点击「安装更新」才通过 UAC 启动实际受保护安装目录中的 `--install-update <SID>` 助手。助手不创建主窗口、托盘或实例互斥量，不读写设置；重新读取 GitHub 正式发布元数据，将缓存复制到受保护的 `{安装目录}\Updates\update.exe` 并再次校验大小和 SHA-256，再启动安装器，同时传入 `/DIR` 保留当前路径。用户缓存从不直接执行。原进程仅在助手成功后退出；取消 UAC 则保持运行和可重试状态，验证失败恢复检查更新入口。两处缓存均复用固定文件名。
+点击「安装更新」才通过 UAC 启动固定的 `Program Files\MemReduct Helper\MemReduct.Helper.exe --install-update <SID>`。助手不创建主窗口、托盘或实例互斥量，不读写设置；重新读取 GitHub 正式发布元数据，以当前账户普通令牌打开用户缓存，将其复制到受保护的 `Program Files\MemReduct Helper\Updates\update.exe`，再次校验大小和 SHA-256，再启动安装器。目标目录仅来自 HKLM 卸载项，通过 `/DIR` 保留，UI 不向助手传递路径、URL、哈希或命令。用户缓存从不直接执行。原进程仅在助手成功后退出；取消 UAC 则保持运行和可重试状态，验证失败恢复检查更新入口。两处缓存均复用固定文件名。
 
-应用内升级要求同一管理员账户，避免读取或启动到另一账户的配置。普通账户需由管理员手动下载安装包完成安装；管理员凭据是 Windows 要求，应用不存储密码。`/FROMAPP=1` 安装成功后自动启动一次，普通手动安装保留原有启动勾选项。
+应用内升级要求同一管理员账户，避免读取或启动到另一账户的配置。普通账户需由管理员手动下载安装包完成安装；管理员凭据是 Windows 要求，应用不存储密码。`/FROMAPP=1` 安装结束或取消时，安装器的 `DeinitializeSetup` 只调用一次受保护助手的 `--launch-ui`，后者核对同账户 shell 普通令牌，经 `DuplicateTokenEx` 和 `CreateProcessWithTokenW` 重开 UI；取不到普通令牌则失败，绝不回退管理员启动。普通手动安装保留原有启动勾选项。
+
+实现依据：[Inno Setup 退出事件](https://jrsoftware.org/ishelp/topic_scriptevents.htm)、[CreateProcessWithTokenW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createprocesswithtokenw)。即使使用 `runasoriginaluser`，已由提权进程启动的安装器也不能保证降权，因此应用内更新改由固定助手明确选择普通令牌。
 
 从历史 `1.0.0`–`1.0.2` 迁移到 `0.0.1` 需要手动下载安装包一次：旧版只接受更大的版本号，无法通过远程发布修改这个判断。0.x 安装器仅对这三个历史版本放行迁移；其他较高版本仍拒绝降级。新版更新检查忽略三个旧 Release 标签，避免把旧代码当作升级。安装标识、路径、设置和启动任务名称不变；后续按 `0.0.2`、`0.0.3` 等递增，发布时需显式设为 latest。
 

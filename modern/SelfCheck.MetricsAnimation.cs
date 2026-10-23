@@ -19,20 +19,20 @@ public sealed partial class MainWindow
         UpdateStats(latest);
         if (CanAnimateMetrics)
         {
-            await Task.Delay(350);
+            await App.WaitUntilAsync(() => !_metricsToZero, TimeSpan.FromSeconds(3));
             Require(PhysicalValue.Text == $"{0:0.0}%" && CommitValue.Text == $"{0:0.0}%"
                 && PhysicalBar.Value == 0 && CommitBar.Value == 0 && CacheBar.Value == 0,
                 "Cleanup numbers and all three bars reach zero together");
         }
         EndMetricsCleanup();
-        await Task.Delay(950);
+        await App.WaitUntilAsync(() => !_metricsToZero && !_metricsReturning, TimeSpan.FromSeconds(3));
         Require(PhysicalValue.Text == $"{62:0.0}%" && CommitValue.Text == $"{90:0.0}%"
             && CacheValue.Text == "128 MB" && PhysicalBar.Value == 62 && CommitBar.Value == 90
             && CacheBar.Value == 12.5 && !_metricsReturning && _lastPercent == realPercent,
             "Animation restores the newest real sample without changing the scheduling/tray reading");
 
         BeginMetricsCleanup(); EndMetricsCleanup();
-        await Task.Delay(1200);
+        await App.WaitUntilAsync(() => !_metricsToZero && !_metricsReturning, TimeSpan.FromSeconds(3));
         Require(!_metricsToZero && !_metricsReturning && PhysicalBar.Value == 62,
             "A fast cleanup completes both animation phases without a stuck timer");
         BeginMetricsCleanup();
