@@ -20,6 +20,9 @@ public sealed partial class MainWindow : Window
     private bool _ready, _cleaning, _exitRequested, _sampleFailed, _restartPromptOpen, _elevating;
     private bool _startupCleanupPending;
     private bool _startupEnabled;
+    private bool _helperReady, _helperProbeBusy;
+    private DateTimeOffset _nextHelperProbe;
+    private bool CanCleanMemory => Installation.IsInstalled ? _helperReady : MemoryEngine.IsAdministrator;
     private SettingsView SettingsPage { get; set; } = null!;
     private bool _startupReadable = true;
     private bool _statsStacked;
@@ -38,7 +41,7 @@ public sealed partial class MainWindow : Window
     internal bool CanStayInTray => _tray?.IsVisible == true;
     private bool CanRenderWindow => !_exitRequested && AppWindow.IsVisible
         && AppWindow.Presenter is not OverlappedPresenter { State: OverlappedPresenterState.Minimized };
-    private bool CanStartAutomaticCleanup => !_exitRequested && !_cleaning && !_restartPromptOpen && !_elevating && !_startupCleanupPending && !_sampleFailed;
+    private bool CanStartAutomaticCleanup => !_exitRequested && !_cleaning && !_restartPromptOpen && !_elevating && !_helperProbeBusy && !_startupCleanupPending && !_sampleFailed;
 
     public MainWindow(AppSettings settings, bool checking)
     {
@@ -100,6 +103,8 @@ public sealed partial class MainWindow : Window
         Closed += (_, _) => { PrepareToExit(); _timer?.Stop(); _animationTimer?.Stop(); _tray?.Dispose(); ((App)Application.Current).Finish(); };
         Shell.Loaded += async (_, _) =>
         {
+            if (!_checking && Installation.IsInstalled) await RefreshHelperAsync(startTask: true);
+            if (_exitRequested) return;
             foreach (var button in new[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab })
             {
                 var shadow = new Microsoft.UI.Xaml.Media.ThemeShadow();
@@ -242,6 +247,7 @@ public sealed partial class MainWindow : Window
         if (AppWindow.Presenter is OverlappedPresenter presenter) presenter.IsAlwaysOnTop = _settings.AlwaysOnTop;
         if (SettingsPage is not null)
         {
+            SettingsPage.StartupSwitch.IsEnabled = _startupReadable && !_cleaning && !_elevating;
             SetText(SettingsPage.AdvancedCleanupSummary, UiText.Get("AdvancedCleanupSummary", AdvancedCleanupCount()));
             SettingsPage.ThresholdNumber.IsEnabled = _settings.AutoThreshold;
             SettingsPage.IntervalNumber.IsEnabled = _settings.AutoInterval;
@@ -251,16 +257,12 @@ public sealed partial class MainWindow : Window
         }
         CleanButton.IsEnabled = !_cleaning && !_restartPromptOpen && !_elevating && _settings.Areas != CleanAreas.None;
         ElevateButton.IsEnabled = !_cleaning && !_restartPromptOpen && !_elevating;
+        if (Installation.IsInstalled) ElevateButton.Content = UiText.Get("AuthorizeHelper");
         if (_elevating) CleanButton.Content = UiText.Get("ElevationStarting");
-        else if (!_cleaning) CleanButton.Content = UiText.Get(MemoryEngine.IsAdministrator ? "CleanMemory" : "AuthorizeClean");
-        CleanDescription.Text = UiText.Get(MemoryEngine.IsAdministrator ? "CleanDescription" : "AuthorizeDescription");
-        if (Installation.IsInstalled)
-        {
-            if (!MemoryEngine.IsAdministrator && !(SettingsPage is null ? _startupEnabled : SettingsPage.StartupSwitch.IsOn))
-                CleanDescription.Text = UiText.Get("AuthorizeSessionDescription");
-        }
+        else if (!_cleaning) CleanButton.Content = UiText.Get(CanCleanMemory ? "CleanMemory" : "AuthorizeClean");
+        CleanDescription.Text = UiText.Get(CanCleanMemory ? "CleanDescription" : Installation.IsInstalled ? "HelperAuthorizeDescription" : "AuthorizeDescription");
         AdminBanner.IsOpen = !_gameActive && (_settings.AutoThreshold || _settings.AutoInterval)
-            && _settings.AutomaticAreas != CleanAreas.None && !MemoryEngine.IsAdministrator;
+            && _settings.AutomaticAreas != CleanAreas.None && !CanCleanMemory;
         AdminBanner.Visibility = AdminBanner.IsOpen ? Visibility.Visible : Visibility.Collapsed;
         var modes = new List<string>();
         if (_settings.AutoThreshold) modes.Add(UiText.Get("ThresholdMode", _settings.Threshold));
@@ -334,7 +336,9 @@ public sealed partial class MainWindow : Window
             if (CanRenderWindow) { UpdateStats(snapshot); RenderHistory(); }
             SetSamplingState(false);
             UpdateTraySafely();
-            if (CanStartAutomaticCleanup && MemoryEngine.IsAdministrator && _settings.IsAutoDue(snapshot.PhysicalPercent, DateTimeOffset.UtcNow, _lastAttempt, _gameActive, _thresholdRetryAfter))
+            if (!_checking && Installation.IsInstalled && !_helperProbeBusy && !_cleaning && !_elevating && DateTimeOffset.UtcNow >= _nextHelperProbe)
+                _ = RefreshHelperAsync(startTask: !_helperReady);
+            if (CanStartAutomaticCleanup && CanCleanMemory && _settings.IsAutoDue(snapshot.PhysicalPercent, DateTimeOffset.UtcNow, _lastAttempt, _gameActive, _thresholdRetryAfter))
                 _ = CleanAsync(false);
         }
         catch (Exception error)
@@ -647,13 +651,14 @@ public sealed partial class MainWindow : Window
     {
         if (!_ready || _checking) return;
         var desired = SettingsPage.StartupSwitch.IsOn;
+        _elevating = true; RefreshOptions();
         SettingsPage.StartupSwitch.IsEnabled = false;
         try
         {
             await StartupRegistration.SetEnabledAsync(desired);
+            _startupEnabled = desired;
             if (_exitRequested) return;
-            if (desired && Installation.IsInstalled && !MemoryEngine.IsAdministrator && SaveSettings())
-            { StartupRegistration.RunInstalled(); ExitWindow(); }
+            if (desired && Installation.IsInstalled) await RefreshHelperAsync(startTask: true);
         }
         catch (Exception error)
         {
@@ -664,7 +669,7 @@ public sealed partial class MainWindow : Window
             _ready = true;
             ReportIssue(UiText.Get("StartupFailed"), error.Message);
         }
-        finally { if (!_exitRequested) { SettingsPage.StartupSwitch.IsEnabled = true; RefreshOptions(); } }
+        finally { _elevating = false; if (!_exitRequested) RefreshOptions(); }
     }
 
     private async void CleanButton_Click(object sender, RoutedEventArgs args) => await CleanAsync(true);
@@ -760,12 +765,18 @@ public sealed partial class MainWindow : Window
                 { SetFeedback(CleanupFeedback.Warning, UiText.Get("CleanupCanceled")); return; }
                 if (firstTrayClick && !SaveCleanupConfirmation(confirmationChoice!.IsChecked == true, hintShown: true)) return;
             }
-            if (!MemoryEngine.IsAdministrator) { await RelaunchElevatedAsync("--clean"); return; }
+            if (Installation.IsInstalled)
+            {
+                if (!_helperReady && !await AuthorizeHelperAsync()) return;
+            }
+            else if (!MemoryEngine.IsAdministrator) { await RelaunchElevatedAsync("--clean"); return; }
+            if (_exitRequested) return;
             _lastAttempt = DateTimeOffset.UtcNow;
             CleanButton.Content = UiText.Get("Cleaning");
             SetFeedback(CleanupFeedback.Cleaning, UiText.Get("Cleaning"));
             cleanupDuration = Stopwatch.StartNew();
-            var result = await Task.Run(() => MemoryEngine.Clean(areas, automatic: !manual));
+            var result = Installation.IsInstalled ? await HelperClient.CleanAsync(areas, automatic: !manual)
+                : await Task.Run(() => MemoryEngine.Clean(areas, automatic: !manual));
             if (_exitRequested) return;
             cleanupDuration.Stop();
             ApplyCleanupResult(manual, result, cleanupDuration.Elapsed);
@@ -809,7 +820,39 @@ public sealed partial class MainWindow : Window
     private static string CleanupOutcomeKey(CleanupResult? result) => result is null || result.CompletedAreas == CleanAreas.None
         ? "CleanupFailed" : result.Errors.Count == 0 ? "CleanupSucceeded" : "PartialCleanup";
 
-    private async void Elevate_Click(object sender, RoutedEventArgs args) => await RelaunchElevatedAsync("");
+    private async Task RefreshHelperAsync(bool startTask)
+    {
+        if (_checking || _exitRequested || _helperProbeBusy) return;
+        _helperProbeBusy = true;
+        try { _helperReady = await HelperClient.TryConnectAsync(startTask); }
+        finally { _helperProbeBusy = false; _nextHelperProbe = DateTimeOffset.UtcNow.AddSeconds(10); if (!_exitRequested) RefreshOptions(); }
+    }
+
+    private async Task<bool> AuthorizeHelperAsync()
+    {
+        if (_checking || _exitRequested || _elevating) return false;
+        _elevating = true; RefreshOptions();
+        try
+        {
+            // Reopening reuses the fixed protected task before requesting any new UAC consent.
+            _helperReady = await HelperClient.TryConnectAsync(startAuthorizedTask: true);
+            if (_exitRequested) return false;
+            if (!_helperReady)
+            {
+                await HelperClient.ConfigureAsync("authorize");
+                _helperReady = await HelperClient.TryConnectAsync(startAuthorizedTask: true);
+            }
+            if (!_helperReady) throw new InvalidOperationException(UiText.Get("HelperUnavailable"));
+            return !_exitRequested;
+        }
+        catch (Win32Exception error) when (error.NativeErrorCode == 1223)
+        { SetFeedback(CleanupFeedback.Warning, UiText.Get("ElevationCanceled")); return false; }
+        catch (Exception error) { ReportIssue(UiText.Get("PermissionRequired"), error.Message); return false; }
+        finally { _elevating = false; if (!_exitRequested) RefreshOptions(); }
+    }
+
+    private async void Elevate_Click(object sender, RoutedEventArgs args)
+    { if (Installation.IsInstalled) await AuthorizeHelperAsync(); else await RelaunchElevatedAsync(""); }
     private async Task RelaunchElevatedAsync(string intent)
     {
         if (_checking || _exitRequested || _elevating || _restartPromptOpen) return;

@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Security.Principal;
+using System.Xml.Linq;
 
 namespace MemReduct.Fluent;
 
@@ -138,19 +139,33 @@ public sealed partial class MainWindow
         public void Report(long value) => report(value);
     }
 
+    private static void CheckHelperProtocol()
+    {
+        HelperProtocol.ParseRequest(HelperProtocol.Request(true, (CleanAreas)255, true, true), out var clean, out var areas, out var automatic, out var chinese);
+        Require(clean && automatic && chinese && (areas & MemoryEngine.ManualOnlyAreas) == 0, "Helper independently strips starred automatic areas");
+        var result = HelperProtocol.ParseResponse(HelperProtocol.Response(new CleanupResult(42, ["中文 / error"], CleanAreas.WorkingSets)));
+        Require(result.FreedBytes == 42 && result.CompletedAreas == CleanAreas.WorkingSets && result.Errors.SequenceEqual(["中文 / error"]), "Bounded helper results round-trip");
+        foreach (var invalid in new[] { new byte[0], new byte[13], HelperProtocol.Request(false, CleanAreas.None, false, false) })
+        {
+            if (invalid.Length == 12) invalid[5] = 3;
+            var rejected = false;
+            try { HelperProtocol.ParseRequest(invalid, out _, out _, out _, out _); } catch (InvalidDataException) { rejected = true; }
+            Require(rejected, "Malformed helper requests and unknown operations are rejected");
+        }
+        foreach (var invalid in new[] { new byte[19], new byte[HelperProtocol.MaximumResponse + 1], HelperProtocol.Response(new CleanupResult(0, [], CleanAreas.None)).Concat(new byte[] { 0 }).ToArray() })
+        {
+            var rejected = false;
+            try { HelperProtocol.ParseResponse(invalid); } catch (InvalidDataException) { rejected = true; }
+            Require(rejected, "Truncated, oversized and trailing helper responses are rejected");
+        }
+    }
+
     private static void CheckInstallationAndUpdates(string directory)
     {
         // Exercise the installed COM path inside WinUI even when this check runs from a portable build.
-        var startupEnabled = StartupRegistration.IsInstalledStartupEnabled();
+        var startupEnabled = HelperTasks.StartupEnabled();
         File.WriteAllText(Path.Combine(directory, "startup-read.json"), JsonSerializer.Serialize(new { startupEnabled }));
         Require(Installation.IsInstalledPath(Installation.ExecutablePath), "The registered installed path is recognized");
-        Require(StartupRegistration.ShouldReuseStartup(true, false, ["app.exe"])
-            && StartupRegistration.ShouldReuseStartup(true, false, ["app.exe", "--restart"]), "Manual installed launches reuse existing authorization");
-        Require(!StartupRegistration.ShouldReuseStartup(false, false, ["app.exe"])
-            && !StartupRegistration.ShouldReuseStartup(true, true, ["app.exe"]), "Portable and already elevated processes do not relaunch");
-        foreach (var argument in new[] { "--self-check", "--elevated", "--minimized", "--clean", "--install-update", "--configure-startup", "--import-settings" })
-            Require(!StartupRegistration.ShouldReuseStartup(true, false, ["app.exe", argument]),
-                "Helper, background and explicit action launches cannot recurse or replay through the startup task");
         var customDirectory = Installation.ResolveDirectory(@"D:\Apps\内存工具\");
         Require(customDirectory == @"D:\Apps\内存工具"
             && Installation.MatchesExecutable(@"d:\apps\内存工具\MemReduct.Fluent.exe", customDirectory),
@@ -176,13 +191,26 @@ public sealed partial class MainWindow
             "Creating sibling directories does not grant replacement of the installation");
 
         const string sid = "S-1-5-21-111-222-333-1001";
-        var xml = StartupRegistration.CreateTaskXml(sid, Installation.ExecutablePath);
+        var xml = HelperTasks.CreateXml(sid, true);
         File.WriteAllText(Path.Combine(directory, "startup-task.xml"), xml);
-        Require(StartupRegistration.MatchesTask(xml, sid, Installation.ExecutablePath), "Task runs the exact executable at this user's interactive logon");
-        Require(!StartupRegistration.MatchesTask(xml.Replace("HighestAvailable", "LeastPrivilege"), sid, Installation.ExecutablePath), "Non-elevated tasks are not mistaken for elevated startup");
-        Require(!StartupRegistration.MatchesTask(xml.Replace("--elevated --minimized", "--clean"), sid, Installation.ExecutablePath), "Changed task arguments are rejected");
-        Require(!StartupRegistration.MatchesTask(xml, sid + "1", Installation.ExecutablePath), "Other users' tasks are rejected");
+        Require(HelperTasks.Matches(xml, sid), "Task runs the exact executable at this user's interactive logon");
+        Require(!HelperTasks.Matches(xml.Replace("HighestAvailable", "LeastPrivilege"), sid), "Non-elevated tasks are not mistaken for elevated startup");
+        Require(!HelperTasks.Matches(xml.Replace("--serve " + sid, "--clean"), sid), "Changed task arguments are rejected");
+        Require(!HelperTasks.Matches(xml, sid + "1"), "Other users' tasks are rejected");
         Require(xml.Contains("PT0S") && xml.Contains("<DisallowStartIfOnBatteries>false"), "Tray startup is not time-limited or AC-only");
+
+        Require(HelperTasks.Matches(HelperTasks.CreateXml(sid, false), sid) && !xml.Contains(Installation.ExecutablePath), "Authorization is reusable on demand; no task elevates the D-drive UI");
+        using (var identity = WindowsIdentity.GetCurrent())
+        {
+            var normalized = HelperTasks.CreateXml(identity.User!.Value, true);
+            XNamespace taskNs = "http://schemas.microsoft.com/windows/2004/02/mit/task";
+            var taskXml = System.Xml.Linq.XDocument.Parse(normalized);
+            var trigger = taskXml.Root!.Element(taskNs + "Triggers")!.Element(taskNs + "LogonTrigger")!;
+            trigger.Element(taskNs + "UserId")!.Value = identity.Name;
+            trigger.Element(taskNs + "Enabled")!.Remove();
+            Require(HelperTasks.Matches(taskXml.ToString(), identity.User.Value), "Windows-normalized account names and omitted default Enabled nodes retain the same SID boundary");
+        }
+        CheckHelperProtocol();
 
         // All migration files live in this self-check output, never beside the user's executable.
         var migration = Path.Combine(directory, "settings-import-check");

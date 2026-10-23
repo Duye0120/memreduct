@@ -31,6 +31,7 @@ try {
     }
     & $dotnet build $project @properties -c Release --no-restore --nologo -v:minimal
     if ($LASTEXITCODE -ne 0) { throw 'Incremental build failed. The application was not launched.' }
+    & (Join-Path $PSScriptRoot 'build-helper.ps1') -OutputDirectory (Join-Path $output 'HelperPayload') -IntermediateDirectory (Join-Path $BuildRoot 'helper-obj') -DotNet $dotnet
     if (!(Test-Path -LiteralPath (Join-Path $output 'MemReduct.Fluent.exe'))) { throw 'Build did not produce the expected executable.' }
 }
 finally {

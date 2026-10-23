@@ -50,6 +50,7 @@ try {
     if ($settingsHash -ne $after) { throw 'Settings changed during publish; inspect them before proceeding.' }
 }
 if (Get-ChildItem -LiteralPath $stage -Filter 'settings.json*' -Recurse) { throw 'User settings must never be packaged.' }
+& (Join-Path $PSScriptRoot 'build-helper.ps1') -OutputDirectory (Join-Path $stage 'HelperPayload') -IntermediateDirectory (Join-Path $BuildRoot 'helper-obj') -DotNet $dotnet
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 & $Compiler ('/DAppSource=' + $stage) ('/DInstallerOutput=' + $OutputDirectory) ('/DAppVersion=' + $version) `
     ('/DVersionMajor=' + $parsed.Major) ('/DVersionMinor=' + $parsed.Minor) ('/DVersionPatch=' + $parsed.Build) `

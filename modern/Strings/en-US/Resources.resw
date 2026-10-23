@@ -310,7 +310,7 @@
   <data name="TrayFirstCleanTitle" xml:space="preserve"><value>Left-click the tray to clean</value></data>
   <data name="TrayFirstCleanMessage" xml:space="preserve"><value>Left-click the tray number to clean the selected memory areas; right-click to open the menu. Apps may briefly reload cached data afterward. Choose whether future manual cleanups need confirmation. You can change this in the tray menu or Settings.</value></data>
   <data name="TrayConfirmChoice" xml:space="preserve"><value>Keep asking before manual cleanup</value></data>
-  <data name="TrayInstalledAuthorization" xml:space="preserve"><value>This preference does not change Windows administrator consent. Authorization lasts for this app session. Enable startup in Settings and authorize it to run as administrator automatically at future sign-ins.</value></data>
+  <data name="TrayInstalledAuthorization" xml:space="preserve"><value>This choice only controls cleanup confirmation. Authorize the protected cleanup helper once; reopening can reuse it. Enable startup to launch the app and helper at sign-in.</value></data>
   <data name="TrayPortableAuthorization" xml:space="preserve"><value>This preference does not change Windows administrator consent. Authorization lasts for this app session. Reopening the portable app may require consent again; the installed app supports administrator startup.</value></data>
   <data name="TrayBehaviorNote.Text" xml:space="preserve"><value>Tray: left-click to clean, right-click for menu. Orange at 70%, red at 90%. Purple spinner while cleaning, green on success, orange/red on errors.</value></data>
   <data name="NotifyCleanupLabel.Text" xml:space="preserve"><value>Notify after successful cleanup</value></data>
@@ -318,7 +318,7 @@
   <data name="CleanupSucceeded" xml:space="preserve"><value>Memory cleanup complete</value></data>
   <data name="CleanupNotification" xml:space="preserve"><value>Available memory increased by {0}.</value></data>
   <data name="InstalledOnly" xml:space="preserve"><value>Install the app using its installer before enabling elevated startup or installing updates.</value></data>
-  <data name="InstalledStartupNote" xml:space="preserve"><value>With a protected installation folder, authorize once to reuse administrator permission at sign-in and when reopening.</value></data>
+  <data name="InstalledStartupNote" xml:space="preserve"><value>The app keeps ordinary permissions. Enable startup to launch the app and protected cleanup helper at sign-in; first-time setup needs this account's authorization.</value></data>
   <data name="StartupAdminFailed" xml:space="preserve"><value>Startup setup did not finish. Authorize with the currently signed-in administrator account, not another account.</value></data>
   <data name="UpdateButton.Content" xml:space="preserve"><value>Check for updates</value></data>
   <data name="ReleasesLink.Content" xml:space="preserve"><value>Downloads and release notes</value></data>
@@ -364,7 +364,7 @@
   <data name="UpdateDownloadCanceled" xml:space="preserve"><value>Download canceled and partial file removed. Check for updates again when ready.</value></data>
   <data name="UpdateDownloadProgress" xml:space="preserve"><value>Downloading {0:0}% · {1} / {2}</value></data>
   <data name="UpdateProgress.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Update download progress</value></data>
-  <data name="InstalledStartupOn" xml:space="preserve"><value>Administrator startup is enabled. Sign-in starts the tray app; reopening also reuses authorization.</value></data>
+  <data name="InstalledStartupOn" xml:space="preserve"><value>Sign-in starts the app and cleanup helper. The app keeps ordinary permissions; reopening reuses the helper's authorization.</value></data>
   <data name="AuthorizeSessionDescription" xml:space="preserve"><value>Authorization lasts for this session. Enable administrator startup to reuse it when reopening.</value></data>
   <data name="CleanupHistoryHeading.Text" xml:space="preserve"><value>Recent cleanups · This session</value></data>
   <data name="CleanupHistoryResult" xml:space="preserve"><value>Available memory increased by {0} · {1:0.0} seconds</value></data>
@@ -382,4 +382,7 @@
   <data name="ProcessesFailed" xml:space="preserve"><value>Could not refresh processes. Previous results are retained.</value></data>
   <data name="UserAccessUnavailable" xml:space="preserve"><value>Could not access settings or the download cache with this account's ordinary permissions. Keep Windows UAC enabled and run from a normal signed-in account.</value></data>
   <data name="SettingsTooLarge" xml:space="preserve"><value>The settings file exceeds 64 KiB and cannot be read. The original file was not modified.</value></data>
+  <data name="HelperAuthorizeDescription" xml:space="preserve"><value>Authorize the protected cleanup helper once and reuse it when reopening. The app keeps ordinary permissions.</value></data>
+  <data name="HelperUnavailable" xml:space="preserve"><value>The cleanup helper could not start. Repair the installation with the latest setup package and retry.</value></data>
+  <data name="AuthorizeHelper" xml:space="preserve"><value>Authorize cleanup helper</value></data>
 </root>

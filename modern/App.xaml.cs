@@ -41,14 +41,6 @@ public partial class App : Application
                 await UpdateService.InstallDownloadedAsync(Arguments[index + 1]);
                 Exit(); return;
             }
-            if (!checking && Arguments.Contains("--configure-startup"))
-            {
-                var index = Array.IndexOf(Arguments, "--configure-startup");
-                if (index + 2 >= Arguments.Length || Arguments[index + 1] is not ("on" or "off")) throw new ArgumentException("Invalid startup request.");
-                StartupRegistration.ConfigureInstalled(Arguments[index + 1] == "on", Arguments[index + 2]);
-                Exit(); return;
-            }
-            string? startupResumeError = null;
             AppSettings? elevatedSettings = null;
             if (!checking && Arguments.Contains(ElevationHandoff.Argument))
             {
@@ -59,21 +51,6 @@ public partial class App : Application
                 // Read only after matching the caller; the original window stays alive until this succeeds.
                 elevatedSettings = SettingsStore.Load();
                 ElevationHandoff.WaitForTransfer(request, TimeSpan.FromSeconds(10));
-            }
-            if (!checking && StartupRegistration.ShouldReuseStartup(Installation.IsInstalled, MemoryEngine.IsAdministrator, Arguments))
-            {
-                try
-                {
-                    if (StartupRegistration.IsInstalledStartupEnabled())
-                    {
-                        // Do not acquire the instance mutex while the elevated process is starting.
-                        StartupRegistration.RunInstalled();
-                        if (await WaitUntilAsync(TrayIcon.TryShowExistingWindow, TimeSpan.FromSeconds(10)))
-                        { Exit(); return; }
-                        throw new TimeoutException("The authorized startup task did not open a responsive window within 10 seconds.");
-                    }
-                }
-                catch (Exception error) { startupResumeError = error.Message; }
             }
             if (!checking)
             {
@@ -93,7 +70,6 @@ public partial class App : Application
             settings.Normalize();
             UiText.Initialize(settings.Language);
             _window = new MainWindow(settings, checking);
-            if (startupResumeError is not null) _window.ReportStartupResumeFailure(startupResumeError);
             if (checking)
             {
                 var index = Array.IndexOf(Arguments, "--self-check");

@@ -52,6 +52,7 @@ jobs:
           $output = Join-Path $env:RUNNER_TEMP 'memreduct-winui'
           dotnet publish modern/MemReduct.Fluent.csproj -c Release -p:Platform=x64 --no-restore -o $output
           if ($LASTEXITCODE -ne 0) { throw 'WinUI publish failed.' }
+          ./modern/build-helper.ps1 -OutputDirectory (Join-Path $output 'HelperPayload') -IntermediateDirectory (Join-Path $env:RUNNER_TEMP 'helper-obj')
           if (!(Test-Path (Join-Path $output 'MemReduct.Fluent.exe'))) { throw 'Executable is missing.' }
           if (Get-ChildItem $output -Filter 'settings.json*' -Recurse) { throw 'Settings must not be packaged.' }
           Copy-Item LICENSE (Join-Path $output 'LICENSE.txt')

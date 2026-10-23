@@ -16,10 +16,10 @@ This is an ongoing improvement program, not a declaration that the product is co
 
 ## Confirmed priorities
 
-1. Manual reopen now reuses an existing authorized login task and waits for an elevated window to respond. Routing and timeout checks pass; real installed-app consent/reopen validation remains pending. Cleanup/import/update helper arguments are excluded.
+1. Version 0.0.5 replaces the elevated UI relaunch with an ordinary UI and protected cleanup helper; manual reopen reuses a fixed per-user task. Installed consent/reopen and login acceptance remain required.
 2. Build scripts now limit running-process guards to output directories, while rejecting inaccessible process paths. The separate installed copy no longer blocks the fixed preview build.
 3. Installation size is primarily bundled runtime code. The 0.0.2 staging directory includes a roughly 25 MiB Windows SDK projection, 15 MiB .NET core library and 15 MiB WinUI native DLL. Measure a supported trimming strategy before changing release defaults; do not delete runtime DLLs manually.
-4. A custom user-writable installation currently loses persistent elevated startup and automatic update installation. Investigate a small protected helper design that preserves user-chosen UI locations without granting elevated execution to replaceable files. Current permission checks must remain until a complete design and validation replace them.
+4. Version 0.0.5 implements a small protected cleanup helper so a user-writable D-drive UI can use persistent cleanup authorization and login startup. Automatic update installation still requires a protected UI installation; that separate update boundary is unchanged. See the installation guide for the fixed helper, protocol and task contracts.
 5. Inspect the current real UI and consolidate permission/update status text. Validate readability rather than treating successful compilation as visual approval.
 
 ## Implemented in the next-version source

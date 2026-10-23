@@ -1,3 +1,6 @@
+#if !HELPER
+#nullable disable // Shared C# 6 sources target the Windows .NET Framework helper.
+#endif
 // Native cleanup operations are derived from Henry++'s Mem Reduct (GPL-3.0).
 using System.ComponentModel;
 using System.Globalization;
@@ -5,8 +8,12 @@ using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace MemReduct.Fluent;
+namespace MemReduct.Fluent
+{
 
 [Flags]
 public enum CleanAreas
@@ -15,6 +22,7 @@ public enum CleanAreas
     ModifiedFileCache = 8, ModifiedPages = 16, Standby = 32, RegistryCache = 64, CombinePages = 128
 }
 
+#if !HELPER
 public sealed record MemorySnapshot(ulong PhysicalTotal, ulong PhysicalAvailable, ulong CommitUsed,
     ulong CommitLimit, ulong? CacheCurrent, ulong? CachePeak)
 {
@@ -27,6 +35,16 @@ public sealed record MemorySnapshot(ulong PhysicalTotal, ulong PhysicalAvailable
 }
 
 public sealed record CleanupResult(ulong FreedBytes, IReadOnlyList<string> Errors, CleanAreas CompletedAreas);
+#else
+public sealed class CleanupResult
+{
+    public ulong FreedBytes { get; private set; }
+    public IReadOnlyList<string> Errors { get; private set; }
+    public CleanAreas CompletedAreas { get; private set; }
+    public CleanupResult(ulong bytes, IReadOnlyList<string> errors, CleanAreas completed)
+    { FreedBytes = bytes; Errors = errors; CompletedAreas = completed; }
+}
+#endif
 
 internal static class MemoryEngine
 {
@@ -34,6 +52,7 @@ internal static class MemoryEngine
     private const CleanAreas AllAreas = (CleanAreas)255;
     internal static CleanAreas ForAutomaticCleanup(CleanAreas areas) => areas & ~ManualOnlyAreas;
 
+#if !HELPER
     internal static (CleanAreas Area, string Key)[] GetOperations(CleanAreas areas, bool automatic)
     {
         ValidateAreas(areas);
@@ -47,10 +66,6 @@ internal static class MemoryEngine
         ];
         return operations.Where(operation => areas.HasFlag(operation.Area)).ToArray();
     }
-    public static bool IsAdministrator { get; } = ReadAdministrator();
-    private static bool ReadAdministrator()
-    { using var identity = WindowsIdentity.GetCurrent(); return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator); }
-
     public static MemorySnapshot Read()
     {
         var memory = ReadPhysical();
@@ -94,18 +109,45 @@ internal static class MemoryEngine
         }
         return (completed, errors);
     }
+#else
+    public static CleanupResult Clean(CleanAreas areas, bool automatic = false)
+    {
+        ValidateAreas(areas);
+        if (automatic) areas = ForAutomaticCleanup(areas);
+        if (!IsAdministrator) throw new UnauthorizedAccessException(UiText.Get("PermissionRequired"));
+        var before = ReadPhysical();
+        var errors = new List<string>();
+        var completed = CleanAreas.None;
+        var order = new[] { 1, 2, 8, 16, 32, 4, 64, 128 };
+        foreach (var value in order)
+        {
+            var area = (CleanAreas)value;
+            if ((areas & area) == 0) continue;
+            var name = UiText.OperationName(area);
+            var count = errors.Count;
+            try { CleanOperation(area, name, errors); if (errors.Count == count) completed |= area; }
+            catch (Win32Exception error) { errors.Add(name + ": " + error.Message); }
+        }
+        var after = ReadPhysical();
+        return new CleanupResult(after.AvailablePhysical > before.AvailablePhysical ? after.AvailablePhysical - before.AvailablePhysical : 0, errors, completed);
+    }
+#endif
+    public static bool IsAdministrator { get; } = ReadAdministrator();
+    private static bool ReadAdministrator()
+    { using (var identity = WindowsIdentity.GetCurrent()) return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator); }
 
     private static void CleanOperation(CleanAreas area, string name, List<string> errors)
     {
         // Each operation owns its privilege scope, so a denied privilege cannot prevent unrelated cleanup.
-        using var profile = (area & (CleanAreas.WorkingSets | CleanAreas.LowPriorityStandby | ManualOnlyAreas | CleanAreas.CombinePages)) != 0
-            ? new PrivilegeScope("SeProfileSingleProcessPrivilege") : null;
-        using var quota = area == CleanAreas.SystemCache ? new PrivilegeScope("SeIncreaseQuotaPrivilege") : null;
+        using (var profile = (area & (CleanAreas.WorkingSets | CleanAreas.LowPriorityStandby | ManualOnlyAreas | CleanAreas.CombinePages)) != 0
+            ? new PrivilegeScope("SeProfileSingleProcessPrivilege") : null)
+        using (var quota = area == CleanAreas.SystemCache ? new PrivilegeScope("SeIncreaseQuotaPrivilege") : null)
+        {
         switch (area)
         {
             case CleanAreas.WorkingSets: RunListCommand(2, name, errors); break;
             case CleanAreas.SystemCache:
-                if (!SetSystemFileCacheSize(UIntPtr.MaxValue, UIntPtr.MaxValue, 0)) throw new Win32Exception(Marshal.GetLastWin32Error());
+                if (!SetSystemFileCacheSize(new UIntPtr(ulong.MaxValue), new UIntPtr(ulong.MaxValue), 0)) throw new Win32Exception(Marshal.GetLastWin32Error());
                 break;
             case CleanAreas.ModifiedFileCache: FlushVolumeCaches(name, errors); break;
             case CleanAreas.ModifiedPages: RunListCommand(3, name, errors); break;
@@ -116,6 +158,7 @@ internal static class MemoryEngine
                 var combine = new CombineInfo();
                 CheckStatus(NtSetSystemInformation(130, ref combine, Marshal.SizeOf<CombineInfo>()));
                 break;
+        }
         }
     }
 
@@ -143,10 +186,11 @@ internal static class MemoryEngine
 
     internal static string VolumeDevicePath(string volume)
     {
+        Guid parsed;
         if (volume.Length != 49 || !volume.StartsWith(@"\\?\Volume{", StringComparison.Ordinal)
-            || !volume.EndsWith(@"}\", StringComparison.Ordinal) || !Guid.TryParse(volume.AsSpan(11, 36), out _))
+            || !volume.EndsWith(@"}\", StringComparison.Ordinal) || !Guid.TryParse(volume.Substring(11, 36), out parsed))
             throw new ArgumentException("Invalid volume GUID path.", nameof(volume));
-        return volume[..^1];
+        return volume.Substring(0, volume.Length - 1);
     }
 
     private static void FlushVolumeCaches(string name, List<string> errors)
@@ -183,9 +227,11 @@ internal static class MemoryEngine
             if (!OpenProcessToken(new IntPtr(-1), 0x28, out _token)) throw new Win32Exception(Marshal.GetLastWin32Error());
             try
             {
-                if (!LookupPrivilegeValue(null, name, out var luid)) throw new Win32Exception(Marshal.GetLastWin32Error());
+                Luid luid;
+                int returned;
+                if (!LookupPrivilegeValue(null, name, out luid)) throw new Win32Exception(Marshal.GetLastWin32Error());
                 var requested = new TokenPrivileges { Count = 1, Luid = luid, Attributes = 2 };
-                if (!AdjustTokenPrivileges(_token, false, ref requested, Marshal.SizeOf<TokenPrivileges>(), out _previous, out _))
+                if (!AdjustTokenPrivileges(_token, false, ref requested, Marshal.SizeOf<TokenPrivileges>(), out _previous, out returned))
                     throw new Win32Exception(Marshal.GetLastWin32Error());
                 if (Marshal.GetLastWin32Error() != 0) throw new Win32Exception(Marshal.GetLastWin32Error());
             }
@@ -193,8 +239,10 @@ internal static class MemoryEngine
         }
         public void Dispose()
         {
+            TokenPrivileges ignored;
+            int returned;
             if (_previous.Count != 0)
-                AdjustTokenPrivileges(_token, false, ref _previous, Marshal.SizeOf<TokenPrivileges>(), out _, out _);
+                AdjustTokenPrivileges(_token, false, ref _previous, Marshal.SizeOf<TokenPrivileges>(), out ignored, out returned);
             _token.Dispose();
         }
     }
@@ -251,8 +299,9 @@ internal static class MemoryEngine
     [DllImport("advapi32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)] private static extern bool OpenProcessToken(IntPtr process, uint access, out SafeAccessTokenHandle token);
     [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)] private static extern bool LookupPrivilegeValue(string? system, string name, out Luid luid);
+    [return: MarshalAs(UnmanagedType.Bool)] private static extern bool LookupPrivilegeValue(string system, string name, out Luid luid);
     [DllImport("advapi32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)] private static extern bool AdjustTokenPrivileges(SafeAccessTokenHandle token, bool disableAll,
         ref TokenPrivileges requested, int size, out TokenPrivileges previous, out int returned);
+}
 }

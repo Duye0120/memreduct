@@ -39,7 +39,9 @@ Name: "zhcn"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 Name: "en"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "{#AppSource}\*"; DestDir: "{app}"; Excludes: "settings.json,settings.json.tmp,*.pdb,*.log,Updates\*"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#AppSource}\*"; DestDir: "{app}"; Excludes: "settings.json,settings.json.tmp,*.pdb,*.log,Updates\*,HelperPayload\*"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#AppSource}\HelperPayload\MemReduct.Helper.exe"; DestDir: "{commonpf64}\MemReduct Helper"; Flags: ignoreversion
+Source: "{#AppSource}\HelperPayload\MemReduct.Helper.exe.config"; DestDir: "{commonpf64}\MemReduct Helper"; Flags: ignoreversion
 Source: "..\..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion
 
 [Icons]
@@ -54,6 +56,7 @@ Filename: "{app}\MemReduct.Fluent.exe"; Flags: nowait skipifsilent runasoriginal
 Type: files; Name: "{app}\Updates\update.exe"
 Type: files; Name: "{app}\Updates\update.exe.partial"
 Type: dirifempty; Name: "{app}\Updates"
+Type: dirifempty; Name: "{commonpf64}\MemReduct Helper"
 
 [CustomMessages]
 zhcn.ImportTitle=导入便携版设置（可选）
@@ -82,6 +85,65 @@ var
 
 function GetFileAttributesW(const FileName: String): Cardinal;
   external 'GetFileAttributesW@kernel32.dll stdcall';
+
+function ConvertStringSecurityDescriptorToSecurityDescriptorW(Sddl: String; Revision: Cardinal; var Descriptor: NativeUInt; var Size: Cardinal): Boolean;
+  external 'ConvertStringSecurityDescriptorToSecurityDescriptorW@advapi32.dll stdcall';
+function SetFileSecurityW(FileName: String; Information: Cardinal; Descriptor: NativeUInt): Boolean;
+  external 'SetFileSecurityW@advapi32.dll stdcall';
+function LocalFree(Memory: NativeUInt): NativeUInt;
+  external 'LocalFree@kernel32.dll stdcall';
+
+procedure ProtectHelperPath(Path: String);
+var Descriptor: NativeUInt;
+    Size: Cardinal;
+begin
+  if not ConvertStringSecurityDescriptorToSecurityDescriptorW('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1200a9;;;BU)', 1, Descriptor, Size) then
+    RaiseException('Could not create the cleanup helper security descriptor.');
+  try
+    if not SetFileSecurityW(Path, $80000007, Descriptor) then
+      RaiseException('Could not protect the cleanup helper: ' + Path);
+  finally
+    LocalFree(Descriptor);
+  end;
+end;
+
+procedure StopHelperTasks(DeleteTasks: Boolean);
+var Service, Folder, Tasks, Task, Definition, Actions, Action: Variant;
+    I: Integer;
+    Sid: String;
+    Matches: Boolean;
+begin
+  Service := CreateOleObject('Schedule.Service');
+  Service.Connect;
+  Folder := Service.GetFolder('\');
+  Tasks := Folder.GetTasks(1);
+  for I := Tasks.Count downto 1 do
+  begin
+    Task := Tasks.Item(I);
+    if Pos('MemReduct.Fluent.Helper.S-1-', Task.Name) = 1 then
+    begin
+      Sid := Copy(Task.Name, Length('MemReduct.Fluent.Helper.') + 1, MaxInt);
+      Definition := Task.Definition;
+      Actions := Definition.Actions;
+      if Actions.Count = 1 then
+      begin
+        Action := Actions.Item(1);
+        Matches := False;
+        try
+          Matches := (CompareText(Action.Path, ExpandConstant('{commonpf64}\MemReduct Helper\MemReduct.Helper.exe')) = 0)
+            and (Action.Arguments = '--serve ' + Sid) and (Definition.Principal.UserId = Sid);
+        except
+          Log('Skipping a task without the expected helper action.');
+        end;
+        if Matches then
+        begin
+          if Task.State = 4 then Task.Stop(0);
+          if DeleteTasks then Folder.DeleteTask(Task.Name, 0);
+        end;
+      end;
+    end;
+  end;
+end;
 
 function HasLink(const Directory: String): Boolean;
 var
@@ -161,6 +223,9 @@ var VersionMS, VersionLS: Cardinal;
 begin
   Result := '';
   SelectedDirectory := RemoveBackslashUnlessRoot(ExpandConstant('{app}'));
+  if (Pos(Lowercase(AddBackslash(ExpandConstant('{commonpf64}\MemReduct Helper'))), Lowercase(AddBackslash(SelectedDirectory))) = 1)
+    or (Pos(Lowercase(AddBackslash(SelectedDirectory)), Lowercase(AddBackslash(ExpandConstant('{commonpf64}\MemReduct Helper')))) = 1) then
+  begin Result := CustomMessage('InvalidDirectory'); exit; end;
   if (Length(SelectedDirectory) <= 3) or (Copy(SelectedDirectory, 2, 2) <> ':\') or HasLink(SelectedDirectory) then
   begin Result := CustomMessage('InvalidDirectory'); exit; end;
   ParentDirectory := SelectedDirectory;
@@ -187,12 +252,54 @@ begin
   end;
 end;
 
+procedure CurStepChanged(CurStep: TSetupStep);
+var Directory, Parent, Executable: String;
+    ResultCode, I: Integer;
+begin
+  Directory := ExpandConstant('{commonpf64}\MemReduct Helper');
+  Executable := AddBackslash(Directory) + 'MemReduct.Helper.exe';
+  if CurStep = ssInstall then
+  begin
+    Parent := Directory;
+    repeat
+      if DirExists(Parent) and ((GetFileAttributesW(Parent) and $400) <> 0) then RaiseException(CustomMessage('InvalidDirectory'));
+      Parent := ExtractFileDir(Parent);
+    until Length(Parent) <= 3;
+    if HasLink(Directory) then RaiseException(CustomMessage('InvalidDirectory'));
+    if not ForceDirectories(Directory) then RaiseException('Could not create the protected cleanup helper directory.');
+    ProtectHelperPath(Directory);
+    StopHelperTasks(False);
+    // Unlink old known files before copying: do not overwrite a pre-existing hard link.
+    for I := 1 to 50 do
+    begin
+      if not FileExists(Executable) or DeleteFile(Executable) then break;
+      Sleep(100);
+    end;
+    if FileExists(Executable) then RaiseException(CustomMessage('CloseFirst'));
+    if FileExists(Executable + '.config') and not DeleteFile(Executable + '.config') then RaiseException('Could not replace the helper configuration.');
+  end;
+  if CurStep = ssPostInstall then
+  begin
+    ProtectHelperPath(Executable);
+    ProtectHelperPath(Executable + '.config');
+    if not Exec(Executable, '--verify', Directory, SW_HIDE, ewWaitUntilTerminated, ResultCode) or (ResultCode <> 0) then
+      RaiseException('Cleanup helper protection verification failed.');
+    if not Exec(Executable, '--migrate-startup', Directory, SW_HIDE, ewWaitUntilTerminated, ResultCode) or (ResultCode <> 0) then
+      MsgBox('The previous startup task could not be migrated. Enable startup in the app settings after installation.', mbInformation, MB_OK);
+  end;
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var Service, Folder, Tasks, Task, Definition, Actions, Action: Variant;
     I: Integer;
     Matches: Boolean;
+    RunCommand: String;
 begin
   if CurUninstallStep <> usUninstall then exit;
+  StopHelperTasks(True);
+  if RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'MemReduct.Fluent', RunCommand) then
+    if CompareText(RunCommand, '"' + ExpandConstant('{app}\MemReduct.Fluent.exe') + '" --minimized') = 0 then
+      RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'MemReduct.Fluent');
   // Delete only this product's tasks before removing files; failures stop the uninstaller.
   Service := CreateOleObject('Schedule.Service');
   Service.Connect;
