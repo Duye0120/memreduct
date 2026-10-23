@@ -14,6 +14,14 @@
 
 安装身份读取 HKLM 64 位卸载项 `{5B9D5C89-F01C-4AB6-A593-DA69B3835832}_is1` 的 `InstallLocation`，不读取用户可写的路径标记。设置位置不随安装目录移动。助手目录、文件和祖先必须通过 ACL、所有者及非链接检查；D 盘 UI 的文件不再进入清理提权入口。应用内安装更新仍沿用原受保护 UI 目录要求，普通用户可写目录请从 Releases 手动下载安装包。安装器仅收紧自己的固定助手目录，绝不修改 `D:\apps` 或其他父目录 ACL。
 
+### 0.0.6 清理动画与状态显示
+
+2026-10-23 已按用户授权发布 [fluent-v0.0.6](https://github.com/Duye0120/memreduct-winui/releases/tag/fluent-v0.0.6) 并设为 latest，源码与标签提交为 `bc1bc54a5b24cdceabd42b132c691fba00fbaca6`。更新日志见 [0.0.6](release-notes-0.0.6.md)，完整英文在上、中文在下。
+
+中英文各通过 31 组现有检查与 48 组布局检查。Inno Setup 7.1.0 生成 `MemReductFluent-0.0.6-win-x64-setup.exe`，大小 46,306,510 字节，SHA-256 为 `bd9d0c3243845b652b1242d13ed88f1953172c175fdc73534f46fb4d50f5838c`；安装包和校验文件的 GitHub 服务端 digest、大小均与本地一致。公开 latest API 返回 0.0.6，通过已安装的 0.0.5 更新解析逻辑确认能识别 0.0.6，且同版本不会重复提示。
+
+安装版与便携版设置文件前后哈希一致，未替用户安装、执行真实清理或修改启动任务。当前 `D:\apps` 和主程序目录仍允许普通用户写入，既有应用内更新会在提供下载前拦截并提示手动安装；完整下载、授权、安装和自动重新打开流程仍需后续验收。
+
 ### 0.0.5 受保护助手
 
 - `HelperTrust.cs`、`HelperTasks.cs`、`HelperProtocol.cs` 为 UI 与助手共用的权限、任务和通信约束；`helper/Program.cs` 不构造 WinUI、不加载个人配置、不执行任意命令或路径。
