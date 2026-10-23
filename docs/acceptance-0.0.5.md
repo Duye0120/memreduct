@@ -1,6 +1,16 @@
-# 0.0.5 local acceptance candidate
+# 0.0.5 release acceptance
 
-This candidate changes installed cleanup authorization to a protected small helper. The UI stays in the registered installation folder with ordinary permissions; settings paths and formats are unchanged. This is a local package for user acceptance, not a published release.
+This version changes installed cleanup authorization to a protected small helper. The UI stays in the registered installation folder with ordinary permissions; settings paths and formats are unchanged. The package was prepared locally, then published at the user's request for installed-app acceptance. Publication does not establish that installed login or privilege reuse has passed.
+
+## Publication
+
+- Published on October 23, 2026 at 10:30:56 China Standard Time as the latest stable [memreduct-winui 0.0.5 release](https://github.com/Duye0120/memreduct-winui/releases/tag/fluent-v0.0.5).
+- Release ID: `421391274`; annotated tag `fluent-v0.0.5` resolves to source commit `2f201dcab7e76206b91799e7222bc2e1f1fe642b`.
+- [Independent Windows build](https://github.com/Duye0120/memreduct-winui/actions/runs/39889649919) passed for that source, including locked restore, x64 publish, resource parity and the small helper's contract check.
+- GitHub's latest-release endpoint confirms `fluent-v0.0.5`, with draft and prerelease both false. The release body matches the English-first/Chinese-second notes in `release-notes-0.0.5.md`.
+- Both uploaded assets report the expected byte counts and server-side SHA-256 digests. The installer digest matches the package identity below; the checksum sidecar digest is `3c91919ed837a2eb70fd4941e6d85090fab7915cbee6aa1ef424c79d1ddc50c2`.
+- The public installer URL returns HTTP 200 with the expected 46,321,648-byte content length; the publicly downloaded checksum file exactly matches the local sidecar.
+- Publishing uploaded existing artifacts only; it did not run setup, alter personal settings, or create a pull request.
 
 ## Package identity
 
