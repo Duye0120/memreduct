@@ -14,6 +14,16 @@
 
 安装身份读取 HKLM 64 位卸载项 `{5B9D5C89-F01C-4AB6-A593-DA69B3835832}_is1` 的 `InstallLocation`，不读取用户可写的路径标记。设置位置不随安装目录移动。助手目录、文件和祖先必须通过 ACL、所有者及非链接检查；D 盘 UI 的文件不进入清理或更新提权入口。0.0.7 起可写的主程序目录也支持应用内更新；0.0.6 及以下的旧程序需先手动覆盖安装一次修复版。安装器仅收紧自己的固定助手目录，绝不修改 `D:\apps` 或其他父目录 ACL。
 
+### 0.0.7 D 盘应用内更新修复
+
+2026-10-23 已发布 [fluent-v0.0.7](https://github.com/Duye0120/memreduct-winui/releases/tag/fluent-v0.0.7) 并设为 latest，源码与标签提交为 `9a0dec53e2fcf81c2d52d28100661e334f0e9e9d`。更新日志见 [0.0.7](release-notes-0.0.7.md)，英文在上、中文在下。
+
+中英文各通过 31 组现有检查与 48 组布局检查，.NET Framework 助手自身检查通过。实际使用同版本 Framework 运行时读取 GitHub 发布信息并解析通过，编译的助手明确声明 .NET Framework 4.8 目标，避免旧目标默认 HTTPS 行为。
+
+Inno Setup 7.1.0 实编译的 `MemReductFluent-0.0.7-win-x64-setup.exe` 为 46,327,607 字节，SHA-256：`537ee7f1e06d074f4684c9203702605826128802f9242d6403a16ecdbf1436dc`。两个上传资产的服务端 digest、大小均与本地一致，公开 latest API 确认 0.0.7。通过修复版真实下载函数完整读取正式发布资产，流式校验大小与 SHA-256 一致，没有另存下载副本或写入用户更新缓存；版本比较和同版不重复提示验证通过。
+
+安装版和便携版设置前后哈希一致，未改启动任务、D 盘 ACL 或已安装文件。真实 UAC、安装/取消向导及普通令牌重开尚未执行；旧版在可写目录仍需手动覆盖安装本修复版一次。
+
 ### 0.0.6 清理动画与状态显示
 
 2026-10-23 已按用户授权发布 [fluent-v0.0.6](https://github.com/Duye0120/memreduct-winui/releases/tag/fluent-v0.0.6) 并设为 latest，源码与标签提交为 `bc1bc54a5b24cdceabd42b132c691fba00fbaca6`。更新日志见 [0.0.6](release-notes-0.0.6.md)，完整英文在上、中文在下。
