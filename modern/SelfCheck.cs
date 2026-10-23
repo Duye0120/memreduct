@@ -20,6 +20,13 @@ public sealed partial class MainWindow
         var checks = new List<string>();
         try
         {
+            // Exercise settings before any diagnostic serializes JSON and warms the runtime.
+            var coldSettings = Path.Combine(directory, "cold-start-settings.json");
+            SettingsStore.Save(new AppSettings { Threshold = 73, ConfirmCleanup = false, TrayCleanupHintShown = true }, coldSettings);
+            var restoredColdSettings = SettingsStore.Load(coldSettings);
+            Require(restoredColdSettings.Threshold == 73 && !restoredColdSettings.ConfirmCleanup && restoredColdSettings.TrayCleanupHintShown,
+                "Cold settings initialization persists the first tray confirmation choice in the isolated profile");
+            checks.Add("Cold settings serialization runs before other JSON diagnostics; file access retains ordinary permissions.");
             AppWindow.IsShownInSwitchers = false;
             AppWindow.Move(new Windows.Graphics.PointInt32(-30000, -30000));
             AppWindow.Show(false);

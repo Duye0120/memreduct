@@ -63,25 +63,26 @@ internal static class SettingsStore
 {
     private static string FilePath => Installation.SettingsPath;
 
-    internal static void ImportIfMissing(string source, string destination) => UserDataAccess.Run(() =>
+    internal static void ImportIfMissing(string source, string destination)
     {
-        if (File.Exists(destination)) return;
-        var json = ReadSettings(source);
+        if (UserDataAccess.Run(() => File.Exists(destination))) return;
+        var json = UserDataAccess.Run(() => ReadSettings(source));
         _ = JsonSerializer.Deserialize<AppSettings>(json) ?? throw new InvalidDataException(UiText.Get("EmptySettings"));
         // Preserve the source and never replace an existing installed profile, including on upgrade.
-        WriteSettings(destination, json, overwrite: false);
-    });
+        UserDataAccess.Run(() => WriteSettings(destination, json, overwrite: false));
+    }
 
     public static AppSettings Load() => Load(FilePath);
 
-    internal static AppSettings Load(string path) => UserDataAccess.Run(() =>
+    internal static AppSettings Load(string path)
     {
-        if (!File.Exists(path)) return new AppSettings();
-        var settings = JsonSerializer.Deserialize<AppSettings>(ReadSettings(path))
+        var json = UserDataAccess.Run(() => File.Exists(path) ? ReadSettings(path) : null);
+        if (json is null) return new AppSettings();
+        var settings = JsonSerializer.Deserialize<AppSettings>(json)
             ?? throw new InvalidDataException(UiText.Get("EmptySettings"));
         settings.Normalize();
         return settings;
-    });
+    }
 
     private static string ReadSettings(string path)
     {
@@ -93,11 +94,13 @@ internal static class SettingsStore
 
     public static void Save(AppSettings settings) => Save(settings, FilePath);
 
-    internal static void Save(AppSettings settings, string path) => UserDataAccess.Run(() =>
+    internal static void Save(AppSettings settings, string path)
     {
         settings.Normalize();
-        WriteSettings(path, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }), overwrite: true);
-    });
+        // Initialize JSON outside impersonation; runtime assemblies may not load under the limited token.
+        var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+        UserDataAccess.Run(() => WriteSettings(path, json, overwrite: true));
+    }
 
     private static void WriteSettings(string path, string json, bool overwrite)
     {

@@ -186,7 +186,7 @@ public sealed partial class MainWindow : Window
     {
         if (_checking) return true;
         try { SettingsStore.Save(_settings); return true; }
-        catch (Exception error) { ReportIssue(UiText.Get("SaveFailed"), error.Message); return false; }
+        catch (Exception error) { ReportIssue(UiText.Get("SaveFailed"), error.GetBaseException().Message); return false; }
     }
 
     private void ApplyTheme()

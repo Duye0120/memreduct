@@ -11,22 +11,25 @@ public sealed partial class MainWindow
 {
     private static async Task CheckUserDataAccessAsync(string directory)
     {
-        static (string? Sid, bool Administrator, bool Impersonating) Identity()
+        static (string? Sid, bool Administrator, bool Impersonating, TokenImpersonationLevel Level) Identity()
         {
             using var identity = WindowsIdentity.GetCurrent();
             using var thread = WindowsIdentity.GetCurrent(true);
-            return (identity.User?.Value, new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator), thread is not null);
+            return (identity.User?.Value, new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator), thread is not null, identity.ImpersonationLevel);
         }
         var original = Identity();
         var synchronous = UserDataAccess.Run(Identity);
         var asynchronous = await UserDataAccess.RunAsync(async () =>
         {
             await Task.Delay(10).ConfigureAwait(false);
+            File.WriteAllText(Path.Combine(directory, "async-user-access.txt"), "ordinary file access after await");
             return Identity();
         });
         Require(synchronous.Sid == original.Sid && !synchronous.Administrator
-            && asynchronous.Sid == original.Sid && !asynchronous.Administrator && synchronous.Impersonating && asynchronous.Impersonating,
-            "User-data callbacks retain the same account with ordinary permissions across await");
+            && asynchronous.Sid == original.Sid && !asynchronous.Administrator && synchronous.Impersonating && asynchronous.Impersonating
+            && synchronous.Level >= TokenImpersonationLevel.Impersonation && asynchronous.Level >= TokenImpersonationLevel.Impersonation
+            && File.ReadAllText(Path.Combine(directory, "async-user-access.txt")) == "ordinary file access after await",
+            "User-data callbacks retain the same account and a usable ordinary file-access token across await");
         var failed = false;
         try { await UserDataAccess.RunAsync<int>(async () => { await Task.Yield(); throw new InvalidOperationException("fixture"); }); }
         catch (InvalidOperationException error) when (error.Message == "fixture") { failed = true; }
