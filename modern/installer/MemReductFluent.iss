@@ -69,6 +69,8 @@ zhcn.InvalidDirectory=请选择独立的本地程序目录，不能使用磁盘�
 zhcn.MoveInstallation=升级需沿用原安装目录。如需迁移，请先卸载旧版本再选择新目录；个人设置会保留。
 zhcn.OlderInstaller=已安装的版本更新，请使用最新安装包。
 zhcn.CloseFirst=请先从 Mem Reduct 的托盘菜单退出，再继续安装或卸载。
+zhcn.HelperStopFailed=无法停止后台清理助手，请稍后重试安装或卸载。
+zhcn.HelperBusy=后台清理助手文件仍被占用，无法替换。请稍后重试安装。
 zhcn.RelaunchFailed=未能重新打开程序。请从开始菜单手动打开，现有设置已保留。
 zhcn.InvalidSettings=请选择一个不大于 64 KB 的 settings.json 文件，或留空跳过。
 en.ImportTitle=Import portable settings (optional)
@@ -79,6 +81,8 @@ en.InvalidDirectory=Choose a dedicated local application folder, not a drive roo
 en.MoveInstallation=Upgrade in the existing folder. To move the app, uninstall it first, then select a new folder. Your settings are preserved.
 en.OlderInstaller=A newer version is already installed. Use the latest installer.
 en.CloseFirst=Exit Mem Reduct from its tray menu before installing or uninstalling.
+en.HelperStopFailed=The background cleanup helper could not be stopped. Retry setup or uninstall shortly.
+en.HelperBusy=The background cleanup helper file is still in use and cannot be replaced. Retry setup shortly.
 en.RelaunchFailed=The app could not be reopened. Open it from the Start menu; your settings are preserved.
 en.InvalidSettings=Choose a settings.json file no larger than 64 KB, or leave the field blank.
 
@@ -111,9 +115,47 @@ begin
   end;
 end;
 
+function ConvertStringSidToSidW(StringSid: String; var Sid: NativeUInt): Boolean;
+  external 'ConvertStringSidToSidW@advapi32.dll stdcall';
+function LookupAccountNameW(SystemName: NativeUInt; AccountName: String; Sid: NativeUInt; var SidSize: Cardinal;
+  Domain: NativeUInt; var DomainSize: Cardinal; var Use: Cardinal): Boolean;
+  external 'LookupAccountNameW@advapi32.dll stdcall';
+function EqualSid(First, Second: NativeUInt): Boolean;
+  external 'EqualSid@advapi32.dll stdcall';
+function LocalAlloc(Flags: Cardinal; Bytes: NativeUInt): NativeUInt;
+  external 'LocalAlloc@kernel32.dll stdcall';
+
+function SameTaskUser(Value, Sid: String): Boolean;
+var Expected, Account, Domain: NativeUInt;
+    SidSize, DomainSize, Use: Cardinal;
+begin
+  Result := CompareText(Value, Sid) = 0;
+  if Result or (Value = '') then exit;
+  Expected := 0;
+  Account := 0;
+  Domain := 0;
+  if not ConvertStringSidToSidW(Sid, Expected) then exit;
+  try
+    SidSize := 0;
+    DomainSize := 0;
+    LookupAccountNameW(0, Value, 0, SidSize, 0, DomainSize, Use);
+    if (SidSize = 0) or (SidSize > 68) or (DomainSize > 32768) then exit;
+    Account := LocalAlloc($40, SidSize);
+    Domain := LocalAlloc($40, (DomainSize + 1) * 2);
+    if (Account = 0) or (Domain = 0) then exit;
+    // Task Scheduler may serialize the same account as a name instead of its SID.
+    if not LookupAccountNameW(0, Value, Account, SidSize, Domain, DomainSize, Use) then exit;
+    Result := EqualSid(Account, Expected);
+  finally
+    if Domain <> 0 then LocalFree(Domain);
+    if Account <> 0 then LocalFree(Account);
+    LocalFree(Expected);
+  end;
+end;
+
 procedure StopHelperTasks(DeleteTasks: Boolean);
 var Service, Folder, Tasks, Task, Definition, Actions, Action: Variant;
-    I: Integer;
+    I, Attempt: Integer;
     Sid: String;
     Matches: Boolean;
 begin
@@ -135,13 +177,26 @@ begin
         Matches := False;
         try
           Matches := (CompareText(Action.Path, ExpandConstant('{commonpf64}\MemReduct Helper\MemReduct.Helper.exe')) = 0)
-            and (Action.Arguments = '--serve ' + Sid) and (Definition.Principal.UserId = Sid);
+            and (Action.Arguments = '--serve ' + Sid) and SameTaskUser(Definition.Principal.UserId, Sid);
         except
           Log('Skipping a task without the expected helper action.');
         end;
         if Matches then
         begin
-          if Task.State = 4 then Task.Stop(0);
+          if Task.State = 4 then
+          begin
+            try
+              Task.Stop(0);
+              for Attempt := 1 to 50 do
+              begin
+                if Task.State <> 4 then break;
+                Sleep(100);
+              end;
+            except
+              RaiseException(CustomMessage('HelperStopFailed'));
+            end;
+            if Task.State = 4 then RaiseException(CustomMessage('HelperStopFailed'));
+          end;
           if DeleteTasks then Folder.DeleteTask(Task.Name, 0);
         end;
       end;
@@ -290,7 +345,7 @@ begin
       if not FileExists(Executable) or DeleteFile(Executable) then break;
       Sleep(100);
     end;
-    if FileExists(Executable) then RaiseException(CustomMessage('CloseFirst'));
+    if FileExists(Executable) then RaiseException(CustomMessage('HelperBusy'));
     if FileExists(Executable + '.config') and not DeleteFile(Executable + '.config') then RaiseException('Could not replace the helper configuration.');
   end;
   if CurStep = ssPostInstall then
