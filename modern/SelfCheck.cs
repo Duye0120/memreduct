@@ -161,12 +161,14 @@ public sealed partial class MainWindow
             checks.Add($"Light/dark/system caption themes, physical 12px card / 10px control radii and DPI-tracked minimum window size passed at scale {displayScale}.");
             checks.Add("Black/white controls, pale gray canvas and compact white grouping cards use the reference palette.");
             await CheckTrayGlyphs(directory);
-            checks.Add("Tray digits 0/9/99/100 rendered at 16/20/24/32px on light/dark backgrounds; 200 refreshes leaked no GDI or USER handles.");
+            checks.Add("Tray digits 0/9/99/100 and unavailable '?' rendered at 16/20/24/32px on light/dark backgrounds; 200 refreshes leaked no GDI or USER handles.");
             Require(Marshal.SizeOf<MemoryEngine.MemoryStatus>() == 64, "MEMORYSTATUSEX ABI");
             Require(Marshal.SizeOf<MemoryEngine.PerformanceInfo>() == 104, "PERFORMANCE_INFORMATION ABI");
             Require(Marshal.SizeOf<MemoryEngine.FileCacheInfo>() == 64, "SYSTEM_FILECACHE_INFORMATION ABI");
             Require(Marshal.SizeOf<MemoryEngine.CombineInfo>() == 24, "MEMORY_COMBINE_INFORMATION_EX ABI");
             var memory = MemoryEngine.Read();
+            await CheckSamplingStateAsync(memory, directory);
+            checks.Add("Sampling failure marks retained readings, removes stale tray percentages, pauses automatic dispatch and recovers through real read-only sampling without hiding unrelated errors.");
             Require(memory.PhysicalTotal > 0 && memory.PhysicalAvailable <= memory.PhysicalTotal, "Live physical memory");
             Require(memory.CommitLimit > 0 && memory.CommitUsed <= memory.CommitLimit, "Live commit memory");
             checks.Add("Read-only native memory sampling and x64 ABI passed.");
@@ -849,16 +851,16 @@ public sealed partial class MainWindow
         var sizes = new[] { 16, 20, 24, 32 };
         foreach (var dark in new[] { false, true })
         {
-            const int width = 192, height = 192;
+            const int width = 240, height = 192;
             var canvas = new byte[width * height * 4];
             Array.Fill(canvas, dark ? (byte)32 : (byte)244);
             for (var i = 3; i < canvas.Length; i += 4) canvas[i] = 255;
             for (var row = 0; row < sizes.Length; row++)
-            for (var column = 0; column < 4; column++)
+            for (var column = 0; column < 5; column++)
             {
                 var size = sizes[row];
-                var percent = new[] { 0, 9, 99, 100 }[column];
-                var icon = TrayGlyph.Create(percent, size, TrayIcon.StatusColor(percent, CleanupFeedback.None, false, dark), out var pixels);
+                var percent = new int?[] { 0, 9, 99, 100, null }[column];
+                var icon = TrayGlyph.Create(percent, size, TrayIcon.StatusColor(percent ?? 0, percent is null ? CleanupFeedback.Failed : CleanupFeedback.None, false, dark), out var pixels);
                 try
                 {
                     var visible = Enumerable.Range(0, size * size).Count(i => pixels[i * 4 + 3] != 0);
@@ -883,7 +885,7 @@ public sealed partial class MainWindow
         var gdi = GetGuiResources(process, 0);
         var user = GetGuiResources(process, 1);
         for (var i = 0; i < 200; i++)
-            TrayGlyph.DestroyIcon(TrayGlyph.Create(i % 101, 24, 0xf4f4f4, out _, i % 12));
+            TrayGlyph.DestroyIcon(TrayGlyph.Create(i % 17 == 0 ? null : i % 101, 24, 0xf4f4f4, out _, i % 12));
         Require(GetGuiResources(process, 0) == gdi && GetGuiResources(process, 1) == user, "Tray icon refresh releases native handles");
         const int frameSize = 24, stripWidth = 12 * frameSize;
         var strip = new byte[stripWidth * frameSize * 4];

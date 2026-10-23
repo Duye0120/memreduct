@@ -71,8 +71,8 @@
                     <TextBlock Text="内存" Style="{StaticResource Body}" x:Name="PageCaption" FontWeight="SemiBold" />
                 </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                    <Ellipse Fill="#16A06B" Width="5" Height="5" VerticalAlignment="Center" />
-                    <TextBlock Text="实时" Style="{StaticResource Muted}" x:Uid="LiveLabel" />
+                    <Ellipse x:Name="LiveIndicator" Fill="#16A06B" Width="5" Height="5" VerticalAlignment="Center" />
+                    <TextBlock x:Name="LiveLabel" Text="实时" Style="{StaticResource Muted}" x:Uid="LiveLabel" AutomationProperties.LiveSetting="Polite" />
                 </StackPanel>
                 <ScrollViewer x:Name="NotificationScroll" Grid.Row="1" Grid.ColumnSpan="3" MaxHeight="200" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                     <StackPanel>
@@ -170,7 +170,7 @@
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
                                     <TextBlock x:Uid="HistoryStart" Text="5 分钟前" Style="{StaticResource Muted}" />
-                                    <TextBlock x:Uid="HistoryEnd" Grid.Column="1" Text="现在" Style="{StaticResource Muted}" HorizontalAlignment="Right" />
+                                    <TextBlock x:Name="HistoryEnd" x:Uid="HistoryEnd" Grid.Column="1" Text="现在" Style="{StaticResource Muted}" HorizontalAlignment="Right" />
                                 </Grid>
                                 <TextBlock x:Name="HistorySummary" Text="—" Style="{StaticResource Muted}" />
                             </StackPanel>

@@ -26,6 +26,7 @@ public sealed partial class MainWindow : Window
     private bool _sidebarAvailable = true;
     private double _cornerScale;
     private DateTimeOffset _lastAttempt;
+    private DateTimeOffset? _lastReadUtc;
     private DateTimeOffset _thresholdRetryAfter;
     private bool _gameActive;
     private double _lastPercent;
@@ -37,7 +38,7 @@ public sealed partial class MainWindow : Window
     internal bool CanStayInTray => _tray?.IsVisible == true;
     private bool CanRenderWindow => !_exitRequested && AppWindow.IsVisible
         && AppWindow.Presenter is not OverlappedPresenter { State: OverlappedPresenterState.Minimized };
-    private bool CanStartAutomaticCleanup => !_exitRequested && !_cleaning && !_restartPromptOpen && !_elevating && !_startupCleanupPending;
+    private bool CanStartAutomaticCleanup => !_exitRequested && !_cleaning && !_restartPromptOpen && !_elevating && !_startupCleanupPending && !_sampleFailed;
 
     public MainWindow(AppSettings settings, bool checking)
     {
@@ -46,6 +47,7 @@ public sealed partial class MainWindow : Window
         _startupCleanupPending = !checking && App.Arguments.Contains("--clean");
         _lastAttempt = settings.LastCleanUtc is { } last && last <= DateTimeOffset.UtcNow ? last : DateTimeOffset.UtcNow;
         InitializeComponent();
+        if (checking) Title = "Mem Reduct Fluent - Self-check";
         Shell.Language = UiText.LanguageTag;
         IssueBanner.Closed += (_, _) => IssueBanner.Visibility = Visibility.Collapsed;
         ExtendsContentIntoTitleBar = true;
@@ -83,8 +85,7 @@ public sealed partial class MainWindow : Window
             _animationTimer.Tick += (_, _) =>
             {
                 _animationFrame = (_animationFrame + 1) % 12;
-                try { UpdateTray(); }
-                catch (Exception error) { _animationTimer.Stop(); ReportIssue(UiText.Get("TrayUnavailable"), error.Message); }
+                UpdateTraySafely();
             };
         }
         _ready = true;
@@ -326,19 +327,59 @@ public sealed partial class MainWindow : Window
         {
             UpdateGameProtection(_settings.GameMode && GameModeMonitor.IsFullscreenApp(), DateTimeOffset.UtcNow);
             var snapshot = MemoryEngine.Read();
-            _history.Record(snapshot, DateTimeOffset.UtcNow);
+            _lastReadUtc = DateTimeOffset.UtcNow;
+            _history.Record(snapshot, _lastReadUtc.Value);
             _lastPercent = snapshot.PhysicalPercent;
             ObserveThresholdRetry(snapshot.PhysicalPercent, DateTimeOffset.UtcNow);
             if (CanRenderWindow) { UpdateStats(snapshot); RenderHistory(); }
-            UpdateTray();
-            if (_sampleFailed) { _sampleFailed = false; if (IssueBanner.Title == UiText.Get("SampleFailed")) IssueBanner.IsOpen = false; }
+            SetSamplingState(false);
+            UpdateTraySafely();
             if (CanStartAutomaticCleanup && MemoryEngine.IsAdministrator && _settings.IsAutoDue(snapshot.PhysicalPercent, DateTimeOffset.UtcNow, _lastAttempt, _gameActive, _thresholdRetryAfter))
                 _ = CleanAsync(false);
         }
         catch (Exception error)
         {
-            if (!_sampleFailed) ReportIssue(UiText.Get("SampleFailed"), error.Message);
-            _sampleFailed = true;
+            ReportSamplingFailure(error);
+        }
+    }
+
+    private void ReportSamplingFailure(Exception error)
+    {
+        var firstFailure = !_sampleFailed;
+        SetSamplingState(true);
+        if (firstFailure) ReportIssue(UiText.Get("SampleFailed"), error.Message, InfoBarSeverity.Error);
+        UpdateTraySafely();
+    }
+
+    private void SetSamplingState(bool failed)
+    {
+        var wasFailed = _sampleFailed;
+        _sampleFailed = failed;
+        if (wasFailed != failed)
+        {
+            SetText(LiveLabel, UiText.Get(failed ? "MonitoringUnavailable" : "LiveLabel.Text"));
+            SetText(HistoryEmpty, UiText.Get(failed ? "MonitoringUnavailable" : "HistoryEmpty.Text"));
+        }
+        var color = GetStatusColor(0, failed ? CleanupFeedback.Failed : CleanupFeedback.None);
+        if (LiveIndicator.Fill is not Microsoft.UI.Xaml.Media.SolidColorBrush brush || brush.Color != color)
+            LiveIndicator.Fill = new Microsoft.UI.Xaml.Media.SolidColorBrush(color);
+        if (failed)
+        {
+            if (_lastReadUtc is not null) UpdatePhysicalColor(_lastPercent);
+            var label = UiText.Get(_lastReadUtc is null ? "NoReading" : "LastReading");
+            SetText(PressureText, label);
+            SetText(HistoryEnd, label);
+            PressureText.Foreground = LiveIndicator.Fill;
+            var hint = _lastReadUtc is { } time ? UiText.Get("LastReadingTime", time.ToLocalTime()) : UiText.Get("NoReading");
+            ToolTipService.SetToolTip(LiveLabel, hint);
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetHelpText(LiveLabel, hint);
+        }
+        else if (wasFailed)
+        {
+            SetText(HistoryEnd, UiText.Get("HistoryEnd.Text"));
+            ToolTipService.SetToolTip(LiveLabel, null);
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetHelpText(LiveLabel, "");
+            if (IssueBanner.Title == UiText.Get("SampleFailed")) IssueBanner.IsOpen = false;
         }
     }
 
@@ -369,11 +410,27 @@ public sealed partial class MainWindow : Window
 
     private void UpdateTray()
     {
+        var state = GetTrayState();
+        _tray?.Update(state.Percent, state.Feedback, state.Status, _gameActive, state.Frame);
+    }
+
+    private (double? Percent, CleanupFeedback Feedback, string Status, int Frame) GetTrayState()
+    {
         if (_feedback != CleanupFeedback.Cleaning && Environment.TickCount64 >= _feedbackUntil) _feedback = CleanupFeedback.None;
         var status = _feedback != CleanupFeedback.None ? _feedbackText
-            : UiText.Get(_gameActive ? "GameModeActive" : _lastPercent >= 90 ? "MemoryCritical" : _lastPercent >= 70 ? "MemoryWarning" : "MemoryNormal");
-        if (_gameActive && _feedback != CleanupFeedback.None) status += " · " + UiText.Get("GameModeActive");
-        _tray?.Update(_lastPercent, _feedback, status, _gameActive, _feedback == CleanupFeedback.Cleaning ? _animationFrame : -1);
+            : UiText.Get(_sampleFailed ? "MonitoringUnavailable" : _gameActive ? "GameModeActive" : _lastPercent >= 90 ? "MemoryCritical" : _lastPercent >= 70 ? "MemoryWarning" : "MemoryNormal");
+        if (_sampleFailed && _feedback != CleanupFeedback.None) status = UiText.Get("MonitoringUnavailable") + " · " + status;
+        if (_gameActive && (_feedback != CleanupFeedback.None || _sampleFailed)) status += " · " + UiText.Get("GameModeActive");
+        return (_sampleFailed ? null : _lastPercent,
+            _sampleFailed && _feedback != CleanupFeedback.Cleaning ? CleanupFeedback.Failed : _feedback,
+            status, _feedback == CleanupFeedback.Cleaning ? _animationFrame : -1);
+    }
+
+    private void UpdateTraySafely()
+    {
+        if (_exitRequested) return;
+        try { UpdateTray(); }
+        catch (Exception error) { _animationTimer?.Stop(); ReportIssue(UiText.Get("TrayUnavailable"), error.Message); }
     }
 
     private void SetFeedback(CleanupFeedback feedback, string text)
@@ -382,8 +439,7 @@ public sealed partial class MainWindow : Window
         _feedbackUntil = Environment.TickCount64 + 5000;
         if (feedback == CleanupFeedback.Cleaning) { _animationFrame = 0; _animationTimer?.Start(); }
         else _animationTimer?.Stop();
-        try { UpdateTray(); }
-        catch (Exception error) { ReportIssue(UiText.Get("TrayUnavailable"), error.Message); }
+        UpdateTraySafely();
     }
 
     internal void UpdateStats(MemorySnapshot snapshot)
@@ -398,16 +454,28 @@ public sealed partial class MainWindow : Window
         SetText(CacheValue, snapshot.CacheCurrent is { } current ? MemorySnapshot.Bytes(current) : "—");
         SetText(CachePeak, snapshot.CachePeak is { } peak ? UiText.Get("PeakMemory", MemorySnapshot.Bytes(peak)) : UiText.Get("PeakUnavailable"));
         SetProgress(PhysicalBar, snapshot.PhysicalPercent);
-        var foreground = _uiSettings.GetColorValue(Windows.UI.ViewManagement.UIColorType.Foreground);
-        var rgb = _accessibility.HighContrast
-            ? (uint)(foreground.R << 16 | foreground.G << 8 | foreground.B)
-            : TrayIcon.StatusColor(snapshot.PhysicalPercent, CleanupFeedback.None, false, Shell.ActualTheme == ElementTheme.Dark);
-        var color = Windows.UI.Color.FromArgb(255, (byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb);
-        if (PhysicalValue.Foreground is not Microsoft.UI.Xaml.Media.SolidColorBrush brush || brush.Color != color)
-            PhysicalValue.Foreground = PhysicalBar.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(color);
+        UpdatePhysicalColor(snapshot.PhysicalPercent);
         PressureText.Foreground = PhysicalValue.Foreground;
         SetProgress(CommitBar, snapshot.CommitPercent);
         SetProgress(CacheBar, snapshot.CacheCurrent is { } used && snapshot.CachePeak is { } total ? MemorySnapshot.Percent(used, total) : 0);
+    }
+
+    private void UpdatePhysicalColor(double percent)
+    {
+        var color = GetStatusColor(percent, CleanupFeedback.None);
+        if (PhysicalValue.Foreground is not Microsoft.UI.Xaml.Media.SolidColorBrush brush || brush.Color != color)
+            PhysicalValue.Foreground = PhysicalBar.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(color);
+    }
+
+    private Windows.UI.Color GetStatusColor(double percent, CleanupFeedback feedback)
+    {
+        var rgb = TrayIcon.StatusColor(percent, feedback, false, Shell.ActualTheme == ElementTheme.Dark);
+        if (_accessibility.HighContrast)
+        {
+            var foreground = _uiSettings.GetColorValue(Windows.UI.ViewManagement.UIColorType.Foreground);
+            rgb = (uint)(foreground.R << 16 | foreground.G << 8 | foreground.B);
+        }
+        return Windows.UI.Color.FromArgb(255, (byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb);
     }
 
     internal static void SetText(TextBlock block, string text) { if (block.Text != text) block.Text = text; }

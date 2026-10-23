@@ -7,7 +7,7 @@ namespace MemReduct.Fluent;
 internal static class TrayGlyph
 {
     // The caller owns the returned HICON; all temporary GDI objects stay local.
-    internal static IntPtr Create(int percent, int size, uint rgb, out byte[] pixels, int animationFrame = -1)
+    internal static IntPtr Create(int? percent, int size, uint rgb, out byte[] pixels, int animationFrame = -1)
     {
         if (percent is < 0 or > 100 || size is < 16 or > 256 || animationFrame is < -1 or > 11) throw new ArgumentOutOfRangeException();
         var inset = animationFrame < 0 ? 0 : Math.Max(2, size / 8);
@@ -21,7 +21,7 @@ internal static class TrayGlyph
             pixels = new byte[size * size * 4];
             Marshal.Copy(pixels, 0, bits, pixels.Length);
             oldBitmap = Handle(SelectObject(dc, bitmap));
-            var text = percent.ToString(CultureInfo.InvariantCulture);
+            var text = percent?.ToString(CultureInfo.InvariantCulture) ?? "?";
             for (var height = size - inset * 2; height > 0; height--)
             {
                 font = Handle(CreateFont(-height, 0, 0, 0, 700, 0, 0, 0, 1, 0, 0, 4, 0, "Segoe UI"));

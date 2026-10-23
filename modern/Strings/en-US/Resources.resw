@@ -350,6 +350,11 @@
   <data name="HistoryEmpty.Text" xml:space="preserve"><value>Collecting samples…</value></data>
   <data name="HistoryStart.Text" xml:space="preserve"><value>5 minutes ago</value></data>
   <data name="HistoryEnd.Text" xml:space="preserve"><value>Now</value></data>
+  <data name="MonitoringUnavailable" xml:space="preserve"><value>Unavailable</value></data>
+  <data name="LastReading" xml:space="preserve"><value>Last reading</value></data>
+  <data name="LastReadingTime" xml:space="preserve"><value>Last reading: {0:HH:mm:ss}</value></data>
+  <data name="NoReading" xml:space="preserve"><value>No reading yet</value></data>
+  <data name="TrayUsageUnavailable" xml:space="preserve"><value>Memory usage unavailable</value></data>
   <data name="HistorySummary" xml:space="preserve"><value>Physical range {0:0.0}%–{1:0.0}% · Current session only</value></data>
   <data name="PressureNormal" xml:space="preserve"><value>Normal usage</value></data>
   <data name="PressureElevated" xml:space="preserve"><value>Elevated usage</value></data>

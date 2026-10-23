@@ -350,6 +350,11 @@
   <data name="HistoryEmpty.Text" xml:space="preserve"><value>正在收集数据…</value></data>
   <data name="HistoryStart.Text" xml:space="preserve"><value>5 分钟前</value></data>
   <data name="HistoryEnd.Text" xml:space="preserve"><value>现在</value></data>
+  <data name="MonitoringUnavailable" xml:space="preserve"><value>更新中断</value></data>
+  <data name="LastReading" xml:space="preserve"><value>上次读数</value></data>
+  <data name="LastReadingTime" xml:space="preserve"><value>上次读取：{0:HH:mm:ss}</value></data>
+  <data name="NoReading" xml:space="preserve"><value>暂无读数</value></data>
+  <data name="TrayUsageUnavailable" xml:space="preserve"><value>内存用量暂不可用</value></data>
   <data name="HistorySummary" xml:space="preserve"><value>物理内存范围 {0:0.0}%–{1:0.0}% · 仅保留本次运行的数据</value></data>
   <data name="PressureNormal" xml:space="preserve"><value>用量正常</value></data>
   <data name="PressureElevated" xml:space="preserve"><value>用量较高</value></data>

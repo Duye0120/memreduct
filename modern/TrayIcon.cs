@@ -21,7 +21,7 @@ internal sealed class TrayIcon : IDisposable
     private bool _added, _version4;
     private long _lastActivation = long.MinValue / 2;
     private string _tooltip = "";
-    private (int Percent, int Size, uint Color, int Frame) _glyph = (-1, 0, 0, -1);
+    private (int? Percent, int Size, uint Color, int Frame) _glyph = (null, 0, 0, -1);
     private readonly AccessibilitySettings _accessibility = new();
     private readonly UISettings _uiSettings = new();
     public bool IsVisible => _added;
@@ -71,17 +71,19 @@ internal sealed class TrayIcon : IDisposable
         _ => dark ? 0x4ade80u : 0x15803du
     };
 
-    public void Update(double percent, CleanupFeedback feedback, string status, bool gameActive, int frame = -1)
+    public void Update(double? percent, CleanupFeedback feedback, string status, bool gameActive, int frame = -1)
     {
-        var value = UiText.Get("TrayUsage", percent) + "\n" + status + "\n" + UiText.Get(_confirmationRequired() ? "TrayClickConfirmHint" : "TrayClickDirectHint");
+        var value = (percent is { } usage ? UiText.Get("TrayUsage", usage) : UiText.Get("TrayUsageUnavailable"))
+            + "\n" + status + "\n" + UiText.Get(_confirmationRequired() ? "TrayClickConfirmHint" : "TrayClickDirectHint");
         if (value.Length > 127) value = value[..127];
         var taskbar = FindWindow("Shell_TrayWnd", null);
         var size = GetSystemMetricsForDpi(49, GetDpiForWindow(taskbar != IntPtr.Zero ? taskbar : _window));
         var foreground = _uiSettings.GetColorValue(UIColorType.Foreground);
         var color = _accessibility.HighContrast ? (uint)(foreground.R << 16 | foreground.G << 8 | foreground.B)
-            : StatusColor(percent, feedback, gameActive,
+            : StatusColor(percent ?? 0, feedback, gameActive,
                 Registry.GetValue(@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "SystemUsesLightTheme", 0) is not int light || light == 0);
-        var glyph = ((int)Math.Clamp(Math.Round(percent), 0, 100), Math.Clamp(size, 16, 256), color, frame);
+        int? number = percent is { } reading ? (int)Math.Clamp(Math.Round(reading), 0, 100) : null;
+        var glyph = (number, Math.Clamp(size, 16, 256), color, frame);
         var redraw = glyph != _glyph;
         if (value == _tooltip && !redraw && _added) return;
         var previousIcon = _data.Icon;
