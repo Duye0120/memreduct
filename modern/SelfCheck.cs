@@ -864,7 +864,8 @@ public sealed partial class MainWindow
                 try
                 {
                     var visible = Enumerable.Range(0, size * size).Count(i => pixels[i * 4 + 3] != 0);
-                    Require(visible > size * size / 10 && visible < size * size / 2, "Tray digit coverage and transparent background");
+                    Require(visible > size * size / 10 && visible < size * size / 2,
+                        $"Tray digit coverage and transparent background: {percent?.ToString() ?? "?"}, {size}px, {visible}/{size * size} pixels");
                     for (var y = 0; y < size; y++)
                     for (var x = 0; x < size; x++)
                     {
