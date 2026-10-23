@@ -493,10 +493,13 @@ public sealed partial class MainWindow
             RefreshOptions();
 
             // Layout is measured inside this hidden app window, without inspecting the user's desktop.
-            Require(CleanupHistoryCard.Visibility == Visibility.Collapsed && _cleanupHistory.Count == 0, "A new session has no fabricated cleanup records");
+            Require(CleanupHistoryCard.Visibility == Visibility.Collapsed && _cleanupHistory.Count == 0
+                && !CleanupHistoryExpander.IsExpanded, "A new session starts with collapsed cleanup history and no fabricated records");
             for (var index = 0; index < 7; index++)
                 RecordCleanup(true, new CleanupResult((ulong)index * 1024 * 1024, [], CleanAreas.WorkingSets), TimeSpan.FromSeconds(1));
             Require(_cleanupHistory.Count == 5 && _cleanupHistory[0].Details.Contains("6 MB"), "Cleanup history keeps only the five most recent attempts, newest first");
+            Require(CleanupHistoryCard.Visibility == Visibility.Visible && !CleanupHistoryExpander.IsExpanded,
+                "New cleanup records show the header without automatically expanding details");
             RecordCleanup(false, new CleanupResult(0, ["self-check failure"], CleanAreas.SystemCache), TimeSpan.FromSeconds(2));
             Require(_cleanupHistory[0].Outcome == UiText.Get("PartialCleanup") && _cleanupHistory[0].Details.Contains(UiText.Get("CleanupHistoryErrors", 1)),
                 "Partial cleanup records keep the error count and observed zero-byte result");
@@ -560,6 +563,8 @@ public sealed partial class MainWindow
             Shell.RequestedTheme = ElementTheme.Light;
             SelectPage(false);
             Layout(680, 1600, 1);
+            await WritePreview(directory, "cleanup-history-collapsed.png", CleanupHistoryCard);
+            CleanupHistoryExpander.IsExpanded = true;
             await WritePreview(directory, "cleanup-history-fixture.png", CleanupHistoryCard);
             var processFixture = Enumerable.Range(1, 12).Select(id => new ProcessMemoryEntry(
                 id == 12 ? "Example application with a long process name" : "Example " + id,
@@ -678,6 +683,7 @@ public sealed partial class MainWindow
             SettingsPage.StartupNote.Text = originalStartupNote;
             CleanDescription.Text = originalCleanDescription;
             _cleanupHistory.Clear();
+            CleanupHistoryExpander.IsExpanded = false;
             CleanupHistoryCard.Visibility = Visibility.Collapsed;
             _settings.SidebarExpanded = false;
             Layout(700, 560, 1);
@@ -694,6 +700,8 @@ public sealed partial class MainWindow
             Require(CleanButton.TransformToVisual(Shell).TransformPoint(new Point()).Y + CleanButton.ActualHeight <= Shell.ActualHeight,
                 "The primary cleanup action stays visible at the default window size");
             await WritePreview(directory, "memory-light.png");
+            await CheckMetricsAnimationAsync();
+            checks.Add("Cleanup numbers and bars animate together, restore latest real readings, handle fast completion and stop safely on sampling failure.");
             // Synthetic samples exist only in the developer self-check, never in a normal session.
             for (var second = 0; second <= 300; second++)
             {
@@ -840,9 +848,9 @@ public sealed partial class MainWindow
         Shell.UpdateLayout();
     }
 
-    private async Task WritePreview(string directory, string filename, UIElement? element = null)
+    private async Task WritePreview(string directory, string filename, UIElement? element = null, int waitMilliseconds = 250)
     {
-        await Task.Delay(250);
+        if (waitMilliseconds > 0) await Task.Delay(waitMilliseconds);
         var bitmap = new RenderTargetBitmap();
         await bitmap.RenderAsync(element ?? Shell);
         var bytes = (await bitmap.GetPixelsAsync()).ToArray();
@@ -871,7 +879,8 @@ public sealed partial class MainWindow
                 try
                 {
                     var visible = Enumerable.Range(0, size * size).Count(i => pixels[i * 4 + 3] != 0);
-                    Require(visible > size * size / 10 && visible < size * size / 2,
+                    // A question mark uses less ink than a digit in small locale-specific rasterizations.
+                    Require(visible > size * size / (percent is null ? 20 : 10) && visible < size * size / 2,
                         $"Tray digit coverage and transparent background: {percent?.ToString() ?? "?"}, {size}px, {visible}/{size * size} pixels");
                     for (var y = 0; y < size; y++)
                     for (var x = 0; x < size; x++)

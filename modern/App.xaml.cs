@@ -74,7 +74,9 @@ public partial class App : Application
             {
                 var index = Array.IndexOf(Arguments, "--self-check");
                 if (index + 1 >= Arguments.Length) throw new ArgumentException("--self-check 需要一个输出目录。");
-                _window.RunSelfCheck(Path.GetFullPath(Arguments[index + 1]));
+                var directory = Path.GetFullPath(Arguments[index + 1]);
+                if (Arguments.Contains("--visual-preview")) _window.RunAnimationPreview(directory);
+                else _window.RunSelfCheck(directory);
             }
             else if (!Arguments.Contains("--minimized") || !_window.CanStayInTray) _window.Activate();
         }

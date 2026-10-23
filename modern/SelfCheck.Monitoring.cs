@@ -10,7 +10,7 @@ public sealed partial class MainWindow
         var theme = Shell.RequestedTheme;
         ReportSamplingFailure(new InvalidOperationException("Self-check fixture: sampling is unavailable."));
         var unavailable = GetTrayState();
-        Require(_sampleFailed && LiveLabel.Text == UiText.Get("MonitoringUnavailable")
+        Require(_sampleFailed && MonitoringStatus.Visibility == Visibility.Visible && LiveLabel.Text == UiText.Get("MonitoringUnavailable")
             && PressureText.Text == UiText.Get("NoReading") && !CanStartAutomaticCleanup
             && unavailable.Percent is null && unavailable.Feedback == CleanupFeedback.Failed,
             "A failed first sample cannot advertise live data or a fabricated tray percentage");
@@ -42,7 +42,8 @@ public sealed partial class MainWindow
 
         ReportIssue(UiText.Get("SaveFailed"), "Self-check fixture: unrelated failure.");
         Sample();
-        Require(!_sampleFailed && LiveLabel.Text == UiText.Get("LiveLabel.Text") && GetTrayState().Percent is not null
+        Require(!_sampleFailed && MonitoringStatus.Visibility == Visibility.Collapsed
+            && LiveLabel.Text == UiText.Get("LiveLabel.Text") && GetTrayState().Percent is not null
             && IssueBanner.IsOpen && IssueBanner.Title == UiText.Get("SaveFailed"),
             "Successful read-only sampling restores live data without dismissing an unrelated error");
         ReportSamplingFailure(new InvalidOperationException("Self-check fixture: second sampling interruption."));

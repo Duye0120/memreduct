@@ -100,7 +100,7 @@ public sealed partial class MainWindow : Window
             { args.Cancel = true; AppWindow.Hide(); }
             else PrepareToExit();
         };
-        Closed += (_, _) => { PrepareToExit(); _timer?.Stop(); _animationTimer?.Stop(); _tray?.Dispose(); ((App)Application.Current).Finish(); };
+        Closed += (_, _) => { PrepareToExit(); StopMetricsAnimation(); _timer?.Stop(); _animationTimer?.Stop(); _tray?.Dispose(); ((App)Application.Current).Finish(); };
         Shell.Loaded += async (_, _) =>
         {
             if (!_checking && Installation.IsInstalled) await RefreshHelperAsync(startTask: true);
@@ -230,7 +230,7 @@ public sealed partial class MainWindow : Window
         foreach (var card in new[] { MetricsCard, HistoryCard, CleanupHistoryCard, CleanCard, SettingsPage?.AppearanceCard, SettingsPage?.CleanupSettingsCard, SettingsPage?.AutoSettingsCard, SettingsPage?.AboutCard })
             if (card is not null) card.CornerRadius = cardRadius;
         IssueBanner.CornerRadius = AdminBanner.CornerRadius = cardRadius;
-        PressureBadge.CornerRadius = controlRadius;
+        CleanupHistoryExpander.CornerRadius = cardRadius;
         foreach (var control in new Control?[] { OverviewTab, SettingsTab, SidebarOverviewTab, SidebarSettingsTab, PaneToggleButton,
             CleanButton, ElevateButton, SettingsPage?.ThemeChoice, SettingsPage?.LanguageChoice,
             SettingsPage?.ThresholdNumber, SettingsPage?.IntervalNumber, SettingsPage?.SourceLink, SettingsPage?.ExitButton, SettingsPage?.UpdateButton, SettingsPage?.ReleasesLink, SettingsPage?.AdvancedCleanup,
@@ -359,6 +359,8 @@ public sealed partial class MainWindow : Window
     {
         var wasFailed = _sampleFailed;
         _sampleFailed = failed;
+        MonitoringStatus.Visibility = failed ? Visibility.Visible : Visibility.Collapsed;
+        if (failed) StopMetricsAnimation();
         if (wasFailed != failed)
         {
             SetText(LiveLabel, UiText.Get(failed ? "MonitoringUnavailable" : "LiveLabel.Text"));
@@ -448,20 +450,15 @@ public sealed partial class MainWindow : Window
 
     internal void UpdateStats(MemorySnapshot snapshot)
     {
-        SetText(PressureText, UiText.Get(snapshot.PhysicalPercent >= 90 ? "PressureHigh" : snapshot.PhysicalPercent >= 70 ? "PressureElevated" : "PressureNormal"));
-        SetText(PhysicalValue, $"{snapshot.PhysicalPercent:0.0}%");
+        SetText(PressureText, UiText.Get(_metricsCleaning ? "Cleaning" : snapshot.PhysicalPercent >= 90 ? "PressureHigh" : snapshot.PhysicalPercent >= 70 ? "PressureElevated" : "PressureNormal"));
         SetText(PhysicalFree, UiText.Get("AvailableMemory", MemorySnapshot.Bytes(snapshot.PhysicalAvailable)));
         SetText(PhysicalTotal, UiText.Get("TotalMemory", MemorySnapshot.Bytes(snapshot.PhysicalTotal)));
-        SetText(CommitValue, $"{snapshot.CommitPercent:0.0}%");
         SetText(CommitUsed, UiText.Get("CommittedMemory", MemorySnapshot.Bytes(snapshot.CommitUsed)));
         SetText(CommitTotal, UiText.Get("CommitLimit", MemorySnapshot.Bytes(snapshot.CommitLimit)));
-        SetText(CacheValue, snapshot.CacheCurrent is { } current ? MemorySnapshot.Bytes(current) : "—");
         SetText(CachePeak, snapshot.CachePeak is { } peak ? UiText.Get("PeakMemory", MemorySnapshot.Bytes(peak)) : UiText.Get("PeakUnavailable"));
-        SetProgress(PhysicalBar, snapshot.PhysicalPercent);
         UpdatePhysicalColor(snapshot.PhysicalPercent);
         PressureText.Foreground = PhysicalValue.Foreground;
-        SetProgress(CommitBar, snapshot.CommitPercent);
-        SetProgress(CacheBar, snapshot.CacheCurrent is { } used && snapshot.CachePeak is { } total ? MemorySnapshot.Percent(used, total) : 0);
+        UpdateAnimatedMetrics(snapshot);
     }
 
     private void UpdatePhysicalColor(double percent)
@@ -672,7 +669,11 @@ public sealed partial class MainWindow : Window
         finally { _elevating = false; if (!_exitRequested) RefreshOptions(); }
     }
 
-    private async void CleanButton_Click(object sender, RoutedEventArgs args) => await CleanAsync(true);
+    private async void CleanButton_Click(object sender, RoutedEventArgs args)
+    {
+        if (_checking && App.Arguments.Contains("--visual-preview")) await PreviewMetricsCleanupAsync();
+        else await CleanAsync(true);
+    }
     private async Task RunStartupCleanupAsync()
     {
         if (_exitRequested || !_startupCleanupPending) return;
@@ -774,6 +775,7 @@ public sealed partial class MainWindow : Window
             _lastAttempt = DateTimeOffset.UtcNow;
             CleanButton.Content = UiText.Get("Cleaning");
             SetFeedback(CleanupFeedback.Cleaning, UiText.Get("Cleaning"));
+            BeginMetricsCleanup();
             cleanupDuration = Stopwatch.StartNew();
             var result = Installation.IsInstalled ? await HelperClient.CleanAsync(areas, automatic: !manual)
                 : await Task.Run(() => MemoryEngine.Clean(areas, automatic: !manual));
@@ -782,6 +784,7 @@ public sealed partial class MainWindow : Window
             ApplyCleanupResult(manual, result, cleanupDuration.Elapsed);
             cleanupDuration = null;
             Sample();
+            EndMetricsCleanup();
             CompleteCleanupAttempt(manual, _lastPercent, DateTimeOffset.UtcNow);
             if (result.CompletedAreas != CleanAreas.None && ShouldNotifyCleanup(_settings.NotifyAfterCleanup, result.Errors.Count, manual, _gameActive))
             {
@@ -796,7 +799,7 @@ public sealed partial class MainWindow : Window
             CompleteCleanupAttempt(manual, _lastPercent, DateTimeOffset.UtcNow);
             SetFeedback(CleanupFeedback.Failed, UiText.Get("CleanupFailed")); ReportIssue(UiText.Get("CleanupFailed"), error.Message, InfoBarSeverity.Error);
         }
-        finally { _animationTimer?.Stop(); _cleaning = false; RefreshOptions(); }
+        finally { EndMetricsCleanup(); _animationTimer?.Stop(); _cleaning = false; RefreshOptions(); }
     }
 
     internal static bool ShouldNotifyCleanup(bool enabled, int errors, bool manual, bool gameActive)

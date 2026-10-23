@@ -70,7 +70,7 @@
                     <TextBlock Text="/" Style="{StaticResource Muted}" />
                     <TextBlock Text="内存" Style="{StaticResource Body}" x:Name="PageCaption" FontWeight="SemiBold" />
                 </StackPanel>
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <StackPanel x:Name="MonitoringStatus" Visibility="Collapsed" Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                     <Ellipse x:Name="LiveIndicator" Fill="#16A06B" Width="5" Height="5" VerticalAlignment="Center" />
                     <TextBlock x:Name="LiveLabel" Text="实时" Style="{StaticResource Muted}" x:Uid="LiveLabel" AutomationProperties.LiveSetting="Polite" />
                 </StackPanel>
@@ -91,9 +91,7 @@
                         <Grid ColumnSpacing="12">
                             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                             <TextBlock Text="内存概览" Style="{StaticResource Body}" x:Uid="MemoryHeading" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <Border x:Name="PressureBadge" Grid.Column="1" Background="{ThemeResource SurfaceBrush}" BorderBrush="{ThemeResource OutlineBrush}" BorderThickness="1" Padding="9,4" CornerRadius="{StaticResource AppControlCornerRadius}" VerticalAlignment="Center">
-                                <TextBlock x:Name="PressureText" Style="{StaticResource Muted}" Text="—" />
-                            </Border>
+                            <TextBlock x:Name="PressureText" Grid.Column="1" Style="{StaticResource Muted}" Text="—" VerticalAlignment="Center" />
                         </Grid>
                         <Border x:Name="MetricsCard" Style="{StaticResource Card}" Padding="0">
                             <Grid x:Name="MetricsGrid">
@@ -175,9 +173,11 @@
                                 <TextBlock x:Name="HistorySummary" Text="—" Style="{StaticResource Muted}" />
                             </StackPanel>
                         </Border>
-                        <Border x:Name="CleanupHistoryCard" Style="{StaticResource Card}" Visibility="Collapsed">
-                            <StackPanel>
-                                <TextBlock x:Uid="CleanupHistoryHeading" Text="最近清理 · 本次运行" Style="{StaticResource Body}" FontWeight="SemiBold" Margin="16,12" />
+                        <Border x:Name="CleanupHistoryCard" Style="{StaticResource Card}" BorderThickness="0" Visibility="Collapsed">
+                            <Expander x:Name="CleanupHistoryExpander" IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Background="{ThemeResource SurfaceBrush}" BorderBrush="{ThemeResource OutlineBrush}">
+                                <Expander.Header>
+                                    <TextBlock x:Uid="CleanupHistoryHeading" Text="最近清理 · 本次运行" Style="{StaticResource Body}" FontWeight="SemiBold" />
+                                </Expander.Header>
                                 <ItemsControl ItemsSource="{x:Bind _cleanupHistory}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="local:CleanupHistoryEntry">
@@ -191,7 +191,7 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                            </StackPanel>
+                            </Expander>
                         </Border>
                         <Expander x:Name="ProcessesExpander" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Background="{ThemeResource SurfaceBrush}" BorderBrush="{ThemeResource OutlineBrush}" Expanding="Processes_Expanding">
                             <Expander.Header><TextBlock x:Uid="ProcessesHeading" Text="哪些进程占用内存？" Style="{StaticResource Body}" /></Expander.Header>
